@@ -1,5 +1,3 @@
-"""Instruksi sistem untuk chatbot, per role. Ganti versi kalau isinya diubah."""
-
 _SHARED_RULES = """
 Aturan wajib:
 - Jawab dalam bahasa Indonesia yang hangat, sederhana, dan tidak menghakimi. Maksimal sekitar 120 kata.
@@ -29,7 +27,29 @@ PROMPTS: dict[str, tuple[str, str]] = {
     ),
 }
 
+MOOD_LABELS = {1: "sangat buruk", 2: "buruk", 3: "biasa", 4: "baik", 5: "sangat baik"}
+
+_MOOD_RULES = """
+Data mood harian ibu (diisi ibu sendiri di aplikasi, skala 1-5, makin tinggi makin baik):
+{lines}
+Cara memakai data ini:
+- Ini perasaan yang ibu laporkan sendiri, BUKAN hasil pemeriksaan atau diagnosis.
+- Pakai seperlunya dan dengan lembut. Jangan membacakan angka satu per satu.
+- Hari yang tidak tercatat BUKAN berarti ibu baik-baik saja.
+- Kalau beberapa hari berturut-turut buruk, sarankan dengan lembut untuk bercerita
+  ke orang terdekat atau tenaga kesehatan.
+"""
+
 
 def get_prompt(role: str) -> tuple[str, str]:
     """Kembalikan (versi, isi). KeyError kalau role tidak boleh chat."""
     return PROMPTS[role]
+
+
+def build_system_prompt(role: str, moods: list[dict]) -> tuple[str, str]:
+    """Prompt dasar, ditambah blok data mood kalau ada (hanya untuk ibu)."""
+    version, text = get_prompt(role)
+    if not moods or role != "mother":
+        return version, text
+    lines = "\n".join(f"- {m['date']}: {m['mood']} ({MOOD_LABELS.get(m['mood'], '?')})" for m in moods)
+    return "chat-mother-mood-v1", text + _MOOD_RULES.format(lines=lines)
