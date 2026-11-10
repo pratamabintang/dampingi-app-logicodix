@@ -1,14 +1,8 @@
 import asyncio
 import json
 
-from openai import AsyncOpenAI
-from openai.types.chat import (
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
-from openai.types.shared_params import ResponseFormatJSONSchema
+from google import genai
+from google.genai import types
 
 from .errors import AIBadOutput
 from .gateway import REPLY_JSON_SCHEMA, Turn
@@ -44,31 +38,31 @@ class FakeProvider:
         return json.dumps({"reply": self.reply, "urgent": self.urgent})
 
 
-def _to_message(turn: Turn) -> ChatCompletionMessageParam:
-    if turn.role == "assistant":
-        return ChatCompletionAssistantMessageParam(role="assistant", content=turn.content)
-    return ChatCompletionUserMessageParam(role="user", content=turn.content)
+def _to_content(turn: Turn) -> types.Content:
+    # Gemini menamai jawaban AI "model", bukan "assistant".
+    role = "model" if turn.role == "assistant" else "user"
+    return types.Content(role=role, parts=[types.Part(text=turn.content)])
 
 
-class OpenAIProvider:
-    def __init__(self, client: AsyncOpenAI, model: str):
+class GeminiProvider:
+    """Memakai SDK google-genai (sama dengan fitur ringkasan mingguan D)."""
+
+    def __init__(self, client: genai.Client, model: str, temperature: float = 0.4):
         self.client = client
         self.model = model
+        self.temperature = temperature
 
     async def complete(self, system: str, turns: list[Turn]) -> str:
-        messages: list[ChatCompletionMessageParam] = [
-            ChatCompletionSystemMessageParam(role="system", content=system)
-        ]
-        messages += [_to_message(t) for t in turns]
-
-        response_format = ResponseFormatJSONSchema(
-            type="json_schema",
-            json_schema={"name": "chat_reply", "strict": True, "schema": REPLY_JSON_SCHEMA},
+        config = types.GenerateContentConfig(
+            system_instruction=system,               # instruksi terpisah dari riwayat
+            response_mime_type="application/json",   # paksa jawaban JSON...
+            response_json_schema=REPLY_JSON_SCHEMA,  # ...dengan bentuk {reply, urgent}
+            temperature=self.temperature,
         )
-        resp = await self.client.chat.completions.create(
-            model=self.model, messages=messages, response_format=response_format
+        resp = await self.client.aio.models.generate_content(
+            model=self.model, contents=[_to_content(t) for t in turns], config=config
         )
-        content = resp.choices[0].message.content
-        if not content:  # misalnya model menolak menjawab (refusal)
+        text = resp.text
+        if not text:  # misalnya diblokir filter keamanan Gemini
             raise AIBadOutput()
-        return content
+        return text
