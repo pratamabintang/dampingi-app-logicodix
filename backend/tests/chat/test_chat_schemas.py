@@ -22,6 +22,7 @@ EXAMPLE_RESPONSE = {
         "created_at": "2026-11-10T13:00:02Z",
     },
     "urgent": False,
+    "context_used": ["mood_7d"],
 }
 
 
