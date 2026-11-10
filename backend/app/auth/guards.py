@@ -18,3 +18,23 @@ def require_role(role: str):
         return session
     
     return _check_role
+
+def require_any_role(*roles: str):
+    if not roles:
+        raise ValueError("require_any_role needs at least one role")
+
+    def _check_any_role(
+        session: auth_service.Session = Depends(verified_session),
+    ) -> auth_service.Session:
+        profile = auth_supabase.fetch_profile(session.user_id)
+        if not profile or profile.get("role") not in roles:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Access denied: "
+                    f"{' or '.join(roles)} role required"
+                ),
+            )
+        return session
+
+    return _check_any_role

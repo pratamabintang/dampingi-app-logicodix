@@ -232,12 +232,186 @@ def offline_env(monkeypatch):
 
 
 @pytest.fixture
+def real_gate(mock_client):
+    import app.main as main
+    from app.journals import router as journals_router
+
+    saved = main.app.dependency_overrides.pop(journals_router.mother_or_companion, None)
+    yield
+    if saved is not None:
+        main.app.dependency_overrides[journals_router.mother_or_companion] = saved
+
+
+@pytest.fixture
+def as_author():
+    def _as(user_id: str) -> None:
+        import app.main as main
+        from app.auth import service
+        from app.auth.router import verified_session
+
+        main.app.dependency_overrides[verified_session] = lambda: service.Session(
+            user_id=user_id, email="offline@gmail.com", token="offline-token"
+        )
+
+    return _as
+
+def journals_profile(**overrides):
+    return {**captured("profiles-select-2026-11-10"), "role": "mother", **overrides}
+
+
+OTHER_AUTHOR = "00000000-0000-4000-8000-0000000000f1"
+
+
+def journal_row(user_id, day, title="A day", content="As written."):
+    return {
+        **captured("journals-select-2026-11-10")[0],
+        "user_id": user_id,
+        "created_at": day,
+        "title": title,
+        "content": content,
+    }
+
+
+def _canned_table(upstream, *, table, profile, rows, row_for=None, max_rows=1000):
+    import json
+
+    import httpx
+
+    stored = list(rows)
+    fill = row_for or (lambda body: body)
+
+    def _day_matches(row, wanted: str) -> bool:
+        if wanted.startswith("gte."):
+            return row["created_at"] >= wanted.removeprefix("gte.")
+        if wanted.startswith("lte."):
+            return row["created_at"] <= wanted.removeprefix("lte.")
+        return row["created_at"] == wanted.removeprefix("eq.")
+
+    def _match(request):
+        wanted_user = request.url.params.get("user_id")
+        wanted_days = request.url.params.get_list("created_at")
+        return [
+            row
+            for row in stored
+            if (
+                wanted_user is None
+                or row["user_id"] == wanted_user.removeprefix("eq.")
+            )
+            and all(_day_matches(row, wanted) for wanted in wanted_days)
+        ]
+
+    def _select(request, matched):
+        asked = request.url.params["select"].split(",")
+        return [{k: row[k] for k in asked if k in row} for row in matched]
+
+    def profile_get(request):
+        asked = request.url.params["select"].split(",")
+        return supabase_json(200, [{k: profile[k] for k in asked if k in profile}])
+
+    def table_get(request):
+        hits = _match(request)
+        order = request.url.params.get("order")
+        if order == "created_at.desc":
+            hits = sorted(hits, key=lambda r: r["created_at"], reverse=True)
+        elif order == "created_at.asc":
+            hits = sorted(hits, key=lambda r: r["created_at"])
+        offset = int(request.url.params.get("offset", 0))
+        limit = int(request.url.params.get("limit", len(hits) or 1))
+        return supabase_json(
+            200, _select(request, hits[offset : offset + min(limit, max_rows)])
+        )
+
+    def table_post(request):
+        body = json.loads(request.content)
+        clash = [
+            row
+            for row in stored
+            if row["user_id"] == body["user_id"]
+            and row["created_at"] == body["created_at"]
+        ]
+        if clash:
+            return httpx.Response(
+                409,
+                json={
+                    "code": "23505",
+                    "details": "Key (user_id, created_at) already exists.",
+                    "message": "duplicate key value violates unique constraint",
+                },
+            )
+        row = fill(body)
+        stored.append(row)
+        return supabase_json(201, [row])
+
+    def table_patch(request):
+        hits = _match(request)
+        body = json.loads(request.content)
+        for row in hits:
+            row.update(body)
+        return supabase_json(200, _select(request, hits))
+
+    def table_delete(request):
+        hits = _match(request)
+        for row in hits:
+            stored.remove(row)
+        if "return=representation" in (request.headers.get("prefer") or ""):
+            return supabase_json(200, _select(request, hits))
+        return httpx.Response(204, content=b"")
+
+    return upstream(
+        {
+            ("GET", "/rest/v1/profiles"): profile_get,
+            ("GET", f"/rest/v1/{table}"): table_get,
+            ("POST", f"/rest/v1/{table}"): table_post,
+            ("PATCH", f"/rest/v1/{table}"): table_patch,
+            ("DELETE", f"/rest/v1/{table}"): table_delete,
+        }
+    )
+
+
+@pytest.fixture
+def journals_table(upstream):
+    def _use(profile, journals=None):
+        return _canned_table(
+            upstream, table="journals", profile=profile, rows=journals or []
+        )
+
+    return _use
+
+def mood_row(user_id, day, mood=3, description=None):
+    return {
+        "user_id": user_id,
+        "created_at": day,
+        "mood": mood,
+        "description": description,
+    }
+
+
+@pytest.fixture
+def moods_table(upstream):
+    def _use(profile, moods=None, max_rows=1000):
+        return _canned_table(
+            upstream,
+            table="moods",
+            profile=profile,
+            rows=moods or [],
+            max_rows=max_rows,
+            row_for=lambda body: {
+                **mood_row(body["user_id"], body["created_at"]),
+                **body,
+            },
+        )
+
+    return _use
+
+
+@pytest.fixture
 def mock_client(offline_env):
     from fastapi.testclient import TestClient
 
     import app.main as main
     from app.auth import service
     from app.auth.router import verified_session
+    from app.journals import router as journals_router
     from app.moods import router as moods_router
 
     session = service.Session(
@@ -247,5 +421,8 @@ def mock_client(offline_env):
     )
     main.app.dependency_overrides[verified_session] = lambda: session
     main.app.dependency_overrides[moods_router.mother_only] = lambda: session
+    main.app.dependency_overrides[journals_router.mother_or_companion] = (
+        lambda: session
+    )
     yield TestClient(main.app), session
     main.app.dependency_overrides.clear()
