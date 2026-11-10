@@ -1,9 +1,9 @@
 from typing import Optional
 
-from app.auth import supabase as auth_supabase
 from app.journals import supabase
 from app.journals.schemas import JournalOut, JournalListOut
 from app.shared.day import parse_day, today_for
+from app.shared.profile import active_profile
 from app.supabase import SupabaseError
 
 
@@ -52,8 +52,8 @@ def _is_duplicate(exc: SupabaseError) -> bool:
 
 
 def _require_active_profile(user_id: str) -> dict:
-    profile = auth_supabase.fetch_profile(user_id)
-    if not profile or profile.get("deleted_at"):
+    profile = active_profile(user_id)
+    if profile is None:
         raise JournalProfileNotFound()
     return profile
 
