@@ -77,3 +77,25 @@ def test_mood_summary_input_rejects_extra_fields():
             mood=4,
             description="private information",
         )
+
+def test_mood_summary_request_rejects_invalid_period():
+    with pytest.raises(ValidationError):
+        MoodSummaryRequest(
+            period_start=date(2026, 11, 10),
+            period_end=date(2026, 11, 4),
+            moods=[],
+        )
+
+
+def test_mood_summary_request_rejects_mood_outside_period():
+    with pytest.raises(ValidationError):
+        MoodSummaryRequest(
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            moods=[
+                MoodSummaryInput(
+                    date=date(2026, 11, 11),
+                    mood=4,
+                )
+            ],
+        )
