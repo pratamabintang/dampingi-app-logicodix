@@ -12,6 +12,7 @@ class ChatStore(Protocol):
     def list_sessions(self, user_id: str, limit: int) -> list[dict]: ...
     def recent_messages(self, user_id: str, session_id: str, limit: int) -> list[dict]: ...
     def add_messages(self, user_id: str, session_id: str, messages: list[tuple[str, str]]) -> list[dict]: ...
+    def count_user_messages_since(self, user_id: str, since: datetime) -> int: ...
 
 
 class InMemoryChatStore:
@@ -48,6 +49,11 @@ class InMemoryChatStore:
         self.messages += rows
         self.sessions[session_id]["updated_at"] = rows[-1]["created_at"]
         return rows
+
+    def count_user_messages_since(self, user_id, since):
+        return sum(1 for m in self.messages
+                   if m["user_id"] == user_id and m["role"] == "user"
+                   and datetime.fromisoformat(m["created_at"]) >= since)
 
 
 class SupabaseChatStore:
@@ -89,3 +95,18 @@ class SupabaseChatStore:
         # Satu request = satu statement: kedua pesan tersimpan bersama, atau tidak sama sekali.
         payload = [{"session_id": session_id, "user_id": user_id, "role": r, "content": c} for r, c in messages]
         return sorted(self._insert("chat_messages", payload), key=lambda m: m["created_at"])
+
+    def count_user_messages_since(self, user_id, since):
+        """Hitung pesan pengguna sejak `since`, tanpa mengambil isinya (count=exact)."""
+        resp = _request(
+            _client().get, f"{_base_url()}/rest/v1/chat_messages",
+            params={"user_id": f"eq.{user_id}", "role": "eq.user",
+                    "created_at": f"gte.{since.strftime('%Y-%m-%dT%H:%M:%SZ')}",
+                    "select": "id", "limit": "1"},
+            headers={**supabase_service_http(), "Prefer": "count=exact"},
+            timeout=TIMEOUT,
+        )
+        if resp.status_code >= 400:
+            raise _error_from_response(resp)
+        # Content-Range berbentuk "0-0/12" atau "*/0": angka setelah "/" adalah totalnya.
+        return int(resp.headers.get("content-range", "*/0").split("/")[-1])

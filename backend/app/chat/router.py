@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from uuid import UUID
@@ -12,7 +13,7 @@ from app.auth.router import verified_session
 from app.supabase import SupabaseError
 
 from .schemas import ChatMessageListOut, ChatRequest, ChatResponse, ChatSessionListOut
-from .service import ChatService, SessionNotFound
+from .service import ChatService, DailyLimitReached, SessionNotFound, StillAnswering
 from .store import SupabaseChatStore
 from .context import SupabaseMoodSource
 
@@ -41,7 +42,12 @@ def chat_user(session: auth_service.Session = Depends(verified_session)) -> Chat
 
 @lru_cache
 def get_chat_service() -> ChatService:
-    return ChatService(SupabaseChatStore(), build_gateway(), moods=SupabaseMoodSource())
+    return ChatService(
+        SupabaseChatStore(),
+        build_gateway(),
+        moods=SupabaseMoodSource(),
+        daily_limit=int(os.getenv("CHAT_DAILY_LIMIT", "50")),
+    )
 
 
 async def _guard(coro):
@@ -50,6 +56,13 @@ async def _guard(coro):
         return await coro
     except SessionNotFound:
         raise HTTPException(status_code=404, detail="Percakapan tidak ditemukan.")
+    except StillAnswering:
+        raise HTTPException(status_code=429, detail="Tunggu jawaban sebelumnya selesai dulu, ya.")
+    except DailyLimitReached as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Batas {exc.limit} pesan per 24 jam sudah tercapai. Coba lagi nanti, ya.",
+        )
     except AIError as exc:
         raise HTTPException(status_code=503, detail=exc.user_message)
     except SupabaseError:
