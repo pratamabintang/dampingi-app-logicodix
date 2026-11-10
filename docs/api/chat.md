@@ -77,6 +77,7 @@ Isi satu percakapan, urut dari yang terlama.
 | 403 | role tidak boleh chat | sembunyikan menu chat |
 | 404 | `session_id` tidak ada **atau milik orang lain** | kembali ke daftar percakapan |
 | 422 | pesan kosong / terlalu panjang / field asing | tampilkan pesan validasi |
+| 429 | pesan sebelumnya masih diproses, **atau** sudah mencapai batas pesan per 24 jam (default 50) | tampilkan `detail`; nonaktifkan tombol kirim selama menunggu jawaban |
 | 503 | AI atau database sedang bermasalah | tampilkan `detail`, pesan pengguna tetap di kolom input |
 
 ## Batasan chatbot
