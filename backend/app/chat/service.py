@@ -1,5 +1,6 @@
-"""Alur chat: cek sesi -> ambil riwayat -> tanya AI -> simpan. Tidak tahu soal HTTP."""
 import asyncio
+from datetime import datetime, timedelta, timezone
+from typing import Callable
 
 from app.ai import AIGateway, Turn
 
@@ -26,6 +27,20 @@ class SessionNotFound(Exception):
     pass
 
 
+class DailyLimitReached(Exception):
+    def __init__(self, limit: int):
+        super().__init__(limit)
+        self.limit = limit
+
+
+class StillAnswering(Exception):
+    """Pesan sebelumnya dari pengguna yang sama masih diproses."""
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def trim_history(rows: list[dict], max_chars: int = HISTORY_MAX_CHARS) -> list[dict]:
     """Ambil pesan TERBARU sebanyak mungkin tanpa melewati max_chars."""
     kept, total = [], 0
@@ -43,12 +58,42 @@ def make_title(message: str) -> str:
 
 
 class ChatService:
-    def __init__(self, store: ChatStore, gateway: AIGateway, moods: MoodSource | None = None):
+    def __init__(
+        self,
+        store: ChatStore,
+        gateway: AIGateway,
+        moods: MoodSource | None = None,
+        daily_limit: int | None = None,
+        now: Callable[[], datetime] = _utc_now,
+    ):
         self.store = store
         self.gateway = gateway
         self.moods = moods  # None = chat tanpa data mood
+        self.daily_limit = daily_limit  # None = tanpa batas (dipakai di tes lama)
+        self.now = now
+        self._busy: set[str] = set()  # pengguna yang pesannya sedang diproses
 
     async def send(self, user_id: str, role: str, req: ChatRequest) -> ChatResponse:
+        # Cek dan tandai tanpa `await` di antaranya, jadi dua request bersamaan
+        # tidak bisa sama-sama lolos.
+        if user_id in self._busy:
+            raise StillAnswering()
+        self._busy.add(user_id)
+        try:
+            await self._check_daily_limit(user_id)
+            return await self._send(user_id, role, req)
+        finally:
+            self._busy.discard(user_id)
+
+    async def _check_daily_limit(self, user_id: str) -> None:
+        if self.daily_limit is None:
+            return
+        since = self.now() - timedelta(hours=24)
+        used = await asyncio.to_thread(self.store.count_user_messages_since, user_id, since)
+        if used >= self.daily_limit:
+            raise DailyLimitReached(self.daily_limit)
+
+    async def _send(self, user_id: str, role: str, req: ChatRequest) -> ChatResponse:
         history: list[dict] = []
         session_id = str(req.session_id) if req.session_id else None
 
