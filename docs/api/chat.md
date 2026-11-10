@@ -40,8 +40,9 @@ Response `200`:
     "role": "assistant",
     "content": "Wajar sekali merasa capek di masa ini...",
     "created_at": "2026-11-10T13:00:02Z"
-  }
+  },
   "urgent": false,
+  "context_used": ["mood_7d"]
 }
 ```
 
@@ -49,6 +50,9 @@ Response `200`:
   Aplikasi **wajib** menampilkan kontak darurat (119 / IGD terdekat) di atas jawaban.
 - Pesan baru tersimpan **hanya kalau AI berhasil menjawab**. Kalau `503`, tidak ada yang tersimpan;
   biarkan teks tetap di kolom input supaya pengguna bisa kirim ulang.
+- `context_used`: data apa yang ikut dipakai AI untuk jawaban ini. Saat ini hanya `"mood_7d"`
+  (lihat "Data yang dipakai chatbot"). Kalau tidak kosong, tampilkan keterangan kecil,
+  misalnya *"Jawaban ini mempertimbangkan mood 7 hari terakhirmu."*
 
 ### `GET /chat/sessions`
 
@@ -81,3 +85,13 @@ Isi satu percakapan, urut dari yang terlama.
 - Untuk tanda bahaya (pikiran menyakiti diri/bayi, perdarahan hebat, demam tinggi),
   chatbot mengarahkan ke layanan darurat / tenaga kesehatan.
 - Pendamping tidak pernah mendapat isi jurnal pribadi ibu lewat chatbot.
+
+## Data yang dipakai chatbot
+
+| Role | Data tambahan yang dikirim ke AI |
+|---|---|
+| `mother` | Mood harian **miliknya sendiri**, maksimal 7 entri terakhir: hanya tanggal dan skala 1–5. Catatan teks (`description`) **tidak** ikut. |
+| `companion` | Tidak ada. Pendamping tidak pernah mendapat data ibu lewat chatbot. |
+
+- Data dibaca ulang setiap pesan, jadi mood yang baru diisi langsung terpakai.
+- Kalau data mood gagal diambil, chat tetap jalan tanpa data itu.
