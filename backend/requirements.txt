@@ -6,3 +6,5 @@ fastapi
 uvicorn
 httpx
 PyJWT[crypto]
+pydantic-settings>=2.3
+email-validator>=2
