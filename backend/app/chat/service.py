@@ -3,7 +3,8 @@ import asyncio
 
 from app.ai import AIGateway, Turn
 
-from .prompts import get_prompt
+from .context import MOOD_CONTEXT, MoodSource, mother_moods
+from .prompts import build_system_prompt
 from .schemas import (
     ChatMessageListOut,
     ChatMessageOut,
@@ -42,9 +43,10 @@ def make_title(message: str) -> str:
 
 
 class ChatService:
-    def __init__(self, store: ChatStore, gateway: AIGateway):
+    def __init__(self, store: ChatStore, gateway: AIGateway, moods: MoodSource | None = None):
         self.store = store
         self.gateway = gateway
+        self.moods = moods  # None = chat tanpa data mood
 
     async def send(self, user_id: str, role: str, req: ChatRequest) -> ChatResponse:
         history: list[dict] = []
@@ -55,7 +57,9 @@ class ChatService:
                 raise SessionNotFound()  # tidak ada ATAU milik orang lain: jawabannya sama
             history = await asyncio.to_thread(self.store.recent_messages, user_id, session_id, HISTORY_LIMIT)
 
-        _version, system = get_prompt(role)
+        # Dibaca ulang setiap pesan: mood yang baru diisi langsung terpakai.
+        moods = await mother_moods(self.moods, user_id, role)
+        _version, system = build_system_prompt(role, moods)
         turns = [Turn(r["role"], r["content"]) for r in trim_history(history)]
         turns.append(Turn("user", req.message))
 
@@ -75,6 +79,7 @@ class ChatService:
             user_message=ChatMessageOut.model_validate(saved[0]),
             reply=ChatMessageOut.model_validate(saved[1]),
             urgent=answer.urgent,
+            context_used=[MOOD_CONTEXT] if moods else [],
         )
 
     async def list_sessions(self, user_id: str) -> ChatSessionListOut:

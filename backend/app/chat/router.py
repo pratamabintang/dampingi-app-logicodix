@@ -14,6 +14,7 @@ from app.supabase import SupabaseError
 from .schemas import ChatMessageListOut, ChatRequest, ChatResponse, ChatSessionListOut
 from .service import ChatService, SessionNotFound
 from .store import SupabaseChatStore
+from .context import SupabaseMoodSource
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -40,7 +41,7 @@ def chat_user(session: auth_service.Session = Depends(verified_session)) -> Chat
 
 @lru_cache
 def get_chat_service() -> ChatService:
-    return ChatService(SupabaseChatStore(), build_gateway())
+    return ChatService(SupabaseChatStore(), build_gateway(), moods=SupabaseMoodSource())
 
 
 async def _guard(coro):

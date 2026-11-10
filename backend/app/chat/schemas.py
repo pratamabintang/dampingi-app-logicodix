@@ -35,7 +35,8 @@ class ChatResponse(BaseModel):
     session_id: UUID
     user_message: ChatMessageOut
     reply: ChatMessageOut
-    urgent: bool = False
+    urgent: bool = False  # True = tampilkan kontak darurat di aplikasi
+    context_used: list[Literal["mood_7d"]] = []  # data apa yang ikut dipakai AI (transparansi)
 
 
 class ChatSessionOut(BaseModel):
