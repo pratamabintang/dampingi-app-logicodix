@@ -1,0 +1,31 @@
+﻿from datetime import date
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class MoodSummaryRequest(BaseModel):
+    """Input used by the weekly summary service."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    period_start: date
+    period_end: date
+
+    @model_validator(mode="after")
+    def validate_period(self):
+        if self.period_start > self.period_end:
+            raise ValueError("period_start must not be after period_end")
+        return self
+
+
+class MoodSummaryOut(BaseModel):
+    """Public response for a weekly mood summary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["complete", "insufficient_data", "unavailable"]
+    period_start: date
+    period_end: date
+    mood_count: int = Field(ge=0)
+    overview: str | None = None
