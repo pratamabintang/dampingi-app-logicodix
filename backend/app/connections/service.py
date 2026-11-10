@@ -1,7 +1,6 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from app.auth import supabase as auth_supabase
 from app.connections import supabase
 from app.connections.schemas import (
     ConnectionListOut,
@@ -10,6 +9,7 @@ from app.connections.schemas import (
     InviteCodeListOut,
     InviteCodeOut,
 )
+from app.shared.profile import active_profile
 from app.supabase import SupabaseError
 
 ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -228,8 +228,8 @@ def _expiry_from(now: datetime) -> str:
 
 
 def _require_active_profile(user_id: str) -> dict:
-    profile = auth_supabase.fetch_profile(user_id)
-    if not profile or profile.get("deleted_at"):
+    profile = active_profile(user_id)
+    if profile is None:
         raise ConnectionProfileNotFound()
     return profile
 

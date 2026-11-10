@@ -6,6 +6,7 @@ from app.journals.router import router as journals_router
 from app.moods.router import router as moods_router
 from app.summaries.router import router as summaries_router
 from app.chat.router import router as chat_router
+from app.observations.router import router as observations_router
 from app.config import get_settings
 
 app = FastAPI(title="dampingi", description="FastAPI backend backed by Supabase Auth")
@@ -16,6 +17,7 @@ app.include_router(summaries_router)
 app.include_router(chat_router) 
 app.include_router(journals_router)
 app.include_router(connections_router)
+app.include_router(observations_router)
 
 
 @app.get("/health")

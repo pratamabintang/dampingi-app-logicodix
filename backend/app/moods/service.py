@@ -1,9 +1,9 @@
 ﻿from datetime import date
 from typing import Optional
 
-from app.auth import supabase as auth_supabase
 from app.moods import supabase
 from app.shared.day import parse_day, today_for
+from app.shared.profile import active_profile
 from app.supabase import SupabaseError
 from app.moods.schemas import MoodOut, MoodListOut
 
@@ -58,8 +58,8 @@ def _mood_out(row: dict) -> MoodOut:
 def create_mood(
     user_id: str, created_at: Optional[str], mood: int, description: Optional[str] = None
 ) -> MoodOut:
-    profile = auth_supabase.fetch_profile(user_id)
-    if not profile or profile.get("deleted_at"):
+    profile = active_profile(user_id)
+    if profile is None:
         raise ProfileNotFound()
 
     today = today_for(profile)

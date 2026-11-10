@@ -255,16 +255,19 @@ def real_moods_gate(mock_client):
 
 @pytest.fixture
 def as_author():
-    def _as(user_id: str) -> None:
+
+    def _as(user_id: str, token: str = "offline-token") -> None:
         import app.main as main
         from app.auth import service
         from app.auth.router import verified_session
 
         main.app.dependency_overrides[verified_session] = lambda: service.Session(
-            user_id=user_id, email="offline@gmail.com", token="offline-token"
+            user_id=user_id, email="offline@gmail.com", token=token
         )
 
     return _as
+
+
 
 def journals_profile(**overrides):
     return {**captured("profiles-select-2026-11-10"), "role": "mother", **overrides}
@@ -282,6 +285,9 @@ def journal_row(user_id, day, title="A day", content="As written."):
         "content": content,
     }
 
+
+
+
 def _with_generated_id(row: dict) -> dict:
     return {**row, "id": row.get("id") or str(uuid.uuid4())}
 
@@ -289,6 +295,7 @@ def _with_generated_id(row: dict) -> dict:
 def _canned_table(
     upstream, *, table, profile, rows, row_for=None, max_rows=1000, fail_insert=None
 ):
+
     import json
 
     import httpx
@@ -392,6 +399,7 @@ def _canned_table(
 
 @pytest.fixture
 def journals_table(upstream):
+
     def _use(profile, journals=None, fail_insert=None):
         return _canned_table(
             upstream,
@@ -402,6 +410,9 @@ def journals_table(upstream):
         )
 
     return _use
+
+
+
 
 def mood_row(user_id, day, mood=3, description=None):
     return {
@@ -414,6 +425,7 @@ def mood_row(user_id, day, mood=3, description=None):
 
 @pytest.fixture
 def moods_table(upstream):
+
     def _use(profile, moods=None, max_rows=1000):
         return _canned_table(
             upstream,
@@ -428,6 +440,8 @@ def moods_table(upstream):
         )
 
     return _use
+
+
 
 CONNECTIONS_MOTHER = "00000000-0000-4000-8000-0000000000a1"
 CONNECTIONS_COMPANION = "00000000-0000-4000-8000-0000000000a2"
@@ -455,6 +469,8 @@ def _split_top_level(select: str) -> list:
 
 def _compare(value, wanted: str) -> bool:
     op, _, operand = wanted.partition(".")
+    if op == "not":
+        return not _compare(value, operand)
     if op == "is":
         return (value is None) if operand == "null" else (value is not None)
     if value is None:
@@ -475,13 +491,15 @@ def _compare(value, wanted: str) -> bool:
 
 
 def _canned_connections(upstream, *, profiles, connections=None, invite_codes=None,
-                        max_rows=1000, extra_routes=None):
+                        observations=None, max_rows=1000, extra_routes=None):
+
     import json
 
     import httpx
 
     stored_connections = list(connections or [])
     stored_codes = list(invite_codes or [])
+    stored_observations = list(observations or [])
     by_id = dict(profiles)
 
     def _match(rows, request, columns):
@@ -523,12 +541,29 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
                     table, _, spec = target.partition("!")
                     fk, _, fields = spec.partition("(")
                     wanted = [f.strip() for f in fields.rstrip(")").split(",")]
-                    related = by_id.get(row.get(fk))
-                    if related is None:
-                        raise AssertionError(
-                            f"embed {alias} found no profile for {fk}={row.get(fk)!r}; "
-                            "the transport asked for a join the fake cannot satisfy"
+                    if table == "connections":
+                        connection_id = row.get("connection_id")
+                        related = next(
+                            (
+                                connection
+                                for connection in stored_connections
+                                if connection["id"] == connection_id
+                            ),
+                            None,
                         )
+                        if related is None:
+                            raise AssertionError(
+                                f"embed {alias} found no connection for "
+                                f"connection_id={connection_id!r}; the "
+                                "transport asked for a join the fake cannot satisfy"
+                            )
+                    else:
+                        related = by_id.get(row.get(fk))
+                        if related is None:
+                            raise AssertionError(
+                                f"embed {alias} found no profile for {fk}={row.get(fk)!r}; "
+                                "the transport asked for a join the fake cannot satisfy"
+                            )
                     projected[alias] = {k: related[k] for k in wanted if k in related}
                 elif field in row:
                     projected[field] = row[field]
@@ -660,7 +695,87 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
             rows = [r for r in rows if r["user_id"] == wanted.removeprefix("eq.")]
         return supabase_json(200, _project(rows, request))
 
-    return upstream(
+    def _authored_observations(rows, request):
+        wanted = request.url.params.get("connection.counterpart_id")
+        if not wanted:
+            return rows
+        user_id = wanted.removeprefix("eq.")
+        by_connection = {c["id"]: c for c in stored_connections}
+        return [
+            row for row in rows
+            if (by_connection.get(row["connection_id"]) or {}).get(
+                "counterpart_id"
+            ) == user_id
+        ]
+
+    def observations_get(request):
+        hits = _match(
+            stored_observations, request,
+            ["id", "connection_id", "day", "completed_at"],
+        )
+        hits = _authored_observations(hits, request)
+        if request.headers.get("prefer") == "count=exact":
+            page = hits[0:0]
+            return httpx.Response(
+                200,
+                json=_project(page, request),
+                headers={"content-range": f"0-0/{len(hits)}"},
+            )
+        return supabase_json(
+            200, _project(_paged(hits, request, "created_at"), request)
+        )
+
+    def observations_post(request):
+        body = json.loads(request.content)
+        row = {
+            "id": str(uuid.uuid4()),
+            "created_at": "2026-11-10T09:00:00+00:00",
+            "connection_id": body["connection_id"],
+            "questions": body["questions"],
+            "answers": body.get("answers"),
+            "day": body.get("day"),
+            "completed_at": body.get("completed_at"),
+        }
+        if row["day"] is not None:
+            clash = [
+                existing for existing in stored_observations
+                if existing["connection_id"] == row["connection_id"]
+                and existing["day"] == row["day"]
+            ]
+            if clash:
+                return _conflict(
+                    "Key (connection_id, day) already exists."
+                )
+        stored_observations.append(row)
+        return supabase_json(201, _project([row], request))
+
+    def observations_patch(request):
+        hits = _match(
+            stored_observations, request,
+            ["id", "connection_id", "day", "completed_at"],
+        )
+        hits = _authored_observations(hits, request)
+        body = json.loads(request.content)
+
+        patched_ids = {id(row) for row in hits}
+        if body.get("day") is not None:
+            for row in hits:
+                clash = [
+                    existing for existing in stored_observations
+                    if id(existing) not in patched_ids
+                    and existing["connection_id"] == row["connection_id"]
+                    and existing["day"] == body["day"]
+                ]
+                if clash:
+                    return _conflict(
+                        "Key (connection_id, day) already exists."
+                    )
+
+        for row in hits:
+            row.update(body)
+        return supabase_json(200, _project(hits, request))
+
+    recorded = upstream(
         {
             ("GET", "/rest/v1/profiles"): profiles_get,
             ("GET", "/rest/v1/connections"): connections_get,
@@ -669,9 +784,14 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
             ("GET", "/rest/v1/invite_codes"): codes_get,
             ("POST", "/rest/v1/invite_codes"): codes_post,
             ("PATCH", "/rest/v1/invite_codes"): codes_patch,
+            ("GET", "/rest/v1/observations"): observations_get,
+            ("POST", "/rest/v1/observations"): observations_post,
+            ("PATCH", "/rest/v1/observations"): observations_patch,
             **(extra_routes or {}),
         }
     )
+    recorded.observations = stored_observations
+    return recorded
 
 
 def connection_row(mother_id, counterpart_id, counterpart_role="companion",
@@ -685,6 +805,46 @@ def connection_row(mother_id, counterpart_id, counterpart_role="companion",
         "ended_at": ended_at,
         "ended_by": None,
     }
+
+
+def observation_row(
+    connection_id,
+    questions=None,
+    answers=None,
+    day=None,
+    completed_at=None,
+    created_at="2026-11-18T09:00:00+00:00",
+):
+    return {
+        "id": str(uuid.uuid4()),
+        "connection_id": connection_id,
+        "questions": questions or observation_questions(),
+        "answers": answers,
+        "day": day,
+        "completed_at": completed_at,
+        "created_at": created_at,
+    }
+
+
+def observation_questions():
+    return [
+        {
+            "id": "q1",
+            "prompt": "How did she sleep?",
+            "options": [
+                {"id": "q1o1", "label": "Well"},
+                {"id": "q1o2", "label": "Poorly"},
+            ],
+        },
+        {
+            "id": "q2",
+            "prompt": "How was her mood?",
+            "options": [
+                {"id": "q2o1", "label": "Calm"},
+                {"id": "q2o2", "label": "Anxious"},
+            ],
+        },
+    ]
 
 
 def invite_code_row(issuer_id, code, target_role="companion",
@@ -726,6 +886,7 @@ def connections_profiles():
 
 @pytest.fixture
 def connections_table(upstream):
+
     def _use(connections=None, invite_codes=None, profiles=None, max_rows=1000,
              extra_routes=None):
         return _canned_connections(
@@ -734,6 +895,28 @@ def connections_table(upstream):
             connections=connections or [],
             invite_codes=invite_codes or [],
             max_rows=max_rows,
+            extra_routes=extra_routes,
+        )
+
+    return _use
+
+
+@pytest.fixture
+def observations_table(upstream):
+
+    def _use(
+        connections=None,
+        invite_codes=None,
+        profiles=None,
+        observations=None,
+        extra_routes=None,
+    ):
+        return _canned_connections(
+            upstream,
+            profiles=profiles or connections_profiles(),
+            connections=connections or [],
+            invite_codes=invite_codes or [],
+            observations=observations or [],
             extra_routes=extra_routes,
         )
 
