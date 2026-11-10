@@ -38,3 +38,6 @@ class MoodListOut(BaseModel):
 
     moods: list[MoodOut]
     count: int
+    offset: int
+    limit: int
+    total: int

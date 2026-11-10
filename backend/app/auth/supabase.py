@@ -86,7 +86,7 @@ def fetch_profile(user_id: str) -> Optional[dict]:
         f"{_base_url()}/rest/v1/profiles",
         params={
             "user_id": f"eq.{user_id}",
-            "select": "user_id,name,deleted_at,role",
+            "select": "user_id,name,deleted_at,role,timezone",
         },
         headers=supabase_service_http(),
         timeout=TIMEOUT,
