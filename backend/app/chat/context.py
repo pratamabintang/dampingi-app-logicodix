@@ -40,7 +40,7 @@ class SupabaseMoodSource:
         # Mulai 7 hari lalu (UTC). Kelebihan satu hari di zona WIB/WITA/WIT tidak masalah,
         # karena yang diambil tetap maksimal 7 entri terbaru.
         start = (self.today() - timedelta(days=MOOD_DAYS)).isoformat()
-        rows = moods_sb.list_moods(user_id, start_date=start)  # B: terbaru dulu
+        rows, _total = moods_sb.list_moods(user_id, start_date=start)  # B: terbaru dulu
         latest = rows[:MOOD_DAYS]
         return [{"date": str(r["created_at"]), "mood": int(r["mood"])} for r in reversed(latest)]
 
