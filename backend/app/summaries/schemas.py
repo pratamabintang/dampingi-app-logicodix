@@ -1,17 +1,7 @@
-﻿
-from datetime import date
+﻿from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-
-class MoodSummaryInput(BaseModel):
-    """Privacy-minimized mood data sent to the summary provider."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    date: date
-    mood: int = Field(ge=1, le=5)
 
 
 class MoodSummaryRequest(BaseModel):
@@ -21,17 +11,11 @@ class MoodSummaryRequest(BaseModel):
 
     period_start: date
     period_end: date
-    moods: list[MoodSummaryInput]
 
     @model_validator(mode="after")
     def validate_period(self):
         if self.period_start > self.period_end:
             raise ValueError("period_start must not be after period_end")
-
-        for mood in self.moods:
-            if not self.period_start <= mood.date <= self.period_end:
-                raise ValueError("mood date must be within the summary period")
-
         return self
 
 

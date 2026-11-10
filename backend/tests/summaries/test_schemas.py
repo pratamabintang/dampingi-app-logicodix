@@ -1,9 +1,9 @@
-﻿import pytest
-from datetime import date
+﻿from datetime import date
+
+import pytest
 from pydantic import ValidationError
 
 from app.summaries.schemas import (
-    MoodSummaryInput,
     MoodSummaryOut,
     MoodSummaryRequest,
 )
@@ -12,27 +12,31 @@ from app.summaries.schemas import (
 pytestmark = pytest.mark.local
 
 
-def test_mood_summary_input_accepts_valid_mood():
-    item = MoodSummaryInput(date=date(2026, 11, 10), mood=4)
-
-    assert item.mood == 4
-    assert item.date == date(2026, 11, 10)
-
-
-@pytest.mark.parametrize("mood", [0, 6, -1])
-def test_mood_summary_input_rejects_invalid_mood(mood):
-    with pytest.raises(ValidationError):
-        MoodSummaryInput(date=date(2026, 11, 10), mood=mood)
-
-
-def test_mood_summary_request_accepts_empty_moods():
+def test_mood_summary_request_accepts_valid_period():
     request = MoodSummaryRequest(
         period_start=date(2026, 11, 4),
         period_end=date(2026, 11, 10),
-        moods=[],
     )
 
-    assert request.moods == []
+    assert request.period_start == date(2026, 11, 4)
+    assert request.period_end == date(2026, 11, 10)
+
+
+def test_mood_summary_request_rejects_invalid_period():
+    with pytest.raises(ValidationError):
+        MoodSummaryRequest(
+            period_start=date(2026, 11, 10),
+            period_end=date(2026, 11, 4),
+        )
+
+
+def test_mood_summary_request_rejects_extra_moods_field():
+    with pytest.raises(ValidationError):
+        MoodSummaryRequest(
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            moods=[],
+        )
 
 
 def test_mood_summary_out_accepts_complete_summary():
@@ -60,6 +64,18 @@ def test_mood_summary_out_accepts_insufficient_data():
     assert result.overview is None
 
 
+def test_mood_summary_out_accepts_unavailable_status():
+    result = MoodSummaryOut(
+        status="unavailable",
+        period_start=date(2026, 11, 4),
+        period_end=date(2026, 11, 10),
+        mood_count=2,
+        overview=None,
+    )
+
+    assert result.status == "unavailable"
+
+
 def test_mood_summary_out_rejects_unknown_status():
     with pytest.raises(ValidationError):
         MoodSummaryOut(
@@ -70,32 +86,23 @@ def test_mood_summary_out_rejects_unknown_status():
         )
 
 
-def test_mood_summary_input_rejects_extra_fields():
+def test_mood_summary_out_rejects_negative_mood_count():
     with pytest.raises(ValidationError):
-        MoodSummaryInput(
-            date=date(2026, 11, 10),
-            mood=4,
-            description="private information",
-        )
-
-def test_mood_summary_request_rejects_invalid_period():
-    with pytest.raises(ValidationError):
-        MoodSummaryRequest(
-            period_start=date(2026, 11, 10),
-            period_end=date(2026, 11, 4),
-            moods=[],
-        )
-
-
-def test_mood_summary_request_rejects_mood_outside_period():
-    with pytest.raises(ValidationError):
-        MoodSummaryRequest(
+        MoodSummaryOut(
+            status="complete",
             period_start=date(2026, 11, 4),
             period_end=date(2026, 11, 10),
-            moods=[
-                MoodSummaryInput(
-                    date=date(2026, 11, 11),
-                    mood=4,
-                )
-            ],
+            mood_count=-1,
+        )
+
+
+def test_mood_summary_out_rejects_extra_fields():
+    with pytest.raises(ValidationError):
+        MoodSummaryOut(
+            status="complete",
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            mood_count=2,
+            overview="Summary",
+            private_data="should not be accepted",
         )

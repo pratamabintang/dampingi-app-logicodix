@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     port: int = 8000
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-3.1-flash-lite"
 
     supabase_url: str
     supabase_publishable_key: str = Field(

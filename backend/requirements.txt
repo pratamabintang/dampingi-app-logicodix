@@ -1,9 +1,8 @@
 pydantic>=2.7
 pytest
 jsonschema>=4.21
-openai
+google-genai
 fastapi
 uvicorn
 httpx
 PyJWT[crypto]
-jsonschema
