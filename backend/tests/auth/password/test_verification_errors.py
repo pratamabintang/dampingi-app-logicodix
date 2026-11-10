@@ -1,4 +1,4 @@
-from app import supabase as sb
+from app.auth import supabase as sb
 from app.auth import service
 
 import pytest
@@ -7,7 +7,7 @@ pytestmark = pytest.mark.local
 
 
 def test_throttled_verification_is_not_a_wrong_password(monkeypatch):
-    from app import supabase as sb
+    from app.auth import supabase as sb
     from app.auth import service
 
     session = service.Session(user_id="u", email="a@gmail.com", token="t")

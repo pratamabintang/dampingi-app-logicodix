@@ -7,7 +7,7 @@ pytestmark = pytest.mark.live
 
 def test_purge_deletes_leaked_test_users(client, supabase_env):
     from app import admin
-    from app import supabase
+    from app.auth import supabase
 
     email = f"pytest.swept{uuid.uuid4().hex[:12]}@gmail.com"
     body = supabase.signup(
@@ -25,7 +25,8 @@ def test_purge_deletes_leaked_test_users(client, supabase_env):
 
 
 def test_purge_deletes_soft_deleted_test_users(client, supabase_env):
-    from app import admin, supabase
+    from app import admin
+    from app.auth import supabase
 
     email = f"pytest.dead{uuid.uuid4().hex[:12]}@gmail.com"
     body = supabase.signup(

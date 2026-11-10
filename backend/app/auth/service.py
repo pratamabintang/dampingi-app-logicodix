@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app import supabase
+from app.auth import supabase
 from app.auth.schemas import UserOut
 
 

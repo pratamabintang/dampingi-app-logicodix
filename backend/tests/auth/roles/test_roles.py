@@ -99,7 +99,7 @@ def test_role_cannot_be_escalated_through_user_metadata(
     client, supabase_env, register
 ):
     email, user, token = register(role="mother")
-    from app import supabase as sb
+    from app.auth import supabase as sb
 
     sb.update_own_metadata(token, {"name": user["name"], "role": "professional"})
 

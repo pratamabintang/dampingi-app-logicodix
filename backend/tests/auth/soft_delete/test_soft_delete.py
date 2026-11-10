@@ -16,7 +16,7 @@ def test_delete_me_soft_deletes_and_returns_204(client, supabase_env, register):
     assert users, "auth user row destroyed — soft delete must retain it"
     assert users[0].get("banned_until"), "auth identity not banned"
 
-    from app import supabase as sb
+    from app.auth import supabase as sb
 
     profile = sb.fetch_profile(user["id"])
     assert profile and profile.get("deleted_at"), "profile not tombstoned"
@@ -66,7 +66,7 @@ def test_deleted_user_me_rejected_with_old_token(client, supabase_env, register)
 
 def test_deleted_user_refresh_is_dead(client, supabase_env, register):
     email, _, _ = register()
-    from app import supabase as sb
+    from app.auth import supabase as sb
 
     body = sb.login(email, "Sup3rSecure!")
     token = body["access_token"]

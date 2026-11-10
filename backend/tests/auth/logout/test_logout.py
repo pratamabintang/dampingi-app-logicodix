@@ -30,7 +30,7 @@ def test_logout_is_idempotent(client, supabase_env, register):
 
 def test_logout_kills_every_session(client, supabase_env, register):
     email, _, _ = register()
-    from app import supabase as sb
+    from app.auth import supabase as sb
 
     first = sb.login(email, "Sup3rSecure!")
     second = sb.login(email, "Sup3rSecure!")
@@ -62,7 +62,7 @@ def test_logout_for_banned_but_not_tombstoned_user_is_403(
     client, supabase_env, register
 ):
     _, user, token = register()
-    from app import supabase as sb
+    from app.auth import supabase as sb
 
     sb.ban_user(user["id"])
 
