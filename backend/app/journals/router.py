@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
@@ -102,67 +103,67 @@ def list_journals(
 
 
 @router.patch(
-    "/journals/{created_at}",
+    "/journals/{id}",
     response_model=JournalOut,
-    summary="Edit the Journal for a day",
+    summary="Edit a Journal by id",
     description=(
-        "Change the title, the content, or both. The day is fixed when a "
-        "Journal is written: a `created_at` in the payload is ignored, and "
-        "the entry never moves. A day with no Journal for this Author is "
-        "reported as not found, so another Author's entry stays invisible."
+        "Change the title, the content, or both. The day and the id are fixed "
+        "when a Journal is written: a `created_at` in the payload is ignored, "
+        "and the Journal never moves. An id with no Journal for this Author is "
+        "reported as not found, so another Author's Journal stays invisible."
     ),
 )
 def update_journal(
-    created_at: str,
+    id: UUID,
     payload: JournalUpdate,
     session: auth_service.Session = Depends(mother_or_companion),
 ) -> JournalOut:
     return _handle_journal_errors(
         service.update_journal,
         session.user_id,
-        created_at,
+        str(id),
         payload.title,
         payload.content,
     )
 
 
 @router.delete(
-    "/journals/{created_at}",
+    "/journals/{id}",
     status_code=204,
-    summary="Delete the Journal for a day",
+    summary="Delete a Journal by id",
     description=(
-        "Removes this Author's Journal for that day. Not idempotent: a day "
-        "with no Journal for this Author is reported as not found, so a "
-        "delete confirms nothing about another Author's entries."
+        "Removes this Author's Journal. Not idempotent: an id with no Journal "
+        "for this Author is reported as not found, so a delete confirms "
+        "nothing about another Author's Journals."
     ),
 )
 def delete_journal(
-    created_at: str,
+    id: UUID,
     session: auth_service.Session = Depends(mother_or_companion),
 ) -> Response:
     _handle_journal_errors(
         service.delete_journal,
         session.user_id,
-        created_at,
+        str(id),
     )
     return Response(status_code=204)
 
 
 @router.get(
-    "/journals/{created_at}",
+    "/journals/{id}",
     response_model=JournalOut,
-    summary="Read the Journal for a day",
+    summary="Read a Journal by id",
     description=(
-        "Returns this Author's Journal for that day. Another Author's "
-        "Journal is reported as not found: its existence is never confirmed."
+        "Returns this Author's Journal. Another Author's Journal is reported "
+        "as not found: its existence is never confirmed."
     ),
 )
 def get_journal(
-    created_at: str,
+    id: UUID,
     session: auth_service.Session = Depends(mother_or_companion),
 ) -> JournalOut:
     return _handle_journal_errors(
         service.get_journal,
         session.user_id,
-        created_at,
+        str(id),
     )

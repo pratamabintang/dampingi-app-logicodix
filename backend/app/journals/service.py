@@ -1,23 +1,21 @@
-from datetime import date, datetime, timezone, tzinfo
 from typing import Optional
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.auth import supabase as auth_supabase
 from app.journals import supabase
 from app.journals.schemas import JournalOut, JournalListOut
+from app.shared.day import parse_day, today_for
 from app.supabase import SupabaseError
 
 
 class JournalInvalidDate(Exception):
-    """The supplied date is malformed or not a real calendar day."""
+    pass
 
 
 class JournalFutureDate(Exception):
-    """A Journal cannot be written for a day that has not happened yet."""
+    pass
 
 
 class JournalDuplicate(Exception):
-    """The Author already has a Journal for that day."""
 
     def __init__(self, created_at: str):
         super().__init__(created_at)
@@ -25,45 +23,23 @@ class JournalDuplicate(Exception):
 
 
 class JournalProfileNotFound(Exception):
-    """The caller has no active Profile."""
+    pass
 
 
 class JournalNotFound(Exception):
-    """No Journal exists for this Author on this day."""
+    pass
 
 
 class JournalNothingToUpdate(Exception):
-    """An edit supplied neither a title nor a content."""
+    pass
 
 
 _UNIQUE_VIOLATION = "23505"
 
 
-def _parse_date(date_str: str) -> date:
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
-    except (ValueError, TypeError) as exc:
-        raise JournalInvalidDate(
-            f"Invalid date format: expected YYYY-MM-DD, got '{date_str}'"
-        ) from exc
-
-
-def _zone_of(profile: Optional[dict]) -> tzinfo:
-    name = (profile or {}).get("timezone")
-    if not name:
-        return timezone.utc
-    try:
-        return ZoneInfo(name)
-    except (ZoneInfoNotFoundError, ValueError, TypeError):
-        return timezone.utc
-
-
-def _today_for(profile: Optional[dict]) -> date:
-    return datetime.now(_zone_of(profile)).date()
-
-
 def _to_out(row: dict) -> JournalOut:
     return JournalOut(
+        id=row["id"],
         user_id=row["user_id"],
         created_at=row["created_at"],
         title=row["title"],
@@ -86,12 +62,18 @@ def create_journal(
     user_id: str, title: str, content: str, created_at: Optional[str] = None
 ) -> JournalOut:
     profile = _require_active_profile(user_id)
+    today = today_for(profile)
 
     if created_at is None:
-        day = _today_for(profile).isoformat()
+        day = today.isoformat()
     else:
-        parsed = _parse_date(created_at)
-        if parsed > _today_for(profile):
+        try:
+            parsed = parse_day(created_at)
+        except (ValueError, TypeError) as exc:
+            raise JournalInvalidDate(
+                f"Invalid date format: expected YYYY-MM-DD, got '{created_at}'"
+            ) from exc
+        if parsed > today:
             raise JournalFutureDate()
         day = parsed.isoformat()
 
@@ -105,9 +87,8 @@ def create_journal(
     return _to_out(row)
 
 
-def get_journal(user_id: str, created_at: str) -> JournalOut:
-    day = _parse_date(created_at).isoformat()
-    row = supabase.fetch_journal(user_id, day)
+def get_journal(user_id: str, journal_id: str) -> JournalOut:
+    row = supabase.fetch_journal(user_id, journal_id)
     if not row:
         raise JournalNotFound()
     return _to_out(row)
@@ -115,29 +96,25 @@ def get_journal(user_id: str, created_at: str) -> JournalOut:
 
 def update_journal(
     user_id: str,
-    created_at: str,
+    journal_id: str,
     title: Optional[str] = None,
     content: Optional[str] = None,
 ) -> JournalOut:
-    day = _parse_date(created_at).isoformat()
-
     if title is None and content is None:
         raise JournalNothingToUpdate()
 
     _require_active_profile(user_id)
 
-    row = supabase.update_journal(user_id, day, title, content)
+    row = supabase.update_journal(user_id, journal_id, title, content)
     if not row:
         raise JournalNotFound()
     return _to_out(row)
 
 
-def delete_journal(user_id: str, created_at: str) -> None:
-    day = _parse_date(created_at).isoformat()
-
+def delete_journal(user_id: str, journal_id: str) -> None:
     _require_active_profile(user_id)
 
-    if not supabase.delete_journal(user_id, day):
+    if not supabase.delete_journal(user_id, journal_id):
         raise JournalNotFound()
 
 

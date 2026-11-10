@@ -1,30 +1,59 @@
 ﻿import pytest
 
-from conftest import captured, mood_row
+from conftest import OTHER_AUTHOR, captured, mood_row
 
 PROFILE = {**captured("profiles-select-2026-11-10"), "role": "mother"}
+
+MOOD_ID = "00000000-0000-4000-8000-0000000000b1"
+
+
+def test_a_mood_can_be_read_by_its_id(mock_client, moods_table):
+    client, session = mock_client
+    moods_table(
+        PROFILE,
+        moods=[
+            {
+                **mood_row(session.user_id, "2026-10-30", mood=4, description="Captured."),
+                "id": MOOD_ID,
+            }
+        ],
+    )
+
+    resp = client.get(
+        f"/moods/{MOOD_ID}",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["id"] == MOOD_ID
+    assert body["user_id"] == session.user_id
+    assert body["created_at"] == "2026-10-30"
+    assert body["mood"] == 4
+    assert body["description"] == "Captured."
 
 
 @pytest.mark.live
 def test_get_mood(client, register):
-    email, user, token = register()
-    
-    client.post(
+    _, user, token = register()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created = client.post(
         "/moods",
-        headers={"Authorization": f"Bearer {token}"},
+        headers=headers,
         json={
             "created_at": "2026-10-30",
             "mood": 4,
             "description": "Found clarity",
         },
     )
-    
-    resp = client.get(
-        "/moods/2026-10-30",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
+    assert created.status_code == 201, created.text
+    mood_id = created.json()["id"]
+
+    resp = client.get(f"/moods/{mood_id}", headers=headers)
+    assert resp.status_code == 200, resp.text
     body = resp.json()
+    assert body["id"] == mood_id
     assert body["user_id"] == user["id"]
     assert body["mood"] == 4
     assert body["created_at"] == "2026-10-30"
@@ -33,55 +62,163 @@ def test_get_mood(client, register):
 
 @pytest.mark.live
 def test_get_mood_not_found(client, register):
-    email, user, token = register()
-    
+    _, _, token = register()
+
     resp = client.get(
-        "/moods/2026-10-30",
+        "/moods/00000000-0000-4000-8000-00000000dead",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 404
+    assert resp.status_code == 404, resp.text
 
 
 @pytest.mark.live
-def test_get_mood_invalid_date_format(client, register):
-    email, user, token = register()
-    
+def test_get_mood_malformed_id(client, register):
+    _, _, token = register()
+
     resp = client.get(
-        "/moods/2026-13-45",
+        "/moods/not-a-uuid",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 400
-    assert "date" in resp.json()["detail"].lower()
+    assert resp.status_code == 422, resp.text
+
+
+def test_an_unknown_well_formed_id_is_not_found(mock_client, moods_table):
+    client, session = mock_client
+    moods_table(PROFILE)
+
+    resp = client.get(
+        "/moods/00000000-0000-4000-8000-00000000dead",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 404, resp.text
+
+
+def test_a_malformed_id_is_a_validation_error(mock_client, moods_table):
+    client, session = mock_client
+    recorded = moods_table(PROFILE)
+
+    resp = client.get(
+        "/moods/not-a-uuid",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 422, resp.text
+    assert not [
+        r for r in recorded.requests if r.url.path.endswith("/rest/v1/moods")
+    ]
+
+
+def test_another_mothers_mood_id_is_not_found(
+    mock_client, moods_table, real_moods_gate, as_author
+):
+    client, _ = mock_client
+    moods_table(
+        PROFILE,
+        moods=[
+            {
+                **mood_row(PROFILE["user_id"], "2026-10-30", mood=4),
+                "id": MOOD_ID,
+            }
+        ],
+    )
+
+    as_author(OTHER_AUTHOR)
+    resp = client.get(
+        f"/moods/{MOOD_ID}",
+        headers={"Authorization": "Bearer offline-token"},
+    )
+
+    assert resp.status_code == 404, resp.text
+    assert resp.status_code != 403
+
+    as_author(PROFILE["user_id"])
+    read = client.get(
+        f"/moods/{MOOD_ID}",
+        headers={"Authorization": "Bearer offline-token"},
+    )
+    assert read.status_code == 200, read.text
+    assert read.json()["id"] == MOOD_ID
+
+
+@pytest.mark.parametrize("role", ["professional", "companion"])
+def test_a_non_mother_role_is_refused(
+    mock_client, moods_table, real_moods_gate, role
+):
+    client, _ = mock_client
+    moods_table({**PROFILE, "role": role})
+    headers = {"Authorization": "Bearer offline-token"}
+
+    listed = client.get("/moods", headers=headers)
+    created = client.post(
+        "/moods",
+        headers=headers,
+        json={"created_at": "2026-10-30", "mood": 4},
+    )
+
+    assert listed.status_code == 403, listed.text
+    assert created.status_code == 403, created.text
 
 
 def test_get_mood_no_auth(client):
-    resp = client.get("/moods/2026-10-30")
+    resp = client.get(f"/moods/{MOOD_ID}")
     assert resp.status_code == 401
 
 
 @pytest.mark.live
+def test_another_mothers_mood_id_is_not_found_on_the_real_project(
+    client, register
+):
+    _, _, alice = register()
+    _, _, bob = register()
+    created = client.post(
+        "/moods",
+        headers={"Authorization": f"Bearer {alice}"},
+        json={"created_at": "2026-10-30", "mood": 4},
+    )
+    assert created.status_code == 201, created.text
+    mood_id = created.json()["id"]
+
+    resp = client.get(
+        f"/moods/{mood_id}",
+        headers={"Authorization": f"Bearer {bob}"},
+    )
+
+    assert resp.status_code == 404, resp.text
+    assert resp.status_code != 403
+
+    mine = client.get(
+        f"/moods/{mood_id}",
+        headers={"Authorization": f"Bearer {alice}"},
+    )
+    assert mine.status_code == 200, mine.text
+
+
+@pytest.mark.live
 def test_list_moods(client, register):
-    email, user, token = register()
-    
+    _, _, token = register()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created_ids = []
     for i in range(3):
-        client.post(
+        created = client.post(
             "/moods",
-            headers={"Authorization": f"Bearer {token}"},
+            headers=headers,
             json={
                 "created_at": f"2026-10-{27 + i}",
                 "mood": [4, 3, 5][i],
                 "description": f"Entry {i}",
             },
         )
-    
-    resp = client.get(
-        "/moods",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
+        assert created.status_code == 201, created.text
+        created_ids.append(created.json()["id"])
+
+    resp = client.get("/moods", headers=headers)
+    assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["count"] == 3
     assert len(body["moods"]) == 3
+    assert [m["id"] for m in body["moods"]] == list(reversed(created_ids))
     assert body["moods"][0]["created_at"] == "2026-10-29"
     assert body["moods"][0]["mood"] == 5
     assert body["moods"][0]["description"] == "Entry 2"
@@ -146,6 +283,32 @@ def test_list_moods_with_an_end_date_only(client, register):
     assert body["count"] == 3
 
 
+def test_every_listed_mood_carries_its_id(mock_client, moods_table):
+    client, session = mock_client
+    first_id = "00000000-0000-4000-8000-0000000000c1"
+    second_id = "00000000-0000-4000-8000-0000000000c2"
+    moods_table(
+        PROFILE,
+        moods=[
+            {**mood_row(session.user_id, "2026-10-29", mood=3), "id": first_id},
+            {**mood_row(session.user_id, "2026-10-30", mood=4), "id": second_id},
+        ],
+    )
+
+    resp = client.get(
+        "/moods",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert [m["id"] for m in body["moods"]] == [second_id, first_id]
+    assert [m["created_at"] for m in body["moods"]] == [
+        "2026-10-30",
+        "2026-10-29",
+    ]
+
+
 def test_a_start_date_filter_excludes_older_moods(mock_client, moods_table):
     client, session = mock_client
     moods_table(
@@ -180,7 +343,6 @@ def test_a_start_date_filter_excludes_older_moods(mock_client, moods_table):
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    # 2026-10-26 is older than the start date and must be excluded.
     assert [m["created_at"] for m in body["moods"]] == ["2026-10-30", "2026-10-29"]
     assert body["count"] == 2
 

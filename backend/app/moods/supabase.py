@@ -8,6 +8,8 @@ from app.supabase import (
     SupabaseError,
 )
 
+_COLUMNS = "id,user_id,created_at,mood,description"
+
 
 def create_mood(user_id: str, created_at: str, mood: int, description: str | None = None) -> dict:
     payload = {
@@ -33,14 +35,14 @@ def create_mood(user_id: str, created_at: str, mood: int, description: str | Non
     return rows[0]
 
 
-def fetch_mood(user_id: str, created_at: str) -> dict | None:
+def fetch_mood(user_id: str, mood_id: str) -> dict | None:
     resp = _request(
         _client().get,
         f"{_base_url()}/rest/v1/moods",
         params={
             "user_id": f"eq.{user_id}",
-            "created_at": f"eq.{created_at}",
-            "select": "user_id,created_at,mood,description",
+            "id": f"eq.{mood_id}",
+            "select": _COLUMNS,
         },
         headers=supabase_service_http(),
         timeout=TIMEOUT,
@@ -54,6 +56,7 @@ def fetch_mood(user_id: str, created_at: str) -> dict | None:
 _PAGE_SIZE = 1000
 
 _MAX_PAGES = 200
+
 
 def list_moods_all(
     user_id: str,
@@ -76,7 +79,7 @@ def list_moods_all(
             f"{_base_url()}/rest/v1/moods",
             params=[
                 *filters.items(),
-                ("select", "user_id,created_at,mood,description"),
+                ("select", _COLUMNS),
                 ("order", "created_at.desc"),
                 ("limit", str(_PAGE_SIZE)),
                 ("offset", str(offset)),
@@ -138,7 +141,7 @@ def list_moods(
         f"{_base_url()}/rest/v1/moods",
         params=[
             *filters.items(),
-            ("select", "user_id,created_at,mood,description"),
+            ("select", _COLUMNS),
             ("order", "created_at.desc"),
             ("limit", str(limit)),
             ("offset", str(offset)),
@@ -154,7 +157,7 @@ def list_moods(
     return rows, total
 
 
-def update_mood(user_id: str, created_at: str, mood: int | None = None, description: str | None = None) -> dict | None:
+def update_mood(user_id: str, mood_id: str, mood: int | None = None, description: str | None = None) -> dict | None:
     payload = {}
     if mood is not None:
         payload["mood"] = mood
@@ -166,8 +169,8 @@ def update_mood(user_id: str, created_at: str, mood: int | None = None, descript
         f"{_base_url()}/rest/v1/moods",
         params={
             "user_id": f"eq.{user_id}",
-            "created_at": f"eq.{created_at}",
-            "select": "user_id,created_at,mood,description",
+            "id": f"eq.{mood_id}",
+            "select": _COLUMNS,
         },
         headers={**supabase_service_http(), "Prefer": "return=representation"},
         json=payload,
@@ -179,13 +182,13 @@ def update_mood(user_id: str, created_at: str, mood: int | None = None, descript
     return rows[0] if rows else None
 
 
-def delete_mood(user_id: str, created_at: str) -> bool:
+def delete_mood(user_id: str, mood_id: str) -> bool:
     resp = _request(
         _client().delete,
         f"{_base_url()}/rest/v1/moods",
         params={
             "user_id": f"eq.{user_id}",
-            "created_at": f"eq.{created_at}",
+            "id": f"eq.{mood_id}",
         },
         headers=supabase_service_http(),
         timeout=TIMEOUT,

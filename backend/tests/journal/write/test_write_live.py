@@ -17,15 +17,31 @@ def test_write_today_and_read_it_back(client, register):
     )
     assert written.status_code == 201, written.text
     body = written.json()
+    assert body["id"]
     assert body["user_id"] == user["id"]
     assert body["title"] == "First Journal"
     assert body["content"] == "A real day, recorded."
-    day = body["created_at"]
 
-    read = client.get(f"/journals/{day}", headers=_headers(token))
+    read = client.get(f"/journals/{body['id']}", headers=_headers(token))
 
     assert read.status_code == 200, read.text
     assert read.json() == body
+
+
+def test_a_journal_is_read_back_by_id_not_by_day(client, register):
+    _, _, token = register(role="mother")
+
+    written = client.post(
+        "/journals",
+        headers=_headers(token),
+        json={"title": "Addressable", "content": "Named by its id."},
+    )
+    assert written.status_code == 201, written.text
+    body = written.json()
+
+    assert client.get(
+        f"/journals/{body['created_at']}", headers=_headers(token)
+    ).status_code == 422
 
 
 def test_a_companion_may_write_a_journal(client, register):
@@ -64,6 +80,8 @@ def test_a_second_journal_for_the_same_day_conflicts(client, register):
     )
 
     assert second.status_code == 409, second.text
+    assert first.json()["created_at"] in second.json()["detail"]
+    assert "id" not in second.json()
 
 
 def test_another_authors_journal_is_not_found(client, register):
@@ -76,9 +94,9 @@ def test_another_authors_journal_is_not_found(client, register):
         json={"title": "Private", "content": "For my eyes only."},
     )
     assert written.status_code == 201, written.text
-    day = written.json()["created_at"]
+    body = written.json()
 
-    peek = client.get(f"/journals/{day}", headers=_headers(bob))
+    peek = client.get(f"/journals/{body['id']}", headers=_headers(bob))
 
     assert peek.status_code == 404, peek.text
     assert peek.status_code != 403
@@ -86,7 +104,11 @@ def test_another_authors_journal_is_not_found(client, register):
     own = client.post(
         "/journals",
         headers=_headers(bob),
-        json={"title": "Mine", "content": "My own day.", "created_at": day},
+        json={
+            "title": "Mine",
+            "content": "My own day.",
+            "created_at": body["created_at"],
+        },
     )
     assert own.status_code == 201, own.text
 
@@ -113,6 +135,14 @@ def test_a_malformed_date_is_refused(client, register):
     )
 
     assert resp.status_code == 400, resp.text
+
+
+def test_a_malformed_id_is_refused_before_lookup(client, register):
+    _, _, token = register(role="mother")
+
+    resp = client.get("/journals/not-a-uuid", headers=_headers(token))
+
+    assert resp.status_code == 422, resp.text
 
 
 def test_backfilling_the_same_past_day_twice_conflicts(client, register):
@@ -180,14 +210,13 @@ def test_an_empty_content_is_refused(client, register):
 
 
 def test_no_auth_is_refused(client):
-    """401 before anything else: no token, no Journal."""
     resp = client.post("/journals", json={"title": "x", "content": "y"})
 
     assert resp.status_code == 401
 
 
 def test_reading_with_no_auth_is_refused(client):
-    resp = client.get("/journals/2026-10-30")
+    resp = client.get("/journals/00000000-0000-4000-8000-0000000000aa")
 
     assert resp.status_code == 401
 

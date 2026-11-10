@@ -243,6 +243,17 @@ def real_gate(mock_client):
 
 
 @pytest.fixture
+def real_moods_gate(mock_client):
+    import app.main as main
+    from app.moods import router as moods_router
+
+    saved = main.app.dependency_overrides.pop(moods_router.mother_only, None)
+    yield
+    if saved is not None:
+        main.app.dependency_overrides[moods_router.mother_only] = saved
+
+
+@pytest.fixture
 def as_author():
     def _as(user_id: str) -> None:
         import app.main as main
@@ -271,25 +282,24 @@ def journal_row(user_id, day, title="A day", content="As written."):
         "content": content,
     }
 
+def _with_generated_id(row: dict) -> dict:
+    return {**row, "id": row.get("id") or str(uuid.uuid4())}
 
-def _canned_table(upstream, *, table, profile, rows, row_for=None, max_rows=1000):
+
+def _canned_table(
+    upstream, *, table, profile, rows, row_for=None, max_rows=1000, fail_insert=None
+):
     import json
 
     import httpx
 
-    stored = list(rows)
+    stored = [_with_generated_id(row) for row in rows]
     fill = row_for or (lambda body: body)
-
-    def _day_matches(row, wanted: str) -> bool:
-        if wanted.startswith("gte."):
-            return row["created_at"] >= wanted.removeprefix("gte.")
-        if wanted.startswith("lte."):
-            return row["created_at"] <= wanted.removeprefix("lte.")
-        return row["created_at"] == wanted.removeprefix("eq.")
 
     def _match(request):
         wanted_user = request.url.params.get("user_id")
-        wanted_days = request.url.params.get_list("created_at")
+        id_filters = request.url.params.get_list("id")
+        day_filters = request.url.params.get_list("created_at")
         return [
             row
             for row in stored
@@ -297,12 +307,22 @@ def _canned_table(upstream, *, table, profile, rows, row_for=None, max_rows=1000
                 wanted_user is None
                 or row["user_id"] == wanted_user.removeprefix("eq.")
             )
-            and all(_day_matches(row, wanted) for wanted in wanted_days)
+            and all(_compare(row["id"], wanted) for wanted in id_filters)
+            and all(
+                _compare(row["created_at"], wanted) for wanted in day_filters
+            )
         ]
 
     def _select(request, matched):
-        asked = request.url.params["select"].split(",")
-        return [{k: row[k] for k in asked if k in row} for row in matched]
+        asked = request.url.params.get("select")
+        if asked is None:
+            return list(matched)
+        if asked == "count":
+            return [{} for _ in matched]
+        return [
+            {k: row[k] for k in asked.split(",") if k in row}
+            for row in matched
+        ]
 
     def profile_get(request):
         asked = request.url.params["select"].split(",")
@@ -322,6 +342,8 @@ def _canned_table(upstream, *, table, profile, rows, row_for=None, max_rows=1000
         )
 
     def table_post(request):
+        if fail_insert is not None:
+            return fail_insert()
         body = json.loads(request.content)
         clash = [
             row
@@ -338,9 +360,9 @@ def _canned_table(upstream, *, table, profile, rows, row_for=None, max_rows=1000
                     "message": "duplicate key value violates unique constraint",
                 },
             )
-        row = fill(body)
+        row = fill(_with_generated_id(body))
         stored.append(row)
-        return supabase_json(201, [row])
+        return supabase_json(201, _select(request, [row]))
 
     def table_patch(request):
         hits = _match(request)
@@ -370,9 +392,13 @@ def _canned_table(upstream, *, table, profile, rows, row_for=None, max_rows=1000
 
 @pytest.fixture
 def journals_table(upstream):
-    def _use(profile, journals=None):
+    def _use(profile, journals=None, fail_insert=None):
         return _canned_table(
-            upstream, table="journals", profile=profile, rows=journals or []
+            upstream,
+            table="journals",
+            profile=profile,
+            rows=journals or [],
+            fail_insert=fail_insert,
         )
 
     return _use
@@ -399,6 +425,316 @@ def moods_table(upstream):
                 **mood_row(body["user_id"], body["created_at"]),
                 **body,
             },
+        )
+
+    return _use
+
+CONNECTIONS_MOTHER = "00000000-0000-4000-8000-0000000000a1"
+CONNECTIONS_COMPANION = "00000000-0000-4000-8000-0000000000a2"
+CONNECTIONS_OTHER_COMPANION = "00000000-0000-4000-8000-0000000000a3"
+CONNECTIONS_PROFESSIONAL = "00000000-0000-4000-8000-0000000000a4"
+CONNECTIONS_OTHER_MOTHER = "00000000-0000-4000-8000-0000000000a5"
+
+
+def _split_top_level(select: str) -> list:
+    parts, depth, current = [], 0, ""
+    for char in select:
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        if char == "," and depth == 0:
+            parts.append(current)
+            current = ""
+        else:
+            current += char
+    if current:
+        parts.append(current)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _compare(value, wanted: str) -> bool:
+    op, _, operand = wanted.partition(".")
+    if op == "is":
+        return (value is None) if operand == "null" else (value is not None)
+    if value is None:
+        return False
+    if op == "eq":
+        return str(value) == operand
+    if op == "neq":
+        return str(value) != operand
+    if op in ("gt", "gte", "lt", "lte"):
+        left, right = str(value), operand
+        return {
+            "gt": left > right,
+            "gte": left >= right,
+            "lt": left < right,
+            "lte": left <= right,
+        }[op]
+    raise AssertionError(f"canned table does not model operator {op!r}")
+
+
+def _canned_connections(upstream, *, profiles, connections=None, invite_codes=None,
+                        max_rows=1000, extra_routes=None):
+    import json
+
+    import httpx
+
+    stored_connections = list(connections or [])
+    stored_codes = list(invite_codes or [])
+    by_id = dict(profiles)
+
+    def _match(rows, request, columns):
+        matched = rows
+        for column in columns:
+            wanted = request.url.params.get_list(column)
+            if wanted:
+                matched = [
+                    row for row in matched
+                    if all(_compare(row.get(column), w) for w in wanted)
+                ]
+        or_param = request.url.params.get("or")
+        if or_param:
+            clauses = or_param.strip("()").split(",")
+            matched = [
+                row for row in matched
+                if any(
+                    _compare(
+                        row.get(clause.split(".", 2)[0]),
+                        ".".join(clause.split(".", 2)[1:]),
+                    )
+                    for clause in clauses
+                )
+            ]
+        return list(matched)
+
+    def _project(rows, request):
+        asked = _split_top_level(request.url.params.get("select", "*"))
+        if asked == ["*"]:
+            return rows
+        if asked == ["count"]:
+            return [{} for _ in rows]
+        out = []
+        for row in rows:
+            projected = {}
+            for field in asked:
+                if ":" in field:
+                    alias, _, target = field.partition(":")
+                    table, _, spec = target.partition("!")
+                    fk, _, fields = spec.partition("(")
+                    wanted = [f.strip() for f in fields.rstrip(")").split(",")]
+                    related = by_id.get(row.get(fk))
+                    if related is None:
+                        raise AssertionError(
+                            f"embed {alias} found no profile for {fk}={row.get(fk)!r}; "
+                            "the transport asked for a join the fake cannot satisfy"
+                        )
+                    projected[alias] = {k: related[k] for k in wanted if k in related}
+                elif field in row:
+                    projected[field] = row[field]
+                else:
+                    raise AssertionError(
+                        f"select asked for column {field!r}, which this row does "
+                        f"not have: {sorted(row)}"
+                    )
+            out.append(projected)
+        return out
+
+    def _paged(rows, request, order_column):
+        order = request.url.params.get("order")
+        if order == f"{order_column}.desc":
+            rows = sorted(rows, key=lambda r: r.get(order_column) or "", reverse=True)
+        elif order == f"{order_column}.asc":
+            rows = sorted(rows, key=lambda r: r.get(order_column) or "")
+        offset = int(request.url.params.get("offset", 0))
+        limit = int(request.url.params.get("limit", len(rows) or 1))
+        return rows[offset : offset + min(limit, max_rows)]
+
+    def _conflict(detail):
+        return httpx.Response(
+            409,
+            json={
+                "code": "23505",
+                "details": detail,
+                "message": "duplicate key value violates unique constraint",
+            },
+        )
+
+    def _active(role=None, mother_id=None, counterpart_id=None):
+        return [
+            row for row in stored_connections
+            if row.get("ended_at") is None
+            and (role is None or row["counterpart_role"] == role)
+            and (mother_id is None or row["mother_id"] == mother_id)
+            and (counterpart_id is None or row["counterpart_id"] == counterpart_id)
+        ]
+
+    def connections_get(request):
+        hits = _match(
+            stored_connections, request,
+            ["mother_id", "counterpart_id", "counterpart_role", "ended_at"],
+        )
+        return supabase_json(
+            200, _project(_paged(hits, request, "connected_at"), request)
+        )
+
+    def connections_post(request):
+        body = json.loads(request.content)
+        if body["mother_id"] == body["counterpart_id"]:
+            return httpx.Response(
+                400,
+                json={"code": "23514", "message": "connections_distinct_ends"},
+            )
+        role = body["counterpart_role"]
+        if role == "professional" and _active("professional", mother_id=body["mother_id"]):
+            return _conflict(
+                "Key (mother_id) already exists for an active professional."
+            )
+        if role == "companion" and _active("companion", counterpart_id=body["counterpart_id"]):
+            return _conflict(
+                "Key (counterpart_id) already exists for an active companion."
+            )
+        row = {
+            "id": str(uuid.uuid4()),
+            "ended_at": None,
+            "ended_by": None,
+            "connected_at": "2026-11-15T12:00:00+00:00",
+            **body,
+        }
+        stored_connections.append(row)
+        return supabase_json(201, _project([row], request))
+
+    def connections_patch(request):
+        hits = _match(
+            stored_connections, request,
+            ["id", "mother_id", "counterpart_id", "ended_at"],
+        )
+        body = json.loads(request.content)
+        for row in hits:
+            row.update(body)
+        return supabase_json(200, _project(hits, request))
+
+    def codes_get(request):
+        hits = _match(
+            stored_codes, request,
+            ["issuer_id", "code", "target_role", "redeemed_at", "revoked_at",
+             "expires_at"],
+        )
+        return supabase_json(200, _project(_paged(hits, request, "created_at"), request))
+
+    def codes_post(request):
+        body = json.loads(request.content)
+        clash = [
+            row for row in stored_codes
+            if row["code"] == body["code"]
+            and row.get("redeemed_at") is None
+            and row.get("revoked_at") is None
+        ]
+        if clash:
+            return _conflict("Key (code) already exists among unspent codes.")
+        row = {
+            "id": str(uuid.uuid4()),
+            "created_at": "2026-11-15T12:00:00+00:00",
+            "redeemed_at": None,
+            "redeemed_by": None,
+            "revoked_at": None,
+            **body,
+        }
+        stored_codes.append(row)
+        return supabase_json(201, _project([row], request))
+
+    def codes_patch(request):
+        hits = _match(
+            stored_codes, request,
+            ["id", "issuer_id", "code", "redeemed_at", "revoked_at", "expires_at"],
+        )
+        body = json.loads(request.content)
+        for row in hits:
+            row.update(body)
+        return supabase_json(200, _project(hits, request))
+
+    def profiles_get(request):
+        wanted = request.url.params.get("user_id")
+        rows = list(by_id.values())
+        if wanted is not None:
+            rows = [r for r in rows if r["user_id"] == wanted.removeprefix("eq.")]
+        return supabase_json(200, _project(rows, request))
+
+    return upstream(
+        {
+            ("GET", "/rest/v1/profiles"): profiles_get,
+            ("GET", "/rest/v1/connections"): connections_get,
+            ("POST", "/rest/v1/connections"): connections_post,
+            ("PATCH", "/rest/v1/connections"): connections_patch,
+            ("GET", "/rest/v1/invite_codes"): codes_get,
+            ("POST", "/rest/v1/invite_codes"): codes_post,
+            ("PATCH", "/rest/v1/invite_codes"): codes_patch,
+            **(extra_routes or {}),
+        }
+    )
+
+
+def connection_row(mother_id, counterpart_id, counterpart_role="companion",
+                   ended_at=None, connected_at="2026-11-15T12:00:00+00:00"):
+    return {
+        "id": str(uuid.uuid4()),
+        "mother_id": mother_id,
+        "counterpart_id": counterpart_id,
+        "counterpart_role": counterpart_role,
+        "connected_at": connected_at,
+        "ended_at": ended_at,
+        "ended_by": None,
+    }
+
+
+def invite_code_row(issuer_id, code, target_role="companion",
+                    expires_at="2026-11-15T13:00:00+00:00",
+                    created_at="2026-11-15T12:00:00+00:00",
+                    redeemed_at=None, redeemed_by=None, revoked_at=None):
+    return {
+        "id": str(uuid.uuid4()),
+        "issuer_id": issuer_id,
+        "target_role": target_role,
+        "code": code,
+        "created_at": created_at,
+        "expires_at": expires_at,
+        "redeemed_at": redeemed_at,
+        "redeemed_by": redeemed_by,
+        "revoked_at": revoked_at,
+    }
+
+
+def connections_profiles():
+    def _profile(user_id, name, role):
+        return {
+            "user_id": user_id, "name": name, "role": role,
+            "deleted_at": None, "timezone": "UTC",
+        }
+
+    return {
+        CONNECTIONS_MOTHER: _profile(CONNECTIONS_MOTHER, "Ani", "mother"),
+        CONNECTIONS_OTHER_MOTHER: _profile(CONNECTIONS_OTHER_MOTHER, "Sari", "mother"),
+        CONNECTIONS_COMPANION: _profile(CONNECTIONS_COMPANION, "Budi", "companion"),
+        CONNECTIONS_OTHER_COMPANION: _profile(
+            CONNECTIONS_OTHER_COMPANION, "Dewi", "companion"
+        ),
+        CONNECTIONS_PROFESSIONAL: _profile(
+            CONNECTIONS_PROFESSIONAL, "Dr. Ratna", "professional"
+        ),
+    }
+
+
+@pytest.fixture
+def connections_table(upstream):
+    def _use(connections=None, invite_codes=None, profiles=None, max_rows=1000,
+             extra_routes=None):
+        return _canned_connections(
+            upstream,
+            profiles=profiles or connections_profiles(),
+            connections=connections or [],
+            invite_codes=invite_codes or [],
+            max_rows=max_rows,
+            extra_routes=extra_routes,
         )
 
     return _use

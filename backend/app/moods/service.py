@@ -1,32 +1,35 @@
-﻿from datetime import date, datetime, timezone
+﻿from datetime import date
 from typing import Optional
 
 from app.auth import supabase as auth_supabase
 from app.moods import supabase
+from app.shared.day import parse_day, today_for
 from app.supabase import SupabaseError
 from app.moods.schemas import MoodOut, MoodListOut
 
 
 class MoodFutureDate(Exception):
-    """Attempted to create/update a mood entry for a future date."""
+    pass
 
 
 class MoodNotFound(Exception):
-    """No mood entry exists for the given user and date."""
+    pass
 
 
 class MoodDuplicate(Exception):
+
     def __init__(self, created_at: str):
         super().__init__(created_at)
         self.created_at = created_at
 
 
 class ProfileNotFound(Exception):
-    """The user has no active profile."""
+    pass
 
 
 class InvalidDate(Exception):
-    """The provided date string is malformed or invalid."""
+    pass
+
 
 _UNIQUE_VIOLATION = "23505"
 
@@ -37,57 +40,53 @@ def _is_duplicate(exc: SupabaseError) -> bool:
 
 def _parse_date(date_str: str) -> date:
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
+        return parse_day(date_str)
     except (ValueError, TypeError) as e:
         raise InvalidDate(f"Invalid date format: expected YYYY-MM-DD, got '{date_str}'") from e
 
 
-def _today() -> date:
-    return datetime.now(timezone.utc).date()
-
-
-def _is_future(date_str: str) -> bool:
-    parsed_date = _parse_date(date_str)
-    return parsed_date > _today()
+def _mood_out(row: dict) -> MoodOut:
+    return MoodOut(
+        id=row["id"],
+        user_id=row.get("user_id", ""),
+        created_at=row.get("created_at", ""),
+        mood=row.get("mood", 0),
+        description=row.get("description"),
+    )
 
 
 def create_mood(
-    user_id: str, created_at: str, mood: int, description: Optional[str] = None
+    user_id: str, created_at: Optional[str], mood: int, description: Optional[str] = None
 ) -> MoodOut:
-    if _is_future(created_at):
-        raise MoodFutureDate()
-
     profile = auth_supabase.fetch_profile(user_id)
     if not profile or profile.get("deleted_at"):
         raise ProfileNotFound()
 
+    today = today_for(profile)
+
+    if created_at is None:
+        day = today.isoformat()
+    else:
+        parsed = _parse_date(created_at)
+        if parsed > today:
+            raise MoodFutureDate()
+        day = parsed.isoformat()
+
     try:
-        row = supabase.create_mood(user_id, created_at, mood, description)
+        row = supabase.create_mood(user_id, day, mood, description)
     except SupabaseError as exc:
         if _is_duplicate(exc):
-            raise MoodDuplicate(created_at) from exc
+            raise MoodDuplicate(day) from exc
         raise
 
-    return MoodOut(
-        user_id=row.get("user_id", ""),
-        created_at=row.get("created_at", ""),
-        mood=row.get("mood", 0),
-        description=row.get("description"),
-    )
+    return _mood_out(row)
 
 
-def get_mood(user_id: str, created_at: str) -> Optional[MoodOut]:
-    _parse_date(created_at)
-    
-    row = supabase.fetch_mood(user_id, created_at)
+def get_mood(user_id: str, mood_id: str) -> Optional[MoodOut]:
+    row = supabase.fetch_mood(user_id, mood_id)
     if not row:
         return None
-    return MoodOut(
-        user_id=row.get("user_id", ""),
-        created_at=row.get("created_at", ""),
-        mood=row.get("mood", 0),
-        description=row.get("description"),
-    )
+    return _mood_out(row)
 
 
 def list_moods(
@@ -104,15 +103,7 @@ def list_moods(
     
     if offset is None and limit is None:
         rows, total = supabase.list_moods_all(user_id, start_date, end_date)
-        moods = [
-            MoodOut(
-                user_id=row.get("user_id", ""),
-                created_at=row.get("created_at", ""),
-                mood=row.get("mood", 0),
-                description=row.get("description"),
-            )
-            for row in rows
-        ]
+        moods = [_mood_out(row) for row in rows]
         return MoodListOut(
             moods=moods,
             count=len(moods),
@@ -124,15 +115,7 @@ def list_moods(
     offset = offset or 0
     limit = limit or 20
     rows, total = supabase.list_moods(user_id, start_date, end_date, offset, limit)
-    moods = [
-        MoodOut(
-            user_id=row.get("user_id", ""),
-            created_at=row.get("created_at", ""),
-            mood=row.get("mood", 0),
-            description=row.get("description"),
-        )
-        for row in rows
-    ]
+    moods = [_mood_out(row) for row in rows]
     
     return MoodListOut(
         moods=moods,
@@ -145,23 +128,15 @@ def list_moods(
 
 def update_mood(
     user_id: str,
-    created_at: str,
+    mood_id: str,
     mood: Optional[int] = None,
     description: Optional[str] = None,
 ) -> MoodOut:
-    _parse_date(created_at)
-    
-    row = supabase.update_mood(user_id, created_at, mood, description)
+    row = supabase.update_mood(user_id, mood_id, mood, description)
     if not row:
         raise MoodNotFound()
-    return MoodOut(
-        user_id=row.get("user_id", ""),
-        created_at=row.get("created_at", ""),
-        mood=row.get("mood", 0),
-        description=row.get("description"),
-    )
+    return _mood_out(row)
 
 
-def delete_mood(user_id: str, created_at: str) -> bool:
-    _parse_date(created_at)
-    return supabase.delete_mood(user_id, created_at)
+def delete_mood(user_id: str, mood_id: str) -> bool:
+    return supabase.delete_mood(user_id, mood_id)

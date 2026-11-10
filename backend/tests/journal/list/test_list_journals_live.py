@@ -19,6 +19,7 @@ def test_an_author_with_no_journals_gets_an_empty_list(client, register):
 def test_listed_newest_first(client, register):
     _, _, token = register(role="mother")
 
+    created_ids = {}
     for day in ("2026-10-28", "2026-10-31", "2026-10-29"):
         wrote = client.post(
             "/journals",
@@ -26,6 +27,7 @@ def test_listed_newest_first(client, register):
             json={"title": day, "content": "x", "created_at": day},
         )
         assert wrote.status_code == 201, wrote.text
+        created_ids[day] = wrote.json()["id"]
 
     resp = client.get("/journals", headers=_headers(token))
 
@@ -38,12 +40,18 @@ def test_listed_newest_first(client, register):
         "2026-10-29",
         "2026-10-28",
     ]
+    assert [j["id"] for j in body["journals"]] == [
+        created_ids["2026-10-31"],
+        created_ids["2026-10-29"],
+        created_ids["2026-10-28"],
+    ]
 
 
 def test_the_list_holds_only_the_callers_journals(client, register):
     _, alice_user, alice = register(role="mother")
     _, bob_user, bob = register(role="companion")
 
+    created_ids = {}
     for token, title in ((alice, "Alice"), (bob, "Bob")):
         wrote = client.post(
             "/journals",
@@ -51,6 +59,7 @@ def test_the_list_holds_only_the_callers_journals(client, register):
             json={"title": title, "content": "x", "created_at": "2026-10-30"},
         )
         assert wrote.status_code == 201, wrote.text
+        created_ids[title] = wrote.json()["id"]
 
     alice_list = client.get("/journals", headers=_headers(alice))
     assert alice_list.status_code == 200, alice_list.text
@@ -59,6 +68,7 @@ def test_the_list_holds_only_the_callers_journals(client, register):
     assert alice_body["total"] == 1
     assert alice_body["journals"][0]["title"] == "Alice"
     assert alice_body["journals"][0]["user_id"] == alice_user["id"]
+    assert alice_body["journals"][0]["id"] == created_ids["Alice"]
 
     bob_list = client.get("/journals", headers=_headers(bob))
     assert bob_list.status_code == 200, bob_list.text
@@ -67,6 +77,7 @@ def test_the_list_holds_only_the_callers_journals(client, register):
     assert bob_body["total"] == 1
     assert bob_body["journals"][0]["title"] == "Bob"
     assert bob_body["journals"][0]["user_id"] == bob_user["id"]
+    assert bob_body["journals"][0]["id"] == created_ids["Bob"]
 
 
 def test_a_professional_may_not_list(client, register):

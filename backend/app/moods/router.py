@@ -1,4 +1,5 @@
 ﻿from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
@@ -51,8 +52,12 @@ def _handle_mood_errors(func, *args):
     "/moods",
     status_code=201,
     response_model=MoodOut,
-    summary="Create a mood entry for a specific date",
-    description="One entry per user per day (by UTC date). Future dates are rejected.",
+    summary="Create a mood entry for a day",
+    description=(
+        "One entry per user per day (the caller's local calendar day). "
+        "Omit created_at for today; past days may be backfilled, future "
+        "days are rejected."
+    ),
 )
 def create_mood(
     payload: MoodCreate,
@@ -68,18 +73,18 @@ def create_mood(
 
 
 @router.get(
-    "/moods/{created_at}",
+    "/moods/{id}",
     response_model=MoodOut,
-    summary="Get a mood entry for a specific date",
+    summary="Get a mood entry by id",
 )
 def get_mood(
-    created_at: str,
+    id: UUID,
     session: auth_service.Session = Depends(mother_only),
 ) -> MoodOut:
     mood = _handle_mood_errors(
         service.get_mood,
         session.user_id,
-        created_at,
+        str(id),
     )
     if mood is None:
         raise HTTPException(status_code=404, detail="Mood entry not found")
@@ -115,41 +120,41 @@ def list_moods(
 
 
 @router.patch(
-    "/moods/{created_at}",
+    "/moods/{id}",
     response_model=MoodOut,
-    summary="Update the mood value and/or description for an entry",
+    summary="Update the mood value and/or description for an entry by id",
     description=(
         "Update mood, description, or both. The date (created_at) is immutable. "
         "The entry must exist. At least one field must be provided."
     ),
 )
 def update_mood(
-    created_at: str,
+    id: UUID,
     payload: MoodUpdate,
     session: auth_service.Session = Depends(mother_only),
 ) -> MoodOut:
     return _handle_mood_errors(
         service.update_mood,
         session.user_id,
-        created_at,
+        str(id),
         payload.mood,
         payload.description,
     )
 
 
 @router.delete(
-    "/moods/{created_at}",
+    "/moods/{id}",
     status_code=204,
-    summary="Delete a mood entry",
+    summary="Delete a mood entry by id",
     description="Idempotent: deleting a non-existent entry returns 204.",
 )
 def delete_mood(
-    created_at: str,
+    id: UUID,
     session: auth_service.Session = Depends(mother_only),
 ):
     _handle_mood_errors(
         service.delete_mood,
         session.user_id,
-        created_at,
+        str(id),
     )
     return Response(status_code=204)

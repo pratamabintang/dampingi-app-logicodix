@@ -1,4 +1,6 @@
-from conftest import captured, supabase_json
+import uuid
+
+from conftest import captured, journal_row, supabase_json
 
 AUTH = {"Authorization": "Bearer offline-token"}
 
@@ -13,6 +15,7 @@ MAX_ROWS = 1000
 def _row(user_id, day, title="A day"):
     return {
         **JOURNAL_ROW,
+        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{user_id}:{day}:{title}")),
         "user_id": user_id,
         "created_at": day,
         "title": title,
@@ -57,6 +60,95 @@ def _postgrest(upstream, profile, journals=None, max_rows=MAX_ROWS):
         }
     )
 
+JOURNAL_ID = "00000000-0000-4000-8000-0000000000d1"
+
+
+def test_a_journal_can_be_read_by_its_id(mock_client, journals_table):
+    client, session = mock_client
+    journals_table(
+        {**PROFILE, "role": "mother"},
+        journals=[
+            {
+                **journal_row(session.user_id, "2026-10-30", title="Mine"),
+                "id": JOURNAL_ID,
+            }
+        ],
+    )
+
+    resp = client.get(
+        f"/journals/{JOURNAL_ID}",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["id"] == JOURNAL_ID
+    assert body["user_id"] == session.user_id
+    assert body["created_at"] == "2026-10-30"
+    assert body["title"] == "Mine"
+
+
+def test_an_unknown_well_formed_id_is_not_found(mock_client, journals_table):
+    client, session = mock_client
+    journals_table({**PROFILE, "role": "mother"})
+
+    resp = client.get(
+        "/journals/00000000-0000-4000-8000-00000000dead",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 404, resp.text
+
+
+def test_a_malformed_id_is_refused_before_the_upstream(
+    mock_client, journals_table
+):
+    client, session = mock_client
+    recorded = journals_table(
+        {**PROFILE, "role": "mother"},
+        journals=[
+            {
+                **journal_row(session.user_id, "2026-10-30", title="Mine"),
+                "id": JOURNAL_ID,
+            }
+        ],
+    )
+
+    resp = client.get(
+        "/journals/not-a-uuid",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 422, resp.text
+    assert not recorded.requests, "a malformed id reached the upstream"
+
+
+def test_every_listed_journal_carries_its_id(mock_client, journals_table):
+    client, session = mock_client
+    first_id = "00000000-0000-4000-8000-0000000000d2"
+    second_id = "00000000-0000-4000-8000-0000000000d3"
+    journals_table(
+        {**PROFILE, "role": "mother"},
+        journals=[
+            {**journal_row(session.user_id, "2026-10-29", title="Older"), "id": first_id},
+            {**journal_row(session.user_id, "2026-10-30", title="Newer"), "id": second_id},
+        ],
+    )
+
+    resp = client.get(
+        "/journals",
+        headers={"Authorization": f"Bearer {session.token}"},
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert [j["id"] for j in body["journals"]] == [second_id, first_id]
+    assert [j["created_at"] for j in body["journals"]] == [
+        "2026-10-30",
+        "2026-10-29",
+    ]
+
+
 def test_an_author_with_no_journals_gets_an_empty_list(mock_client, upstream):
     client, _ = mock_client
     _postgrest(upstream, {**PROFILE, "role": "mother"})
@@ -86,6 +178,7 @@ def test_the_list_holds_only_the_requesting_authors_journals(mock_client, upstre
     assert body["total"] == 1
     assert [j["title"] for j in body["journals"]] == ["Mine"]
     assert all(j["user_id"] == PROFILE["user_id"] for j in body["journals"])
+    assert all(j["id"] for j in body["journals"])
 
 def test_journals_are_listed_newest_first(mock_client, upstream):
     client, _ = mock_client

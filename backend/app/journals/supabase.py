@@ -8,7 +8,7 @@ from app.supabase import (
     SupabaseError,
 )
 
-_COLUMNS = "user_id,created_at,title,content"
+_COLUMNS = "id,user_id,created_at,title,content"
 
 
 def create_journal(user_id: str, created_at: str, title: str, content: str) -> dict:
@@ -32,13 +32,13 @@ def create_journal(user_id: str, created_at: str, title: str, content: str) -> d
     return rows[0]
 
 
-def fetch_journal(user_id: str, created_at: str) -> dict | None:
+def fetch_journal(user_id: str, journal_id: str) -> dict | None:
     resp = _request(
         _client().get,
         f"{_base_url()}/rest/v1/journals",
         params={
             "user_id": f"eq.{user_id}",
-            "created_at": f"eq.{created_at}",
+            "id": f"eq.{journal_id}",
             "select": _COLUMNS,
         },
         headers=supabase_service_http(),
@@ -52,7 +52,7 @@ def fetch_journal(user_id: str, created_at: str) -> dict | None:
 
 def update_journal(
     user_id: str,
-    created_at: str,
+    journal_id: str,
     title: str | None = None,
     content: str | None = None,
 ) -> dict | None:
@@ -67,7 +67,7 @@ def update_journal(
         f"{_base_url()}/rest/v1/journals",
         params={
             "user_id": f"eq.{user_id}",
-            "created_at": f"eq.{created_at}",
+            "id": f"eq.{journal_id}",
             "select": _COLUMNS,
         },
         headers={**supabase_service_http(), "Prefer": "return=representation"},
@@ -80,13 +80,13 @@ def update_journal(
     return rows[0] if rows else None
 
 
-def delete_journal(user_id: str, created_at: str) -> bool:
+def delete_journal(user_id: str, journal_id: str) -> bool:
     resp = _request(
         _client().delete,
         f"{_base_url()}/rest/v1/journals",
         params={
             "user_id": f"eq.{user_id}",
-            "created_at": f"eq.{created_at}",
+            "id": f"eq.{journal_id}",
             "select": _COLUMNS,
         },
         headers={**supabase_service_http(), "Prefer": "return=representation"},
@@ -99,6 +99,7 @@ def delete_journal(user_id: str, created_at: str) -> bool:
 
 
 _PAGE_SIZE = 1000
+
 _MAX_PAGES = 200
 
 

@@ -1,57 +1,29 @@
-import json
+import uuid
 
-from conftest import captured, supabase_json
+from conftest import OTHER_AUTHOR, journal_row, journals_profile
 
 AUTH = {"Authorization": "Bearer offline-token"}
 
-PROFILE = captured("profiles-select-2026-11-10")
+PROFILE = journals_profile()
 
-OTHER = "00000000-0000-4000-8000-0000000000f1"
+OTHER = OTHER_AUTHOR
 
-def _postgrest(upstream, profile, journals=None, fail_insert=None):
-    rows = journals or []
+OTHER_ID = "00000000-0000-4000-8000-0000000000f2"
+MY_ID = "00000000-0000-4000-8000-0000000000f3"
 
-    def profile_get(request):
-        asked = request.url.params["select"].split(",")
-        return supabase_json(200, [{k: profile[k] for k in asked if k in profile}])
 
-    def journal_get(request):
-        wanted_user = request.url.params["user_id"].removeprefix("eq.")
-        wanted_day = request.url.params["created_at"].removeprefix("eq.")
-        asked = request.url.params["select"].split(",")
-        hits = [
-            {k: row[k] for k in asked if k in row}
-            for row in rows
-            if row["user_id"] == wanted_user and row["created_at"] == wanted_day
-        ]
-        return supabase_json(200, hits)
+def _journal(user_id, day, title="A day", content="As written.", id=None):
+    row = journal_row(user_id, day, title, content)
+    if id is not None:
+        row["id"] = id
+    return row
 
-    def insert(request):
-        if fail_insert is not None:
-            return fail_insert()
-        body = json.loads(request.content)
-        clash = [
-            row
-            for row in rows
-            if row["user_id"] == body["user_id"]
-            and row["created_at"] == body["created_at"]
-        ]
-        if clash:
-            return _conflict("23505")
-        rows.append(body)
-        return supabase_json(201, [body])
 
-    return upstream(
-        {
-            ("GET", "/rest/v1/profiles"): profile_get,
-            ("GET", "/rest/v1/journals"): journal_get,
-            ("POST", "/rest/v1/journals"): insert,
-        }
-    )
-
-def test_a_mother_writes_todays_journal_and_reads_it_back(mock_client, upstream):
+def test_a_mother_writes_todays_journal_and_reads_it_back(
+    mock_client, journals_table
+):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     written = client.post(
         "/journals",
@@ -61,18 +33,23 @@ def test_a_mother_writes_todays_journal_and_reads_it_back(mock_client, upstream)
 
     assert written.status_code == 201, written.text
     body = written.json()
+    assert body["id"]
+    uuid.UUID(body["id"])
     assert body["title"] == "A good day"
     assert body["content"] == "We walked to the park."
     assert len(body["created_at"]) == 10
 
-    read = client.get(f"/journals/{body['created_at']}", headers=AUTH)
+    read = client.get(f"/journals/{body['id']}", headers=AUTH)
 
     assert read.status_code == 200, read.text
     assert read.json() == body
 
-def test_a_companion_passes_the_real_gate(mock_client, upstream, real_gate):
+
+def test_a_companion_passes_the_real_gate(
+    mock_client, journals_table, real_gate
+):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "companion"})
+    journals_table({**PROFILE, "role": "companion"})
 
     resp = client.post(
         "/journals",
@@ -82,11 +59,12 @@ def test_a_companion_passes_the_real_gate(mock_client, upstream, real_gate):
 
     assert resp.status_code == 201, resp.text
 
+
 def test_a_professional_is_refused_by_the_real_gate(
-    mock_client, upstream, real_gate
+    mock_client, journals_table, real_gate
 ):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "professional"})
+    journals_table({**PROFILE, "role": "professional"})
 
     resp = client.post(
         "/journals",
@@ -98,80 +76,85 @@ def test_a_professional_is_refused_by_the_real_gate(
     detail = resp.json()["detail"]
     assert "mother" in detail and "companion" in detail
 
-def test_another_authors_journal_is_not_found(mock_client, upstream):
+
+def test_another_authors_journal_is_not_found(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(
-        upstream,
-        {**PROFILE, "role": "mother"},
-        journals=[
-            {
-                "user_id": OTHER,
-                "created_at": "2026-10-30",
-                "title": "Not yours",
-                "content": "Private.",
-            }
-        ],
+    journals_table(
+        PROFILE,
+        journals=[_journal(OTHER, "2026-10-30", "Not yours", "Private.", OTHER_ID)],
     )
 
-    resp = client.get("/journals/2026-10-30", headers=AUTH)
+    resp = client.get(f"/journals/{OTHER_ID}", headers=AUTH)
 
     assert resp.status_code == 404, resp.text
     assert resp.status_code != 403
 
+
 def test_two_authors_hold_their_own_journal_on_the_same_day(
-    mock_client, upstream, real_gate, as_author
+    mock_client, journals_table, real_gate, as_author
 ):
     client, _ = mock_client
-    mine = {
-        "user_id": PROFILE["user_id"],
-        "created_at": "2026-10-30",
-        "title": "Mine",
-        "content": "My day.",
-    }
-    theirs = {
-        "user_id": OTHER,
-        "created_at": "2026-10-30",
-        "title": "Theirs",
-        "content": "Their day.",
-    }
-    _postgrest(upstream, {**PROFILE, "role": "mother"}, journals=[theirs, mine])
+    journals_table(
+        {**PROFILE, "role": "mother"},
+        journals=[
+            _journal(OTHER, "2026-10-30", "Theirs", "Their day.", OTHER_ID),
+            _journal(PROFILE["user_id"], "2026-10-30", "Mine", "My day.", MY_ID),
+        ],
+    )
 
     as_author(PROFILE["user_id"])
-    first = client.get("/journals/2026-10-30", headers=AUTH)
+    first = client.get(f"/journals/{MY_ID}", headers=AUTH)
     assert first.status_code == 200, first.text
     assert first.json()["title"] == "Mine"
 
     as_author(OTHER)
-    second = client.get("/journals/2026-10-30", headers=AUTH)
+    second = client.get(f"/journals/{OTHER_ID}", headers=AUTH)
     assert second.status_code == 200, second.text
     assert second.json()["title"] == "Theirs"
 
-def test_a_second_journal_for_the_same_day_is_a_conflict(mock_client, upstream):
+
+def test_a_second_journal_for_the_same_day_is_a_conflict(
+    mock_client, journals_table
+):
     client, _ = mock_client
-    _postgrest(
-        upstream,
-        {**PROFILE, "role": "mother"},
-        fail_insert=lambda: _conflict("23505"),
+    journals_table(PROFILE)
+
+    first = client.post(
+        "/journals",
+        headers=AUTH,
+        json={"title": "First", "content": "Once today."},
     )
+    assert first.status_code == 201, first.text
 
     resp = client.post(
         "/journals",
         headers=AUTH,
-        json={"title": "Again", "content": "Twice today.", "created_at": "2026-11-10"},
+        json={"title": "Again", "content": "Twice today."},
     )
 
     assert resp.status_code == 409, resp.text
-    assert "2026-11-10" in resp.json()["detail"]
+    assert first.json()["created_at"] in resp.json()["detail"]
+    assert "id" not in resp.json()
+
 
 def test_a_foreign_key_violation_is_not_reported_as_a_duplicate(
-    mock_client, upstream
+    mock_client, journals_table
 ):
+    import httpx
+
     client, _ = mock_client
-    _postgrest(
-        upstream,
-        {**PROFILE, "role": "mother"},
-        fail_insert=lambda: _conflict("23503"),
-    )
+
+    def orphan():
+        return httpx.Response(
+            409,
+            json={
+                "code": "23503",
+                "details": "Key (user_id)=(...) is not present in table profiles.",
+                "message": "insert or update violates foreign key constraint",
+            },
+        )
+
+    journals_table(PROFILE, fail_insert=orphan)
 
     resp = client.post(
         "/journals",
@@ -182,24 +165,11 @@ def test_a_foreign_key_violation_is_not_reported_as_a_duplicate(
     assert resp.status_code != 409, resp.text
     assert resp.status_code == 503, resp.text
 
-def _conflict(code: str):
-    import httpx
 
-    return httpx.Response(
-        409,
-        json={
-            "code": code,
-            "details": "Key (user_id, created_at)=(...) already exists.",
-            "hint": None,
-            "message": "duplicate key value violates unique constraint",
-        },
-    )
-
-def test_a_soft_deleted_profile_may_not_write(mock_client, upstream):
+def test_a_soft_deleted_profile_may_not_write(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(
-        upstream,
-        {**PROFILE, "role": "mother", "deleted_at": "2026-10-30T00:00:00+00:00"},
+    journals_table(
+        {**PROFILE, "deleted_at": "2026-10-30T00:00:00+00:00"}
     )
 
     resp = client.post(
@@ -210,9 +180,10 @@ def test_a_soft_deleted_profile_may_not_write(mock_client, upstream):
 
     assert resp.status_code == 404, resp.text
 
-def test_a_malformed_date_is_refused(mock_client, upstream):
+
+def test_a_malformed_date_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals",
@@ -223,9 +194,10 @@ def test_a_malformed_date_is_refused(mock_client, upstream):
     assert resp.status_code == 400, resp.text
     assert "date" in resp.json()["detail"].lower()
 
-def test_a_future_date_is_refused(mock_client, upstream):
+
+def test_a_future_date_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals",
@@ -236,9 +208,10 @@ def test_a_future_date_is_refused(mock_client, upstream):
     assert resp.status_code == 400, resp.text
     assert "future" in resp.json()["detail"].lower()
 
-def test_a_past_date_is_accepted(mock_client, upstream):
+
+def test_a_past_date_is_accepted(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals",
@@ -249,9 +222,12 @@ def test_a_past_date_is_accepted(mock_client, upstream):
     assert resp.status_code == 201, resp.text
     assert resp.json()["created_at"] == "2026-10-25"
 
-def test_backfilling_the_same_past_day_twice_is_a_conflict(mock_client, upstream):
+
+def test_backfilling_the_same_past_day_twice_is_a_conflict(
+    mock_client, journals_table
+):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     first = client.post(
         "/journals",
@@ -269,11 +245,12 @@ def test_backfilling_the_same_past_day_twice_is_a_conflict(mock_client, upstream
     assert second.status_code == 409, second.text
     assert "2026-10-25" in second.json()["detail"]
 
+
 def test_two_authors_may_both_backfill_the_same_past_day(
-    mock_client, upstream, real_gate, as_author
+    mock_client, journals_table, real_gate, as_author
 ):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     as_author(PROFILE["user_id"])
     mine = client.post(
@@ -291,9 +268,10 @@ def test_two_authors_may_both_backfill_the_same_past_day(
     )
     assert theirs.status_code == 201, theirs.text
 
-def test_an_empty_title_is_refused(mock_client, upstream):
+
+def test_an_empty_title_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals", headers=AUTH, json={"title": "", "content": "x"}
@@ -301,9 +279,10 @@ def test_an_empty_title_is_refused(mock_client, upstream):
 
     assert resp.status_code == 422, resp.text
 
-def test_an_overlong_title_is_refused(mock_client, upstream):
+
+def test_an_overlong_title_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals", headers=AUTH, json={"title": "a" * 256, "content": "x"}
@@ -311,9 +290,10 @@ def test_an_overlong_title_is_refused(mock_client, upstream):
 
     assert resp.status_code == 422, resp.text
 
-def test_an_empty_content_is_refused(mock_client, upstream):
+
+def test_an_empty_content_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals", headers=AUTH, json={"title": "x", "content": ""}
@@ -321,9 +301,10 @@ def test_an_empty_content_is_refused(mock_client, upstream):
 
     assert resp.status_code == 422, resp.text
 
-def test_overlong_content_is_refused(mock_client, upstream):
+
+def test_overlong_content_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals", headers=AUTH, json={"title": "x", "content": "a" * 10_001}
@@ -331,9 +312,10 @@ def test_overlong_content_is_refused(mock_client, upstream):
 
     assert resp.status_code == 422, resp.text
 
-def test_an_unknown_field_is_refused(mock_client, upstream):
+
+def test_an_unknown_field_is_refused(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother"})
+    journals_table(PROFILE)
 
     resp = client.post(
         "/journals",
@@ -342,6 +324,7 @@ def test_an_unknown_field_is_refused(mock_client, upstream):
     )
 
     assert resp.status_code == 422, resp.text
+
 
 def test_no_token_is_refused(offline_env):
     from fastapi.testclient import TestClient
@@ -354,9 +337,10 @@ def test_no_token_is_refused(offline_env):
 
     assert resp.status_code == 401
 
-def test_an_unusable_timezone_falls_back_to_utc(mock_client, upstream):
+
+def test_an_unusable_timezone_falls_back_to_utc(mock_client, journals_table):
     client, _ = mock_client
-    _postgrest(upstream, {**PROFILE, "role": "mother", "timezone": "Not/AZone"})
+    journals_table({**PROFILE, "timezone": "Not/AZone"})
 
     resp = client.post(
         "/journals",
@@ -367,11 +351,12 @@ def test_an_unusable_timezone_falls_back_to_utc(mock_client, upstream):
     assert resp.status_code == 201, resp.text
     assert len(resp.json()["created_at"]) == 10
 
-def test_the_day_is_the_authors_local_one(mock_client, upstream):
+
+def test_the_day_is_the_authors_local_one(mock_client, journals_table):
     client, _ = mock_client
 
     def day_for(zone: str) -> str:
-        _postgrest(upstream, {**PROFILE, "role": "mother", "timezone": zone})
+        journals_table({**PROFILE, "timezone": zone})
         resp = client.post(
             "/journals", headers=AUTH, json={"title": "Day", "content": "x"}
         )

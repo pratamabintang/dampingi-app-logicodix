@@ -73,6 +73,13 @@ def soft_delete_user(session: Session) -> None:
     supabase.ban_user(session.user_id)
     supabase.tombstone_profile(session.user_id)
 
+    from app.connections import supabase as connections_supabase
+
+    try:
+        connections_supabase.end_active_connections(session.user_id)
+    except supabase.SupabaseError:
+        pass
+
 
 def profile_out(session: Session, profile: dict) -> UserOut:
     return UserOut(

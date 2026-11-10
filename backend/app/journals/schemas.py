@@ -7,6 +7,7 @@ CONTENT_MAX = 10_000
 
 
 class JournalCreate(BaseModel):
+
     model_config = {"extra": "forbid"}
 
     title: str = Field(
@@ -30,6 +31,8 @@ class JournalCreate(BaseModel):
 
 
 class JournalOut(BaseModel):
+
+    id: str
     user_id: str
     created_at: str
     title: str
@@ -37,6 +40,7 @@ class JournalOut(BaseModel):
 
 
 class JournalUpdate(BaseModel):
+
     model_config = {"extra": "forbid"}
 
     title: Optional[str] = Field(
@@ -61,6 +65,7 @@ class JournalUpdate(BaseModel):
 
 
 class JournalListOut(BaseModel):
+
     journals: list[JournalOut]
     count: int
     offset: int

@@ -5,8 +5,13 @@ from pydantic import BaseModel, Field
 
 class MoodCreate(BaseModel):
 
-    created_at: str = Field(
-        description="Date in YYYY-MM-DD format (user's timezone)."
+    created_at: Optional[str] = Field(
+        default=None,
+        description=(
+            "Day the Mood belongs to, in YYYY-MM-DD (the caller's local "
+            "calendar day). Omit for today. Past days may be backfilled; "
+            "future days are rejected."
+        ),
     )
     mood: int = Field(ge=1, le=5, description="Mood on 1–5 scale (1=very low, 5=very good).")
     description: Optional[str] = Field(
@@ -28,6 +33,7 @@ class MoodUpdate(BaseModel):
 
 class MoodOut(BaseModel):
 
+    id: str
     user_id: str
     created_at: str
     mood: int

@@ -7,10 +7,18 @@ PROFILE = journals_profile()
 OTHER = OTHER_AUTHOR
 
 DAY = "2026-10-30"
+JOURNAL_ID = "00000000-0000-4000-8000-0000000000e1"
+UNKNOWN_ID = "00000000-0000-4000-8000-00000000dead"
 
 
-def _journal(user_id=PROFILE["user_id"], day=DAY, title="A day", content="As written."):
-    return journal_row(user_id, day, title, content)
+def _journal(
+    user_id=PROFILE["user_id"],
+    day=DAY,
+    title="A day",
+    content="As written.",
+    id=JOURNAL_ID,
+):
+    return {**journal_row(user_id, day, title, content), "id": id}
 
 
 def _mother(**overrides):
@@ -22,7 +30,7 @@ def test_the_title_can_be_edited_on_its_own(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal(content="Untouched.")])
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "A better title"}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "A better title"}
     )
 
     assert resp.status_code == 200, resp.text
@@ -36,7 +44,7 @@ def test_the_content_can_be_edited_on_its_own(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal(title="Untouched")])
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"content": "Added afterwards."}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"content": "Added afterwards."}
     )
 
     assert resp.status_code == 200, resp.text
@@ -50,15 +58,15 @@ def test_both_fields_can_be_edited_together(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal()])
 
     resp = client.patch(
-        f"/journals/{DAY}",
+        f"/journals/{JOURNAL_ID}",
         headers=AUTH,
-        json={"title": "Rewritten", "content": "The whole entry, again."},
+        json={"title": "Rewritten", "content": "The whole Journal, again."},
     )
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["title"] == "Rewritten"
-    assert body["content"] == "The whole entry, again."
+    assert body["content"] == "The whole Journal, again."
 
 
 def test_the_edit_is_stored_and_reads_back(mock_client, journals_table):
@@ -66,11 +74,11 @@ def test_the_edit_is_stored_and_reads_back(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal()])
 
     edited = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "Persisted"}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "Persisted"}
     )
     assert edited.status_code == 200, edited.text
 
-    read = client.get(f"/journals/{DAY}", headers=AUTH)
+    read = client.get(f"/journals/{JOURNAL_ID}", headers=AUTH)
 
     assert read.status_code == 200, read.text
     assert read.json()["title"] == "Persisted"
@@ -81,11 +89,13 @@ def test_the_day_never_moves(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal()])
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "Still the same day"}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "Still the same day"}
     )
 
     assert resp.status_code == 200, resp.text
-    assert resp.json()["created_at"] == DAY
+    body = resp.json()
+    assert body["id"] == JOURNAL_ID
+    assert body["created_at"] == DAY
 
 
 def test_a_day_in_the_payload_is_ignored(mock_client, journals_table):
@@ -93,7 +103,7 @@ def test_a_day_in_the_payload_is_ignored(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal()])
 
     resp = client.patch(
-        f"/journals/{DAY}",
+        f"/journals/{JOURNAL_ID}",
         headers=AUTH,
         json={"title": "Moved?", "created_at": "2020-01-01"},
     )
@@ -101,17 +111,23 @@ def test_a_day_in_the_payload_is_ignored(mock_client, journals_table):
     assert resp.status_code == 200, resp.text
     assert resp.json()["created_at"] == DAY
 
-    stayed = client.get(f"/journals/{DAY}", headers=AUTH)
+    stayed = client.get(f"/journals/{JOURNAL_ID}", headers=AUTH)
     assert stayed.status_code == 200, stayed.text
     assert stayed.json()["created_at"] == DAY
-    assert client.get("/journals/2020-01-01", headers=AUTH).status_code == 404
+    listed = client.get(
+        "/journals",
+        headers=AUTH,
+        params={"start_date": "2020-01-01", "end_date": "2020-01-01"},
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["journals"] == []
 
 
 def test_an_update_with_no_fields_is_refused(mock_client, journals_table):
     client, _ = mock_client
     journals_table(_mother(), journals=[_journal()])
 
-    resp = client.patch(f"/journals/{DAY}", headers=AUTH, json={})
+    resp = client.patch(f"/journals/{JOURNAL_ID}", headers=AUTH, json={})
 
     assert resp.status_code == 400, resp.text
 
@@ -120,7 +136,7 @@ def test_an_unknown_field_is_refused(mock_client, journals_table):
     client, _ = mock_client
     journals_table(_mother(), journals=[_journal()])
 
-    resp = client.patch(f"/journals/{DAY}", headers=AUTH, json={"mood": 4})
+    resp = client.patch(f"/journals/{JOURNAL_ID}", headers=AUTH, json={"mood": 4})
 
     assert resp.status_code == 422, resp.text
 
@@ -129,7 +145,7 @@ def test_an_empty_title_is_refused(mock_client, journals_table):
     client, _ = mock_client
     journals_table(_mother(), journals=[_journal()])
 
-    resp = client.patch(f"/journals/{DAY}", headers=AUTH, json={"title": ""})
+    resp = client.patch(f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": ""})
 
     assert resp.status_code == 422, resp.text
 
@@ -139,7 +155,7 @@ def test_an_overlong_title_is_refused(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal()])
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "a" * 256}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "a" * 256}
     )
 
     assert resp.status_code == 422, resp.text
@@ -150,32 +166,32 @@ def test_an_overlong_content_is_refused(mock_client, journals_table):
     journals_table(_mother(), journals=[_journal()])
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"content": "a" * 10_001}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"content": "a" * 10_001}
     )
 
     assert resp.status_code == 422, resp.text
 
 
-def test_a_day_with_no_journal_is_not_found(mock_client, journals_table):
+def test_an_unknown_id_is_not_found(mock_client, journals_table):
     client, _ = mock_client
     journals_table(_mother())
 
     resp = client.patch(
-        "/journals/2026-01-01", headers=AUTH, json={"title": "Nowhere"}
+        f"/journals/{UNKNOWN_ID}", headers=AUTH, json={"title": "Nowhere"}
     )
 
     assert resp.status_code == 404, resp.text
 
 
-def test_a_malformed_day_is_refused(mock_client, journals_table):
+def test_a_malformed_id_is_a_validation_error(mock_client, journals_table):
     client, _ = mock_client
     journals_table(_mother(), journals=[_journal()])
 
     resp = client.patch(
-        "/journals/2026-13-45", headers=AUTH, json={"title": "Typo"}
+        "/journals/not-a-uuid", headers=AUTH, json={"title": "Typo"}
     )
 
-    assert resp.status_code == 400, resp.text
+    assert resp.status_code == 422, resp.text
 
 
 def test_another_authors_journal_is_not_found(
@@ -188,14 +204,14 @@ def test_another_authors_journal_is_not_found(
 
     as_author(OTHER)
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "Hijacked"}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "Hijacked"}
     )
 
     assert resp.status_code == 404, resp.text
     assert resp.status_code != 403
 
     as_author(PROFILE["user_id"])
-    read = client.get(f"/journals/{DAY}", headers=AUTH)
+    read = client.get(f"/journals/{JOURNAL_ID}", headers=AUTH)
     assert read.status_code == 200, read.text
     assert read.json()["title"] == "Mine"
     assert read.json()["content"] == "Private."
@@ -209,12 +225,12 @@ def test_a_soft_deleted_profile_may_not_edit(mock_client, journals_table):
     )
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "Ghost edit"}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "Ghost edit"}
     )
 
     assert resp.status_code == 404, resp.text
 
-    read = client.get(f"/journals/{DAY}", headers=AUTH)
+    read = client.get(f"/journals/{JOURNAL_ID}", headers=AUTH)
     assert read.status_code == 200, read.text
     assert read.json()["title"] == "Before deletion"
 
@@ -226,7 +242,7 @@ def test_a_professional_is_refused_by_the_real_gate(
     journals_table(_mother(role="professional"), journals=[_journal()])
 
     resp = client.patch(
-        f"/journals/{DAY}", headers=AUTH, json={"title": "Not mine to edit"}
+        f"/journals/{JOURNAL_ID}", headers=AUTH, json={"title": "Not mine to edit"}
     )
 
     assert resp.status_code == 403, resp.text
@@ -240,7 +256,7 @@ def test_no_token_is_refused(offline_env):
     import app.main as main
 
     resp = TestClient(main.app).patch(
-        f"/journals/{DAY}", json={"title": "Anonymous"}
+        f"/journals/{JOURNAL_ID}", json={"title": "Anonymous"}
     )
 
     assert resp.status_code == 401
