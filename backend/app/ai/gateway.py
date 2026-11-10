@@ -36,7 +36,7 @@ class AIReply(BaseModel):
 
 
 # Skema yang sama, dalam format JSON Schema untuk dikirim ke OpenAI (structured output).
-REPLY_JSON_SCHEMA = {
+REPLY_JSON_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
         "reply": {"type": "string"},

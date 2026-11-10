@@ -21,6 +21,7 @@ EXAMPLE_RESPONSE = {
         "content": "Wajar sekali merasa capek di masa ini...",
         "created_at": "2026-11-10T13:00:02Z",
     },
+    "urgent": False,
 }
 
 

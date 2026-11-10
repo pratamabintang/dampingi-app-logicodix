@@ -41,8 +41,14 @@ Response `200`:
     "content": "Wajar sekali merasa capek di masa ini...",
     "created_at": "2026-11-10T13:00:02Z"
   }
+  "urgent": false,
 }
 ```
+
+- `urgent: true` = AI menangkap tanda bahaya (misalnya pikiran menyakiti diri/bayi, perdarahan hebat).
+  Aplikasi **wajib** menampilkan kontak darurat (119 / IGD terdekat) di atas jawaban.
+- Pesan baru tersimpan **hanya kalau AI berhasil menjawab**. Kalau `503`, tidak ada yang tersimpan;
+  biarkan teks tetap di kolom input supaya pengguna bisa kirim ulang.
 
 ### `GET /chat/sessions`
 
