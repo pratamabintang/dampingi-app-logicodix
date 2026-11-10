@@ -7,3 +7,5 @@ uvicorn
 httpx
 PyJWT[crypto]
 jsonschema
+pydantic-settings>=2.3
+email-validator>=2
