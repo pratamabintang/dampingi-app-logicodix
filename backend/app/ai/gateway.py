@@ -35,7 +35,7 @@ class AIReply(BaseModel):
         return value
 
 
-# Skema yang sama, dalam format JSON Schema untuk dikirim ke OpenAI (structured output).
+# Skema yang sama, dalam format JSON Schema untuk dikirim ke Gemini (structured output).
 REPLY_JSON_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {

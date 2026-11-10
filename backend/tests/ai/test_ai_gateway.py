@@ -1,3 +1,4 @@
+"""Tes AI gateway (C02, provider Gemini sejak C06). Tanpa jaringan dan tanpa biaya: provider dipalsukan."""
 import asyncio
 import json
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ import pytest
 
 from app.ai import AIBadOutput, AIError, AIGateway, AITimeout, AIUnavailable, Turn
 from app.ai.config import AISettings, build_gateway
-from app.ai.providers import FakeProvider, OpenAIProvider
+from app.ai.providers import FakeProvider, GeminiProvider
 
 pytestmark = pytest.mark.local
 
@@ -66,41 +67,44 @@ def test_every_error_has_user_message(err):
     assert err().user_message.strip()
 
 
-# ---------- OpenAIProvider (client dipalsukan, tidak ada request sungguhan) ----------
+# ---------- GeminiProvider (client dipalsukan, tidak ada request sungguhan) ----------
 
-class FakeCompletions:
-    def __init__(self, content):
-        self.content = content
+class FakeModels:
+    def __init__(self, text):
+        self.text = text
         self.kwargs: dict[str, Any] = {}
 
-    async def create(self, **kwargs):
+    async def generate_content(self, **kwargs):
         self.kwargs = kwargs
-        msg = SimpleNamespace(content=self.content)
-        return SimpleNamespace(choices=[SimpleNamespace(message=msg)])
+        return SimpleNamespace(text=self.text)
 
 
-def fake_client(content):
-    completions = FakeCompletions(content)
-    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
-    return cast(Any, client), completions
+def fake_client(text):
+    models = FakeModels(text)
+    client = SimpleNamespace(aio=SimpleNamespace(models=models))
+    return cast(Any, client), models
 
 
-def test_openai_request_shape():
-    client, completions = fake_client(json.dumps({"reply": "ok", "urgent": False}))
-    result = run(AIGateway(OpenAIProvider(client, "model-x")).reply(SYSTEM, TURNS))
+def test_gemini_request_shape():
+    client, models = fake_client(json.dumps({"reply": "ok", "urgent": False}))
+    result = run(AIGateway(GeminiProvider(client, "model-x")).reply(SYSTEM, TURNS))
     assert result.reply == "ok"
 
-    sent = completions.kwargs
+    sent = models.kwargs
     assert sent["model"] == "model-x"
-    assert sent["messages"][0] == {"role": "system", "content": SYSTEM}
-    assert [m["role"] for m in sent["messages"][1:]] == ["user", "assistant", "user"]
-    assert sent["response_format"]["json_schema"]["strict"] is True
+    # instruksi sistem terpisah, TIDAK masuk riwayat
+    assert sent["config"].system_instruction == SYSTEM
+    assert [c.role for c in sent["contents"]] == ["user", "model", "user"]
+    assert sent["contents"][-1].parts[0].text == "Bayiku rewel"
+    # jawaban dipaksa JSON sesuai skema
+    assert sent["config"].response_mime_type == "application/json"
+    assert sent["config"].response_json_schema["required"] == ["reply", "urgent"]
 
 
-def test_openai_empty_content_is_bad_output():
+def test_gemini_empty_text_is_bad_output():
     client, _ = fake_client(None)
     with pytest.raises(AIBadOutput):
-        run(AIGateway(OpenAIProvider(client, "model-x")).reply(SYSTEM, TURNS))
+        run(AIGateway(GeminiProvider(client, "model-x")).reply(SYSTEM, TURNS))
 
 
 # ---------- pengaturan ----------
@@ -111,12 +115,17 @@ def test_default_provider_is_fake(monkeypatch):
     assert isinstance(gateway.provider, FakeProvider)
 
 
-def test_openai_without_key_fails_fast():
+def test_gemini_without_key_fails_fast():
     with pytest.raises(RuntimeError):
-        build_gateway(AISettings(_env_file=None, ai_provider="openai", openai_api_key=None, openai_model="m"))
+        build_gateway(AISettings(_env_file=None, ai_provider="gemini", gemini_api_key=None, gemini_model="m"))
+
+
+def test_gemini_without_model_fails_fast():
+    with pytest.raises(RuntimeError):
+        build_gateway(AISettings(_env_file=None, ai_provider="gemini", gemini_api_key="k", gemini_model=None))
 
 
 def test_api_key_is_never_printed():
-    s = AISettings(_env_file=None, ai_provider="openai", openai_api_key="sk-test-123", openai_model="m")
-    assert "sk-test-123" not in repr(s) and "sk-test-123" not in str(s.model_dump())
-    assert isinstance(build_gateway(s).provider, OpenAIProvider)
+    s = AISettings(_env_file=None, ai_provider="gemini", gemini_api_key="AIza-test-123", gemini_model="m")
+    assert "AIza-test-123" not in repr(s) and "AIza-test-123" not in str(s.model_dump())
+    assert isinstance(build_gateway(s).provider, GeminiProvider)
