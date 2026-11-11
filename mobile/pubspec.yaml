@@ -65,6 +65,7 @@ flutter:
     - assets/images/splash_illustration_mask.svg
     - assets/images/mother_home/avatar-a.png
     - assets/images/mother_home/arrow-right.svg
+    - assets/images/mother_home/close.svg
     - assets/images/mother_home/divider.svg
     - assets/images/mother_home/mood-happy.svg
     - assets/images/mother_home/mood-neutral.svg

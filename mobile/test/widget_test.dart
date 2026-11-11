@@ -399,6 +399,82 @@ void main() {
     expect(find.byType(MotherPage), findsOneWidget);
   });
 
+  testWidgets('mother mood entry follows the Figma four-step flow', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tester.tap(find.byKey(const Key('login-submit')));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(320, 640);
+    await tester.pumpAndSettle();
+    final recordMoodButton = find.byKey(const Key('mother-record-mood'));
+    await tester.ensureVisible(recordMoodButton);
+    await tester.tap(recordMoodButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apa yang anda rasakan sekarang?'), findsOneWidget);
+    expect(find.byKey(const Key('mother-mood-level-slider')), findsOneWidget);
+    expect(
+      find.byKey(const Key('mother-mood-dialog-continue')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getRect(find.byKey(const Key('mother-mood-entry-dialog'))).width,
+      lessThanOrEqualTo(272),
+    );
+
+    await tester.tap(find.byKey(const Key('mother-mood-level-4')));
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    expect(find.text('Sangat Bahagia'), findsOneWidget);
+    expect(
+      find.text('Apa yang paling menggambarkan perasaanmu?'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('mother-add-feeling')));
+    await tester.pumpAndSettle();
+    expect(find.text('Bersyukur'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tulis catatan harian anda'), findsOneWidget);
+    expect(find.byKey(const Key('mother-journal-title')), findsOneWidget);
+    expect(find.byKey(const Key('mother-journal-story')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Sangat Bahagia'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mother-mood-summary')), findsOneWidget);
+    expect(find.text('Sangat Bahagia'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-mood-summary-face'))).width,
+      closeTo(100 * 320 / 390, 0.1),
+    );
+    final summaryFaceCenter = tester.getCenter(
+      find.byKey(const Key('mother-mood-summary-face')),
+    );
+    final summaryExpressionCenter = tester.getCenter(
+      find.byKey(const Key('mother-mood-summary-expression')),
+    );
+    expect(summaryExpressionCenter.dx, closeTo(summaryFaceCenter.dx, 0.1));
+    expect(summaryExpressionCenter.dy, closeTo(summaryFaceCenter.dy, 0.1));
+    await tester.tap(find.byKey(const Key('mother-mood-summary')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mother-mood-entry-dialog')), findsNothing);
+  });
+
   testWidgets('failed login and mock network/server errors are friendly', (
     tester,
   ) async {
