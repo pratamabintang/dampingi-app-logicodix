@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -217,6 +218,137 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
     expect(find.byType(MotherPage), findsOneWidget);
+    expect(find.text('Selamat Pagi, Ibu Demo 👋'), findsOneWidget);
+    expect(find.byKey(const Key('mother-mood-card')), findsOneWidget);
+    expect(find.byKey(const Key('mother-epds-card')), findsNothing);
+    expect(find.byKey(const Key('mother-bottom-navigation')), findsOneWidget);
+    expect(tester.getSize(find.byKey(const Key('logout'))).width, 56);
+
+    tester.view.physicalSize = const Size(320, 640);
+    await tester.pumpAndSettle();
+    final narrowMoodCard = tester.getRect(
+      find.byKey(const Key('mother-mood-card')),
+    );
+    expect(
+      tester.getRect(find.text('Jum')).right,
+      lessThan(narrowMoodCard.right),
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    final narrowStoriesCard = tester.getRect(
+      find.byKey(const Key('mother-stories-card')),
+    );
+    final narrowStoryFace = tester.widget<SvgPicture>(
+      find.byKey(const Key('mother-story-face-happy')),
+    );
+    final narrowStoryArrow = tester.getSize(
+      find.byKey(const Key('mother-story-arrow-happy')),
+    );
+    expect(narrowMoodCard.width, lessThan(320));
+    expect(narrowStoryFace.fit, BoxFit.contain);
+    expect(narrowStoryArrow.width, lessThan(24));
+    expect(narrowStoryArrow.height, lessThan(24));
+    expect(
+      tester.getSize(find.byKey(const Key('mother-story-very-happy'))).width,
+      lessThan(83),
+    );
+    final narrowHappyFaceSize = tester.getSize(
+      find.byKey(const Key('mother-story-face-happy')),
+    );
+    final narrowVeryHappyFaceSize = tester.getSize(
+      find.byKey(const Key('mother-story-face-very-happy')),
+    );
+    expect(narrowHappyFaceSize.width, closeTo(38 * 320 / 390, 0.01));
+    expect(narrowHappyFaceSize.height, closeTo(17.85 * 320 / 390, 0.01));
+    expect(narrowVeryHappyFaceSize.width, closeTo(38 * 320 / 390, 0.01));
+    expect(narrowVeryHappyFaceSize.height, closeTo(23 * 320 / 390, 0.01));
+    expect(
+      tester.getSize(find.byKey(const Key('mother-story-divider-1'))).width,
+      closeTo(narrowStoriesCard.width - (40 * 320 / 390) - 2, 0.1),
+    );
+    expect(
+      tester.getRect(find.byKey(const Key('mother-story-very-happy'))).right,
+      lessThan(narrowStoriesCard.right),
+    );
+    expect(tester.getSize(find.byKey(const Key('logout'))).width, lessThan(56));
+    expect(
+      tester.getRect(find.byKey(const Key('logout'))).right,
+      lessThan(320),
+    );
+
+    tester.view.physicalSize = const Size(430, 844);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(const Key('logout'))).width,
+      greaterThan(56),
+    );
+    expect(
+      tester.getRect(find.byKey(const Key('logout'))).right,
+      lessThan(430),
+    );
+
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(const Key('mother-story-arrow-happy'))),
+      const Size(24, 24),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-story-face-happy'))).width,
+      closeTo(38, 0.01),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-story-face-happy'))).height,
+      closeTo(17.85, 0.01),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const Key('mother-story-face-very-happy')))
+          .width,
+      closeTo(38, 0.01),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const Key('mother-story-face-very-happy')))
+          .height,
+      closeTo(23, 0.01),
+    );
+    final happyFaceSize = tester.getSize(
+      find.byKey(const Key('mother-mood-face-kam')),
+    );
+    final veryHappyFaceSize = tester.getSize(
+      find.byKey(const Key('mother-mood-face-jum')),
+    );
+    expect(happyFaceSize.width, closeTo(38, 0.01));
+    expect(happyFaceSize.height, closeTo(17.85, 0.01));
+    expect(veryHappyFaceSize.width, closeTo(38, 0.01));
+    expect(veryHappyFaceSize.height, closeTo(23, 0.01));
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Lakukan'), findsNWidgets(2));
+
+    GoRouter.of(tester.element(find.byType(MotherPage))).go('/mother?epds=due');
+    await tester.pumpAndSettle();
+    expect(
+      GoRouter.of(tester.element(find.byType(MotherPage)))
+          .routeInformationProvider
+          .value
+          .uri
+          .queryParameters['epds'],
+      'due',
+    );
+    expect(
+      tester.widget<MotherPage>(find.byType(MotherPage)).showWeeklyEpds,
+      isTrue,
+    );
+    expect(find.byKey(const Key('mother-epds-card')), findsOneWidget);
+    expect(find.text('Isi Sekarang'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Lakukan'), findsNothing);
+
+    GoRouter.of(tester.element(find.byType(MotherPage))).go('/mother');
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('logout')));
     await tester.pumpAndSettle();
