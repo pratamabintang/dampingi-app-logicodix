@@ -54,37 +54,44 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
                   ?.copyWith(color: AppTheme.body),
         ),
         const SizedBox(height: 6),
-        SizedBox(
-          height: widget.inputHeight,
-          child: TextFormField(
-            controller: widget.controller,
-            style: widget.textStyle,
-            validator: widget.validator,
-            obscureText: _obscureText,
-            textInputAction: widget.textInputAction,
-            onFieldSubmitted: widget.onFieldSubmitted,
-            onChanged: widget.onChanged,
-            enabled: widget.enabled,
-            autofillHints: widget.autofillHints,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: InputDecoration(
-              hintText: widget.hintText,
-              suffixIcon: widget.showVisibilityToggle
-                  ? IconButton(
-                      tooltip: _obscureText
-                          ? 'Tampilkan kata sandi'
-                          : 'Sembunyikan kata sandi',
-                      onPressed: widget.enabled
-                          ? () => setState(() => _obscureText = !_obscureText)
-                          : null,
-                      icon: Icon(
-                        _obscureText
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                    )
-                  : null,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: AppTheme.inputShadow,
+          ),
+          child: SizedBox(
+            height: widget.inputHeight,
+            child: TextFormField(
+              controller: widget.controller,
+              style: widget.textStyle,
+              validator: widget.validator,
+              obscureText: _obscureText,
+              textInputAction: widget.textInputAction,
+              onFieldSubmitted: widget.onFieldSubmitted,
+              onChanged: widget.onChanged,
+              enabled: widget.enabled,
+              autofillHints: widget.autofillHints,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                suffixIcon: widget.showVisibilityToggle
+                    ? IconButton(
+                        tooltip: _obscureText
+                            ? 'Tampilkan kata sandi'
+                            : 'Sembunyikan kata sandi',
+                        onPressed: widget.enabled
+                            ? () => setState(() => _obscureText = !_obscureText)
+                            : null,
+                        icon: Icon(
+                          _obscureText
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                      )
+                    : null,
+              ),
             ),
           ),
         ),

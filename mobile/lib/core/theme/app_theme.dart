@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppTheme {
   static const coral = Color(0xFFFDA29B);
@@ -15,6 +16,9 @@ abstract final class AppTheme {
   static const pink2 = Color(0xFFFEF3F2);
   static const selectedSurface = Color(0xFFFFFBFA);
   static const unselectedSurface = Color(0xFFF5F5F5);
+  static const inputShadow = [
+    BoxShadow(color: Color(0x0D101828), offset: Offset(0, 1), blurRadius: 2),
+  ];
 
   static final light = ThemeData(
     colorScheme: ColorScheme.fromSeed(
@@ -24,7 +28,7 @@ abstract final class AppTheme {
     ),
     useMaterial3: true,
     scaffoldBackgroundColor: Colors.white,
-    textTheme: const TextTheme(
+    textTheme: TextTheme(
       titleLarge: TextStyle(
         color: ink,
         fontSize: 24,
@@ -44,11 +48,11 @@ abstract final class AppTheme {
         fontWeight: FontWeight.w600,
         height: 24 / 16,
       ),
-    ),
+    ).apply(fontFamily: GoogleFonts.dmSans().fontFamily),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      hintStyle: const TextStyle(color: secondary, fontSize: 16),
+      hintStyle: GoogleFonts.dmSans(color: secondary, fontSize: 16),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -76,14 +80,19 @@ abstract final class AppTheme {
         backgroundColor: coral,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(48),
+        elevation: 1,
+        shadowColor: const Color(0x0D101828),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.dmSans(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: coral,
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
       ),
     ),
   );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mobile/app.dart';
 import 'package:mobile/core/widgets/app_empty.dart';
@@ -96,6 +97,98 @@ void main() {
     }
     await tester.tap(submitButton);
   }
+
+  testWidgets('login matches Figma content and keeps its actions working', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+
+    expect(find.text('DEBUG'), findsNothing);
+    expect(
+      Theme.of(tester.element(find.byType(LoginPage)))
+          .textTheme
+          .bodyLarge
+          ?.fontFamily,
+      GoogleFonts.dmSans().fontFamily,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-image-frame'))),
+      Offset.zero,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('login-image-frame'))),
+      const Size(390, 489),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-panel'))),
+      const Offset(5, 352),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('login-panel'))),
+      const Size(380, 492),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-email'))),
+      const Offset(29, 466),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('login-email'))),
+      const Size(332, 70),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-password'))),
+      const Offset(29, 560),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('login-password'))),
+      const Size(332, 70),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-actions'))),
+      const Offset(29, 654),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-submit'))),
+      const Offset(29, 696),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('login-submit'))),
+      const Size(332, 48),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('login-register-row'))),
+      const Offset(29, 768),
+    );
+
+    expect(find.text('Dampingi'), findsOneWidget);
+    expect(find.text('Halo, Senang melihatmu kembali!'), findsOneWidget);
+    expect(find.text('Masukan email anda'), findsOneWidget);
+    expect(find.text('Ingat saya'), findsOneWidget);
+    expect(find.text('Lupa kata sandi?'), findsOneWidget);
+    expect(find.text('Daftar sekarang'), findsOneWidget);
+    expect(find.textContaining('demo1234'), findsNothing);
+    expect(find.byIcon(Icons.visibility_outlined), findsNothing);
+
+    await tester.tap(find.byKey(const Key('login-remember-me')));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.check), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('login-reset-password')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reset-email-page')), findsOneWidget);
+  });
+
+  testWidgets('login registration link opens the registration page', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+
+    await tester.tap(find.byKey(const Key('login-register')));
+    await tester.pumpAndSettle();
+    expect(find.byType(RegisterPage), findsOneWidget);
+  });
 
   testWidgets('login validates required and malformed input', (tester) async {
     await startApp(tester);
@@ -316,6 +409,88 @@ void main() {
     await tester.tap(find.byKey(const Key('register-login')));
     await tester.pumpAndSettle();
     expect(find.byType(LoginPage), findsOneWidget);
+  });
+
+  testWidgets(
+    'password reset flow validates and navigates through demo pages',
+    (tester) async {
+      await startApp(tester);
+      await selectRoleAndOpenLogin(tester, role: 'mother');
+
+      await tester.tap(find.byKey(const Key('login-reset-password')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('reset-email-page')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('reset-submit-email')));
+      await tester.pumpAndSettle();
+      expect(find.text('Email wajib diisi.'), findsOneWidget);
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('reset-email')),
+          matching: find.byType(TextFormField),
+        ),
+        'mother@dampingi.test',
+      );
+      await tester.tap(find.byKey(const Key('reset-submit-email')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('reset-code-page')), findsOneWidget);
+      expect(find.text('Kode demo: 123456'), findsOneWidget);
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('reset-code')),
+          matching: find.byType(TextFormField),
+        ),
+        '000000',
+      );
+      await tester.tap(find.byKey(const Key('reset-submit-code')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Kode demo tidak valid. Gunakan 123456.'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('reset-code')),
+          matching: find.byType(TextFormField),
+        ),
+        '123456',
+      );
+      await tester.tap(find.byKey(const Key('reset-submit-code')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('reset-newPassword-page')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('reset-submit-newPassword')));
+      await tester.pumpAndSettle();
+      expect(find.text('Kata sandi wajib diisi.'), findsOneWidget);
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('reset-new-password')),
+          matching: find.byType(TextFormField),
+        ),
+        'new-secret',
+      );
+      await tester.tap(find.byKey(const Key('reset-submit-newPassword')));
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginPage), findsOneWidget);
+      expect(
+        find.text('Mode demo: kata sandi belum diubah pada akun server.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('reset verification routes require an email-step flow', (
+    tester,
+  ) async {
+    await startApp(tester);
+    GoRouter.of(tester.element(find.byType(RolePickerPage)))
+        .go('/verify-reset-code');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reset-email-page')), findsOneWidget);
   });
 
   testWidgets('unknown routes show a generic not-found page', (tester) async {
