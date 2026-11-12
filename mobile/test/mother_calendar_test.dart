@@ -3,10 +3,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile/core/theme/app_theme.dart';
+import 'package:mobile/features/mother/models/mother_story.dart';
+import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/mother/view/mother_calendar_page.dart';
 import 'package:mobile/features/mother/view/mother_story_detail_page.dart';
 
+import 'mother_story_test_data.dart';
+
+const _testStory = MotherStory(
+  id: 'very-sad',
+  weekdayIndex: 0,
+  date: 'Senin, 12 Agustus 2026',
+  mood: MotherMood.verySad,
+  moodLabel: 'Anda merasa sangat sedih',
+  title: 'Hal Kecil yang berarti',
+  note:
+      'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa '
+      'suami bantu aku ke belakang padahal suami lagi di luar kota.',
+  summary:
+      'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa '
+      'suami bantu aku ke belakang padahal suami lagi di luar kota.',
+);
+
 void main() {
+  test(
+    'mother story fixture has unique IDs and complete detail data',
+    () async {
+      final stories = await MotherStoryRepository().loadStories();
+      expect(stories, hasLength(6));
+      expect(stories.map((story) => story.id).toSet(), hasLength(6));
+      expect(
+        stories.map((story) => story.summary).toSet().length,
+        greaterThan(1),
+      );
+    },
+  );
+
   testWidgets('calendar shows weekly overview and selected-day design', (
     tester,
   ) async {
@@ -16,7 +48,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: MotherCalendarPage())),
+      _withStoryFixture(const MaterialApp(home: MotherCalendarPage())),
     );
     await tester.pumpAndSettle();
 
@@ -27,7 +59,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('mother-calendar-story-face-0')),
+      find.byKey(const Key('mother-calendar-story-0-tile')),
       findsOneWidget,
     );
     final mondayExpression = tester.getSize(
@@ -67,7 +99,7 @@ void main() {
     expect(find.byKey(const Key('mother-calendar-epds-summary')), findsNothing);
     expect(find.text('Cerita terakhirmu'), findsOneWidget);
     expect(
-      find.byKey(const Key('mother-calendar-story-face-0')),
+      find.byKey(const Key('mother-calendar-story-0-tile')),
       findsOneWidget,
     );
     final selectedDay = tester.widget<Container>(
@@ -86,7 +118,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('mother-calendar-story-face-0')),
+      find.byKey(const Key('mother-calendar-story-0-tile')),
       findsOneWidget,
     );
     final unselectedDay = tester.widget<Container>(
@@ -104,7 +136,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: MotherStoryDetailPage())),
+      const ProviderScope(
+        child: MaterialApp(home: MotherStoryDetailPage(story: _testStory)),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -150,6 +184,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('story detail shows an explicit missing-note state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: MotherStoryDetailPage())),
+    );
+    expect(find.text('Catatan tidak tersedia'), findsOneWidget);
+    expect(find.byKey(const Key('mother-story-detail-card')), findsNothing);
+  });
+
   testWidgets('week arrows update the date range and show an empty state', (
     tester,
   ) async {
@@ -159,7 +203,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: MotherCalendarPage())),
+      _withStoryFixture(const MaterialApp(home: MotherCalendarPage())),
     );
     await tester.pumpAndSettle();
 
@@ -175,3 +219,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+Widget _withStoryFixture(Widget child) => ProviderScope(
+  overrides: [
+    motherStoriesProvider.overrideWith((ref) async => motherStoryTestData),
+  ],
+  child: child,
+);

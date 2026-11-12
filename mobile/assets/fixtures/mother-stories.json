@@ -1,0 +1,65 @@
+[
+  {
+    "id": "very-sad",
+    "weekdayIndex": 0,
+    "date": "Senin, 12 Agustus 2026",
+    "mood": "verySad",
+    "moodLabel": "Anda merasa sangat sedih",
+    "title": "Hal Kecil yang berarti",
+    "note": "Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa suami bantu aku ke belakang padahal suami lagi di luar kota.",
+    "summary": "Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa suami bantu aku ke belakang padahal suami lagi di luar kota."
+  },
+  {
+    "id": "very-happy",
+    "weekdayIndex": 1,
+    "date": "Selasa, 2 Agustus 2026",
+    "mood": "veryHappy",
+    "faceAsset": "mood-happy.svg",
+    "moodLabel": "Anda merasa sangat bahagia",
+    "title": "Hal Kecil yang berarti",
+    "note": "Hari ini aku merasa sangat bahagia karena bisa menghabiskan waktu bersama keluarga.",
+    "summary": "Waktu bersama keluarga menjadi sumber kebahagiaan dan dukungan."
+  },
+  {
+    "id": "happy",
+    "weekdayIndex": 2,
+    "date": "Rabu, 3 Agustus 2026",
+    "mood": "happy",
+    "faceAsset": "mood-very-happy.svg",
+    "moodLabel": "Anda merasa bahagia",
+    "title": "Hal Kecil yang berarti",
+    "note": "Aku senang karena hari ini bisa beristirahat dengan tenang.",
+    "summary": "Istirahat yang cukup membantu membuat hari terasa lebih ringan."
+  },
+  {
+    "id": "sad",
+    "weekdayIndex": 3,
+    "date": "Kamis, 4 Agustus 2026",
+    "mood": "sad",
+    "moodLabel": "Anda merasa sedih",
+    "title": "Hal Kecil yang berarti",
+    "note": "Hari ini terasa cukup berat, tapi aku mencoba memberi waktu untuk diriku sendiri.",
+    "summary": "Mengambil waktu untuk diri sendiri dapat membantu menghadapi hari yang berat."
+  },
+  {
+    "id": "very-sad-again",
+    "weekdayIndex": 4,
+    "date": "Jumat, 5 Agustus 2026",
+    "mood": "verySad",
+    "moodLabel": "Anda merasa sangat sedih",
+    "title": "Hal Kecil yang berarti",
+    "note": "Aku merasa sedih, tetapi bersyukur masih ada orang yang mau mendengarkan ceritaku.",
+    "summary": "Dukungan dari orang terdekat terasa berarti saat sedang sedih."
+  },
+  {
+    "id": "happy-again",
+    "weekdayIndex": 5,
+    "date": "Sabtu, 6 Agustus 2026",
+    "mood": "happy",
+    "faceAsset": "mood-happy.svg",
+    "moodLabel": "Anda merasa bahagia",
+    "title": "Hal Kecil yang berarti",
+    "note": "Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa suami bantu aku ke belakang padahal suami lagi di luar kota.",
+    "summary": "Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa suami bantu aku ke belakang padahal suami lagi di luar kota."
+  }
+]

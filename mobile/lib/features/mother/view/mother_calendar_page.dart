@@ -3,8 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/mother_story_list_tile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../models/mother_story.dart';
+import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
 
 class MotherCalendarPage extends ConsumerStatefulWidget {
@@ -25,6 +33,8 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
 
   @override
   Widget build(BuildContext context) {
+    final storiesAsync = ref.watch(motherStoriesProvider);
+    final loadedStories = storiesAsync.asData?.value;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -82,11 +92,17 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                                 SizedBox(height: context.calendarScale(36)),
                               ],
                               _StoriesCard(
-                                stories: _storiesForSelection(),
+                                stories: loadedStories == null
+                                    ? const []
+                                    : _storiesForSelection(loadedStories),
                                 showEmptyMessage:
                                     !_isSampleWeek || _selectedDay != null,
-                                onStoryTap: () =>
-                                    context.push('/mother/calendar/story'),
+                                isLoading: storiesAsync.isLoading,
+                                hasError: storiesAsync.hasError,
+                                onStoryTap: (story) => context.push(
+                                  '/mother/calendar/story',
+                                  extra: story,
+                                ),
                               ),
                             ],
                           ),
@@ -122,10 +138,12 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
     });
   }
 
-  List<_StoryPreview> _storiesForSelection() {
+  List<MotherStory> _storiesForSelection(List<MotherStory> stories) {
     if (!_isSampleWeek) return const [];
-    if (_selectedDay == null) return _weeklyStories;
-    return _selectedDay == 5 ? [_weeklyStories.first] : const [];
+    if (_selectedDay == null) return stories;
+    return stories
+        .where((story) => story.weekdayIndex == _selectedDay)
+        .toList(growable: false);
   }
 }
 
@@ -444,39 +462,37 @@ class _StoriesCard extends StatelessWidget {
   const _StoriesCard({
     required this.stories,
     required this.showEmptyMessage,
+    required this.isLoading,
+    required this.hasError,
     required this.onStoryTap,
   });
 
-  final List<_StoryPreview> stories;
+  final List<MotherStory> stories;
   final bool showEmptyMessage;
-  final VoidCallback onStoryTap;
+  final bool isLoading;
+  final bool hasError;
+  final ValueChanged<MotherStory> onStoryTap;
 
   @override
   Widget build(BuildContext context) {
     final scale = context.calendarScale;
-    return Container(
+    return AppCard(
       key: const Key('mother-calendar-stories'),
-      width: double.infinity,
       padding: EdgeInsets.all(scale(20)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
-        borderRadius: BorderRadius.circular(scale(32)),
-      ),
+      borderRadius: scale(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Cerita terakhirmu',
-            style: TextStyle(
-              color: const Color(0xFF252B37),
-              fontSize: scale(16),
-              fontWeight: FontWeight.w600,
-              height: 24 / 16,
-            ),
-          ),
+          AppSectionHeader(title: 'Cerita terakhirmu', scale: scale(1)),
           SizedBox(height: scale(24)),
-          if (stories.isEmpty && showEmptyMessage)
+          if (isLoading)
+            SizedBox(
+              height: scale(100),
+              child: const AppLoading(message: 'Memuat cerita...'),
+            )
+          else if (hasError)
+            const AppError(message: 'Cerita belum dapat dimuat.')
+          else if (stories.isEmpty && showEmptyMessage)
             Text(
               'Belum ada cerita pada tanggal ini.',
               key: const Key('mother-calendar-empty-stories'),
@@ -486,9 +502,20 @@ class _StoriesCard extends StatelessWidget {
                 height: 20 / 14,
               ),
             )
+          else if (stories.isEmpty)
+            const AppEmpty(message: 'Belum ada cerita yang tercatat.')
           else
             for (var index = 0; index < stories.length; index++) ...[
-              _StoryRow(story: stories[index], index: index, onTap: onStoryTap),
+              MotherStoryListTile(
+                story: stories[index],
+                scale: scale(1),
+                keyPrefix: 'mother-calendar-story-$index',
+                arrowAsset:
+                    'assets/images/mother_calendar/story-arrow-right.svg',
+                snippetFontSize: 16,
+                centerFace: true,
+                onTap: () => onStoryTap(stories[index]),
+              ),
               if (index < stories.length - 1)
                 _StorySeparator(
                   key: Key('mother-calendar-story-separator-$index'),
@@ -496,111 +523,6 @@ class _StoriesCard extends StatelessWidget {
                 ),
             ],
         ],
-      ),
-    );
-  }
-}
-
-class _StoryRow extends StatelessWidget {
-  const _StoryRow({
-    required this.story,
-    required this.index,
-    required this.onTap,
-  });
-
-  final _StoryPreview story;
-  final int index;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = context.calendarScale;
-    final faceHeight = scale(story.faceHeight);
-    return Semantics(
-      button: true,
-      label: 'Buka cerita Hal Kecil yang berarti',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: Key('mother-calendar-story-row-$index'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(scale(16)),
-          child: Row(
-            children: [
-              SizedBox(
-                key: Key('mother-calendar-story-face-$index'),
-                width: scale(83),
-                height: scale(83),
-                child: Stack(
-                  children: [
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppTheme.pink2,
-                        borderRadius: BorderRadius.circular(scale(32)),
-                      ),
-                      child: const SizedBox.expand(),
-                    ),
-                    Positioned(
-                      left: scale(15),
-                      top: scale(15),
-                      child: Container(
-                        width: scale(54),
-                        height: scale(53),
-                        decoration: BoxDecoration(
-                          color: story.color,
-                          borderRadius: BorderRadius.circular(scale(12)),
-                        ),
-                        alignment: Alignment.center,
-                        child: SvgPicture.asset(
-                          'assets/images/mother_home/${story.faceAsset}',
-                          width: scale(38),
-                          height: faceHeight,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: scale(16)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Hal Kecil yang berarti',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: const Color(0xFF252B37),
-                        fontSize: scale(14),
-                        fontWeight: FontWeight.w600,
-                        height: 20 / 14,
-                      ),
-                    ),
-                    SizedBox(height: scale(10)),
-                    Text(
-                      'Senang karena ada suami yang',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppTheme.muted,
-                        fontSize: scale(16),
-                        height: 24 / 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: scale(16)),
-              SvgPicture.asset(
-                'assets/images/mother_calendar/story-arrow-right.svg',
-                width: scale(24),
-                height: scale(24),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -670,39 +592,6 @@ const _weekMoods = <_MoodPreview>[
   _MoodPreview(color: Color(0xFFFBE567), asset: 'min.svg', top: 15.14),
 ];
 
-const _weeklyStories = <_StoryPreview>[
-  _StoryPreview(
-    color: Color(0xFFB093C4),
-    faceAsset: 'mood-very-sad.svg',
-    faceHeight: 19.85,
-  ),
-  _StoryPreview(
-    color: Color(0xFFFBE567),
-    faceAsset: 'mood-happy.svg',
-    faceHeight: 23,
-  ),
-  _StoryPreview(
-    color: Color(0xFFAFEAAB),
-    faceAsset: 'mood-very-happy.svg',
-    faceHeight: 17.85,
-  ),
-  _StoryPreview(
-    color: Color(0xFFB093C4),
-    faceAsset: 'mood-very-sad.svg',
-    faceHeight: 19.85,
-  ),
-  _StoryPreview(
-    color: Color(0xFFFBE567),
-    faceAsset: 'mood-happy.svg',
-    faceHeight: 23,
-  ),
-  _StoryPreview(
-    color: Color(0xFFAFEAAB),
-    faceAsset: 'mood-very-happy.svg',
-    faceHeight: 17.85,
-  ),
-];
-
 class _MoodPreview {
   const _MoodPreview({
     required this.color,
@@ -715,16 +604,4 @@ class _MoodPreview {
   final String? asset;
   final bool neutralEyes;
   final double top;
-}
-
-class _StoryPreview {
-  const _StoryPreview({
-    required this.color,
-    required this.faceAsset,
-    required this.faceHeight,
-  });
-
-  final Color color;
-  final String faceAsset;
-  final double faceHeight;
 }

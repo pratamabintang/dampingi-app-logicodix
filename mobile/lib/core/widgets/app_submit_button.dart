@@ -6,6 +6,7 @@ class AppSubmitButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.textStyle,
+    this.buttonStyle,
     super.key,
   });
 
@@ -13,14 +14,18 @@ class AppSubmitButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final TextStyle? textStyle;
+  final ButtonStyle? buttonStyle;
 
   @override
   Widget build(BuildContext context) {
     return FilledButton(
       onPressed: isLoading ? null : onPressed,
-      style: textStyle == null
-          ? null
-          : FilledButton.styleFrom(textStyle: textStyle),
+      style:
+          (textStyle == null
+                  ? null
+                  : FilledButton.styleFrom(textStyle: textStyle))
+              ?.merge(buttonStyle) ??
+          buttonStyle,
       child: isLoading
           ? const SizedBox(
               width: 20,

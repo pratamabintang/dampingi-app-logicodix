@@ -2,25 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/theme/app_theme.dart';
+import '../models/mother_story.dart';
 import 'mother_page.dart';
 
 class MotherStoryDetailPage extends StatefulWidget {
-  const MotherStoryDetailPage({super.key});
+  const MotherStoryDetailPage({this.story, super.key});
+
+  final MotherStory? story;
 
   @override
   State<MotherStoryDetailPage> createState() => _MotherStoryDetailPageState();
 }
 
 class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
-  static const _story =
-      'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa '
-      'suami bantu aku ke belakang padahal suami lagi di luar kota.';
-
   bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
+    final story = widget.story;
+    if (story == null) return _buildMissingStory(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -76,7 +81,7 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                       SizedBox(height: scaled(36)),
                       _StoryCard(
                         scale: scaled,
-                        story: _story,
+                        story: story,
                         isExpanded: _isExpanded,
                         onToggleExpanded: () {
                           setState(() => _isExpanded = !_isExpanded);
@@ -85,10 +90,16 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                       SizedBox(height: scaled(36)),
                       SizedBox(
                         height: scaled(48),
-                        child: FilledButton(
+                        child: AppSubmitButton(
                           key: const Key('mother-story-open-chat'),
+                          label: 'Buka di chat AI',
                           onPressed: () => context.go('/mother/chat'),
-                          style: FilledButton.styleFrom(
+                          textStyle: TextStyle(
+                            fontSize: scaled(16),
+                            fontWeight: FontWeight.w600,
+                            height: 24 / 16,
+                          ),
+                          buttonStyle: FilledButton.styleFrom(
                             backgroundColor: AppTheme.coral,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
@@ -101,23 +112,21 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                               borderRadius: BorderRadius.circular(scaled(8)),
                             ),
                           ),
-                          child: Text(
-                            'Buka di chat AI',
-                            style: TextStyle(
-                              fontSize: scaled(16),
-                              fontWeight: FontWeight.w600,
-                              height: 24 / 16,
-                            ),
-                          ),
                         ),
                       ),
                       SizedBox(height: scaled(10)),
                       SizedBox(
                         height: scaled(48),
-                        child: FilledButton(
+                        child: AppSubmitButton(
                           key: const Key('mother-story-edit-mood'),
+                          label: 'Ubah catatan mood',
                           onPressed: () => showMotherMoodEntry(context),
-                          style: FilledButton.styleFrom(
+                          textStyle: TextStyle(
+                            fontSize: scaled(16),
+                            fontWeight: FontWeight.w600,
+                            height: 24 / 16,
+                          ),
+                          buttonStyle: FilledButton.styleFrom(
                             backgroundColor: AppTheme.coralLight,
                             foregroundColor: AppTheme.coralText,
                             padding: EdgeInsets.symmetric(
@@ -128,14 +137,6 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                             shadowColor: const Color(0x0D101828),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(scaled(8)),
-                            ),
-                          ),
-                          child: Text(
-                            'Ubah catatan mood',
-                            style: TextStyle(
-                              fontSize: scaled(16),
-                              fontWeight: FontWeight.w600,
-                              height: 24 / 16,
                             ),
                           ),
                         ),
@@ -150,6 +151,48 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
       ),
     );
   }
+
+  Widget _buildMissingStory(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconButton(
+                key: const Key('mother-story-detail-back'),
+                onPressed: () => _goBack(context),
+                icon: SvgPicture.asset(
+                  'assets/images/mother_calendar/story-back.svg',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              const Expanded(
+                child: Center(
+                  child: AppEmpty(
+                    key: Key('mother-story-detail-missing'),
+                    title: 'Catatan tidak tersedia',
+                    message: 'Catatan ini tidak dapat ditemukan.',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/mother');
+    }
+  }
 }
 
 class _StoryCard extends StatelessWidget {
@@ -161,21 +204,16 @@ class _StoryCard extends StatelessWidget {
   });
 
   final double Function(double) scale;
-  final String story;
+  final MotherStory story;
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AppCard(
       key: const Key('mother-story-detail-card'),
-      width: double.infinity,
       padding: EdgeInsets.all(scale(20)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
-        borderRadius: BorderRadius.circular(scale(32)),
-      ),
+      borderRadius: scale(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -183,7 +221,7 @@ class _StoryCard extends StatelessWidget {
             height: scale(24),
             width: double.infinity,
             child: Text(
-              'Senin, 12 Agustus 2026',
+              story.date,
               key: const Key('mother-story-detail-date'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -204,20 +242,16 @@ class _StoryCard extends StatelessWidget {
                 height: scale(53),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFB093C4),
+                    color: story.mood.color,
                     borderRadius: BorderRadius.circular(scale(12)),
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.only(left: scale(8), top: scale(18)),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: Transform.scale(
-                        scale: scale(1),
-                        alignment: Alignment.topLeft,
-                        child: SvgPicture.asset(
-                          'assets/images/mother_calendar/story-mood-very-sad.svg',
-                        ),
-                      ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      story.mood == MotherMood.verySad
+                          ? 'assets/images/mother_calendar/story-mood-very-sad.svg'
+                          : 'assets/images/mother_home/${story.faceAsset ?? story.mood.asset}',
+                      width: scale(38),
+                      height: scale(story.mood.faceHeight),
                     ),
                   ),
                 ),
@@ -225,7 +259,7 @@ class _StoryCard extends StatelessWidget {
               SizedBox(width: scale(16)),
               Expanded(
                 child: Text(
-                  'Anda merasa sangat sedih',
+                  story.moodLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -239,11 +273,12 @@ class _StoryCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: scale(24)),
-          _AiSummary(scale: scale, story: story),
+          _AiSummary(scale: scale, summary: story.summary),
           SizedBox(height: scale(24)),
           _StoryText(
             scale: scale,
-            story: story,
+            title: story.title,
+            story: story.note,
             isExpanded: isExpanded,
             onToggleExpanded: onToggleExpanded,
           ),
@@ -254,10 +289,10 @@ class _StoryCard extends StatelessWidget {
 }
 
 class _AiSummary extends StatelessWidget {
-  const _AiSummary({required this.scale, required this.story});
+  const _AiSummary({required this.scale, required this.summary});
 
   final double Function(double) scale;
-  final String story;
+  final String summary;
 
   @override
   Widget build(BuildContext context) {
@@ -284,7 +319,7 @@ class _AiSummary extends StatelessWidget {
           ),
           SizedBox(height: scale(10)),
           Text(
-            story,
+            summary,
             key: const Key('mother-story-ai-summary-text'),
             style: TextStyle(
               color: AppTheme.coralText,
@@ -301,12 +336,14 @@ class _AiSummary extends StatelessWidget {
 class _StoryText extends StatelessWidget {
   const _StoryText({
     required this.scale,
+    required this.title,
     required this.story,
     required this.isExpanded,
     required this.onToggleExpanded,
   });
 
   final double Function(double) scale;
+  final String title;
   final String story;
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
@@ -317,7 +354,7 @@ class _StoryText extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Hal Kecil yang berarti',
+          title,
           style: TextStyle(
             color: const Color(0xFF252B37),
             fontSize: scale(14),

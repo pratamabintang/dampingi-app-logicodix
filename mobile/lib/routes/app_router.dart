@@ -13,6 +13,7 @@ import '../features/mother/view/mother_chat_page.dart';
 import '../features/mother/view/mother_calendar_page.dart';
 import '../features/mother/view/mother_story_detail_page.dart';
 import '../features/mother/view/mother_meditation_pages.dart';
+import '../features/mother/models/mother_story.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/shared/view/role_picker_page.dart';
 import '../features/shared/view/route_error_page.dart';
@@ -131,7 +132,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/mother/calendar/story',
-        builder: (context, state) => const MotherStoryDetailPage(),
+        builder: (context, state) {
+          final story = state.extra;
+          return MotherStoryDetailPage(
+            story: story is MotherStory ? story : null,
+          );
+        },
       ),
       GoRoute(
         path: '/mother/meditation/breathing',

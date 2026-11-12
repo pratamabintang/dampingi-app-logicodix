@@ -65,6 +65,7 @@ flutter:
         - asset: assets/fonts/mona_sans/MonaSans-SemiBold.ttf
           weight: 600
   assets:
+    - assets/fixtures/mother-stories.json
     - assets/fixtures/profiles-select-2026-11-09.json
     - assets/images/login_hero.png
     - assets/images/role_selected_check.svg
