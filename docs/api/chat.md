@@ -94,5 +94,10 @@ Isi satu percakapan, urut dari yang terlama.
 | `mother` | Mood harian **miliknya sendiri**, maksimal 7 entri terakhir: hanya tanggal dan skala 1–5. Catatan teks (`description`) **tidak** ikut. |
 | `companion` | Tidak ada. Pendamping tidak pernah mendapat data ibu lewat chatbot. |
 
+
+**Jurnal tidak pernah dipakai chatbot**, untuk role mana pun, termasuk ibu sendiri.
+Kode chat dan AI tidak membaca tabel `journals` sama sekali
+(dikunci oleh `backend/tests/chat/test_chat_privacy.py`).
+
 - Data dibaca ulang setiap pesan, jadi mood yang baru diisi langsung terpakai.
 - Kalau data mood gagal diambil, chat tetap jalan tanpa data itu.
