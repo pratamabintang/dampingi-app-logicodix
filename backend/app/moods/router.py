@@ -5,8 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.auth.guards import require_role
 from app.auth import service as auth_service
-from app.supabase import SupabaseError
-from app.moods import service, supabase
+from app.moods import service
 from app.moods.schemas import (
     MoodCreate,
     MoodListOut,
@@ -44,8 +43,6 @@ def _handle_mood_errors(func, *args):
         )
     except service.MoodNotFound:
         raise HTTPException(status_code=404, detail="Mood entry not found")
-    except supabase.SupabaseError as exc:
-        raise HTTPException(status_code=503, detail=exc.message)
 
 
 @router.post(

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import service as auth_service
 from app.auth.guards import require_role
-from app.observations import service, supabase
+from app.observations import service
 from app.observations.schemas import (
     ObservationCreate,
     ObservationListOut,
@@ -63,8 +63,6 @@ def _handle_observation_errors(func, *args):
                 "with an option belonging to it"
             ),
         )
-    except supabase.SupabaseError as exc:
-        raise HTTPException(status_code=503, detail=exc.message)
 
 
 @router.post(

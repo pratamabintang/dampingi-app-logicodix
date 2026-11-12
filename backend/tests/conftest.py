@@ -1,7 +1,9 @@
 import importlib
+import itertools
 import os
 import sys
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
 
@@ -71,6 +73,15 @@ def supabase_env():
     if resp.status_code >= 400:
         pytest.skip(f"JWKS discovery endpoint not reachable: {resp.status_code}")
     return base_url
+
+
+@pytest.fixture(autouse=True)
+def _no_throttle():
+    from app import throttle
+
+    throttle.set_limiter(throttle.NullRateLimiter())
+    yield
+    throttle.set_limiter(None)
 
 
 @pytest.fixture
@@ -448,6 +459,7 @@ CONNECTIONS_COMPANION = "00000000-0000-4000-8000-0000000000a2"
 CONNECTIONS_OTHER_COMPANION = "00000000-0000-4000-8000-0000000000a3"
 CONNECTIONS_PROFESSIONAL = "00000000-0000-4000-8000-0000000000a4"
 CONNECTIONS_OTHER_MOTHER = "00000000-0000-4000-8000-0000000000a5"
+CONNECTIONS_OTHER_PROFESSIONAL = "00000000-0000-4000-8000-0000000000a6"
 
 
 def _split_top_level(select: str) -> list:
@@ -491,7 +503,7 @@ def _compare(value, wanted: str) -> bool:
 
 
 def _canned_connections(upstream, *, profiles, connections=None, invite_codes=None,
-                        observations=None, max_rows=1000, extra_routes=None):
+                        observations=None, notes=None, max_rows=1000, extra_routes=None):
 
     import json
 
@@ -500,6 +512,7 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
     stored_connections = list(connections or [])
     stored_codes = list(invite_codes or [])
     stored_observations = list(observations or [])
+    stored_notes = list(notes or [])
     by_id = dict(profiles)
 
     def _match(rows, request, columns):
@@ -729,7 +742,7 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
         body = json.loads(request.content)
         row = {
             "id": str(uuid.uuid4()),
-            "created_at": "2026-11-10T09:00:00+00:00",
+            "created_at": "2026-11-12T09:00:00+00:00",
             "connection_id": body["connection_id"],
             "questions": body["questions"],
             "answers": body.get("answers"),
@@ -775,6 +788,83 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
             row.update(body)
         return supabase_json(200, _project(hits, request))
 
+    def _note_connection(row):
+        return next(
+            (c for c in stored_connections if c["id"] == row["connection_id"]),
+            None,
+        )
+
+    def notes_match(request):
+        matched = stored_notes
+        for column in ("id", "deleted_at", "connection_id"):
+            wanted = request.url.params.get_list(column)
+            if wanted:
+                matched = [
+                    row for row in matched
+                    if all(_compare(row.get(column), w) for w in wanted)
+                ]
+        for column in (
+            "connection.mother_id",
+            "connection.counterpart_id",
+            "connection.counterpart_role",
+        ):
+            wanted = request.url.params.get_list(column)
+            if wanted:
+                key = column.split(".", 1)[1]
+                matched = [
+                    row for row in matched
+                    if _note_connection(row) is not None
+                    and all(
+                        _compare(_note_connection(row).get(key), w)
+                        for w in wanted
+                    )
+                ]
+        return list(matched)
+
+    def _order_rows(rows, order):
+        for clause in reversed([c for c in (order or "").split(",") if c]):
+            field, _, direction = clause.strip().partition(".")
+            rows = sorted(
+                rows,
+                key=lambda r: r.get(field) or "",
+                reverse=direction == "desc",
+            )
+        return rows
+
+    def notes_get(request):
+        hits = notes_match(request)
+        if request.headers.get("prefer") == "count=exact":
+            return httpx.Response(
+                200, json=[], headers={"content-range": f"0-0/{len(hits)}"}
+            )
+        hits = _order_rows(hits, request.url.params.get("order"))
+        offset = int(request.url.params.get("offset", 0))
+        limit = int(request.url.params.get("limit", len(hits) or 1))
+        page = hits[offset : offset + min(limit, max_rows)]
+        return supabase_json(200, _project(page, request))
+
+    def notes_post(request):
+        body = json.loads(request.content)
+        stamp = _note_stamp()
+        row = {
+            "id": str(uuid.uuid4()),
+            "connection_id": body["connection_id"],
+            "content": body["content"],
+            "created_at": stamp,
+            "updated_at": stamp,
+            "deleted_at": None,
+        }
+        stored_notes.append(row)
+        return supabase_json(201, _project([row], request))
+
+    def notes_patch(request):
+        hits = notes_match(request)
+        body = json.loads(request.content)
+        for row in hits:
+            row.update(body)
+            row["updated_at"] = _note_stamp()
+        return supabase_json(200, _project(hits, request))
+
     recorded = upstream(
         {
             ("GET", "/rest/v1/profiles"): profiles_get,
@@ -787,10 +877,14 @@ def _canned_connections(upstream, *, profiles, connections=None, invite_codes=No
             ("GET", "/rest/v1/observations"): observations_get,
             ("POST", "/rest/v1/observations"): observations_post,
             ("PATCH", "/rest/v1/observations"): observations_patch,
+            ("GET", "/rest/v1/professional_notes"): notes_get,
+            ("POST", "/rest/v1/professional_notes"): notes_post,
+            ("PATCH", "/rest/v1/professional_notes"): notes_patch,
             **(extra_routes or {}),
         }
     )
     recorded.observations = stored_observations
+    recorded.professional_notes = stored_notes
     return recorded
 
 
@@ -864,6 +958,32 @@ def invite_code_row(issuer_id, code, target_role="companion",
     }
 
 
+_NOTE_EPOCH = datetime(2026, 11, 12, tzinfo=timezone.utc)
+_note_ticks = itertools.count()
+
+
+def _note_stamp() -> str:
+    return (_NOTE_EPOCH + timedelta(seconds=next(_note_ticks))).isoformat()
+
+
+def professional_note_row(
+    connection_id,
+    content="A note.",
+    created_at=None,
+    updated_at=None,
+    deleted_at=None,
+):
+    created_at = created_at or _note_stamp()
+    return {
+        "id": str(uuid.uuid4()),
+        "connection_id": connection_id,
+        "content": content,
+        "created_at": created_at,
+        "updated_at": updated_at or created_at,
+        "deleted_at": deleted_at,
+    }
+
+
 def connections_profiles():
     def _profile(user_id, name, role):
         return {
@@ -880,6 +1000,9 @@ def connections_profiles():
         ),
         CONNECTIONS_PROFESSIONAL: _profile(
             CONNECTIONS_PROFESSIONAL, "Dr. Ratna", "professional"
+        ),
+        CONNECTIONS_OTHER_PROFESSIONAL: _profile(
+            CONNECTIONS_OTHER_PROFESSIONAL, "Dr. Sinta", "professional"
         ),
     }
 
@@ -917,6 +1040,28 @@ def observations_table(upstream):
             connections=connections or [],
             invite_codes=invite_codes or [],
             observations=observations or [],
+            extra_routes=extra_routes,
+        )
+
+    return _use
+
+
+@pytest.fixture
+def professional_notes_table(upstream):
+
+    def _use(
+        connections=None,
+        professional_notes=None,
+        profiles=None,
+        max_rows=1000,
+        extra_routes=None,
+    ):
+        return _canned_connections(
+            upstream,
+            profiles=profiles or connections_profiles(),
+            connections=connections or [],
+            notes=professional_notes or [],
+            max_rows=max_rows,
             extra_routes=extra_routes,
         )
 

@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
 
 from app.auth import router as auth_router
 from app.connections.router import router as connections_router
@@ -7,9 +8,24 @@ from app.moods.router import router as moods_router
 from app.summaries.router import router as summaries_router
 from app.chat.router import router as chat_router
 from app.observations.router import router as observations_router
+from app.professional_notes.router import router as professional_notes_router
 from app.config import get_settings
+from app import errors, security
 
 app = FastAPI(title="dampingi", description="FastAPI backend backed by Supabase Auth")
+errors.install(app)
+
+_DOC_PATHS = frozenset(
+    {"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"}
+)
+
+@app.middleware("http")
+async def docs_only_in_development(request: Request, call_next):
+    if request.url.path in _DOC_PATHS and not get_settings().is_development:
+        return Response(status_code=404)
+    return await call_next(request)
+
+security.install(app)
 
 app.include_router(auth_router)
 app.include_router(moods_router)
@@ -18,8 +34,9 @@ app.include_router(chat_router)
 app.include_router(journals_router)
 app.include_router(connections_router)
 app.include_router(observations_router)
+app.include_router(professional_notes_router)
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "env": get_settings().app_env}
+    return {"status": "healthy"}

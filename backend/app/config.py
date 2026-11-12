@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     port: int = 8000
+    trusted_hosts: str = ""
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-3.1-flash-lite"
 
@@ -24,6 +25,17 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def is_development(self) -> bool:
+        return self.app_env.strip().lower() == "development"
+
+    @property
+    def allowed_hosts(self) -> list:
+        configured = [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+        if configured:
+            return configured
+        return ["localhost", "127.0.0.1", "[::1]", "testserver", "*.onrender.com"]
 
 
 _settings: Optional[Settings] = None

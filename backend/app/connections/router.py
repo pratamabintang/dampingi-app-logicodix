@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import service as auth_service
 from app.auth.router import verified_session
-from app.connections import service, supabase
+from app import throttle
+from app.connections import service
 from app.connections.schemas import (
     ConnectionListOut,
     ConnectionOut,
@@ -57,8 +58,6 @@ def _handle_connection_errors(func, *args):
             status_code=403,
             detail=f"This invite code is for a {exc.target_role}",
         )
-    except supabase.SupabaseError as exc:
-        raise HTTPException(status_code=503, detail=exc.message)
 
 
 @router.post(
@@ -202,6 +201,7 @@ def redeem_invite_code(
     payload: ConnectionRedeem,
     session: auth_service.Session = Depends(verified_session),
 ) -> ConnectionOut:
+    throttle.record_redemption(session.user_id)
     return _handle_connection_errors(
         service.redeem_invite_code, session.user_id, payload.code
     )

@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 
@@ -17,6 +17,7 @@ from app.auth.schemas import (
     UserOut,
 )
 from app.config import get_settings
+from app import throttle
 
 router = APIRouter(tags=["auth"])
 
@@ -72,6 +73,10 @@ def _deleted() -> HTTPException:
     return HTTPException(status_code=403, detail="This account has been deleted")
 
 
+def _invalid_credentials() -> HTTPException:
+    return HTTPException(status_code=401, detail="Invalid email or password")
+
+
 def _handle_auth_errors(func, *args):
     try:
         return func(*args)
@@ -80,7 +85,7 @@ def _handle_auth_errors(func, *args):
     except supabase.SupabaseError as exc:
         if _is_banned(exc):
             raise _deleted() from exc
-        raise HTTPException(status_code=503, detail=exc.message) from exc
+        raise
 
 
 def _is_banned(exc: supabase.SupabaseError) -> bool:
@@ -93,14 +98,13 @@ def _is_banned(exc: supabase.SupabaseError) -> bool:
     response_model=RegisterResponse,
     summary="Register with name, Gmail address, password, and role",
 )
-def register(payload: RegisterRequest) -> RegisterResponse:
+def register(request: Request, payload: RegisterRequest) -> RegisterResponse:
+    throttle.record_registration(request, payload.email)
     try:
         account = service.register_user(
             payload.name, payload.email, payload.password, payload.role.value
         )
     except supabase.SupabaseError as exc:
-        if exc.status == 503:
-            raise HTTPException(status_code=503, detail=exc.message) from exc
         if exc.error_code in ("user_already_exists", "email_exists") or (
             "already registered" in exc.message.lower()
             or "already been registered" in exc.message.lower()
@@ -108,7 +112,7 @@ def register(payload: RegisterRequest) -> RegisterResponse:
             raise HTTPException(
                 status_code=409, detail="This Gmail address is already registered"
             ) from exc
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+        raise
     return RegisterResponse(user=service.user_out(account), access_token=account.token or None)
 
 
@@ -117,15 +121,17 @@ def register(payload: RegisterRequest) -> RegisterResponse:
     response_model=LoginResponse,
     summary="Log in with Gmail address and password",
 )
-def login(payload: LoginRequest) -> LoginResponse:
+def login(request: Request, payload: LoginRequest) -> LoginResponse:
+    if throttle.record_login(request, payload.email) is not None:
+        raise _invalid_credentials()
     try:
         account = service.login_user(payload.email, payload.password)
     except supabase.SupabaseError as exc:
-        if exc.status == 503:
-            raise HTTPException(status_code=503, detail=exc.message) from exc
         if _is_banned(exc):
             raise _deleted() from exc
-        raise HTTPException(status_code=401, detail="Invalid email or password") from exc
+        if exc.status == 503:
+            raise
+        raise _invalid_credentials() from exc
     return LoginResponse(access_token=account.token, user=service.user_out(account))
 
 
@@ -202,7 +208,7 @@ def change_password(
     except supabase.SupabaseError as exc:
         if _is_banned(exc):
             raise _deleted() from exc
-        raise HTTPException(status_code=503, detail=exc.message) from exc
+        raise
     return Response(status_code=204)
 
 @router.delete(
@@ -216,5 +222,5 @@ def delete_me(session: service.Session = Depends(verified_session)):
     except service.AccountDeleted as exc:
         raise _deleted() from exc
     except supabase.SupabaseError as exc:
-        raise HTTPException(status_code=503, detail=exc.message) from exc
+        raise
     return Response(status_code=204)

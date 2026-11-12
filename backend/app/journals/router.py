@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.auth import service as auth_service
 from app.auth.guards import require_any_role
-from app.journals import service, supabase
+from app.journals import service
 from app.journals.schemas import (
     JournalCreate,
     JournalListOut,
@@ -45,8 +45,6 @@ def _handle_journal_errors(func, *args):
             status_code=400,
             detail="Provide a title, a content, or both to edit a Journal",
         )
-    except supabase.SupabaseError as exc:
-        raise HTTPException(status_code=503, detail=exc.message)
 
 
 @router.post(
