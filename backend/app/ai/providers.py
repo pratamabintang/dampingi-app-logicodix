@@ -1,13 +1,14 @@
 import asyncio
 import json
 import logging
+from typing import Any
 
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 
 from .errors import AIBadOutput, AIBusy, AIUnavailable
-from .gateway import REPLY_JSON_SCHEMA, Turn
+from .gateway import Turn
 
 logger = logging.getLogger(__name__)
 
@@ -21,24 +22,30 @@ class FakeProvider:
         *,
         urgent: bool = False,
         raw: str | None = None,
+        response: dict | None = None,
         error: Exception | None = None,
         delay: float = 0.0,
     ):
         self.reply = reply
         self.urgent = urgent
         self.raw = raw
+        self.response = response  # jawaban untuk skema selain chat, mis. {"overview": "..."}
         self.error = error
         self.delay = delay
         self.calls: list[tuple[str, list[Turn]]] = []
+        self.schemas: list[dict[str, Any]] = []
 
-    async def complete(self, system: str, turns: list[Turn]) -> str:
+    async def complete(self, system: str, turns: list[Turn], schema: dict[str, Any]) -> str:
         self.calls.append((system, list(turns)))
+        self.schemas.append(schema)
         if self.delay:
             await asyncio.sleep(self.delay)
         if self.error:
             raise self.error
         if self.raw is not None:
             return self.raw
+        if self.response is not None:
+            return json.dumps(self.response)
         return json.dumps({"reply": self.reply, "urgent": self.urgent})
 
 
@@ -56,11 +63,11 @@ class GeminiProvider:
         self.model = model
         self.temperature = temperature
 
-    async def complete(self, system: str, turns: list[Turn]) -> str:
+    async def complete(self, system: str, turns: list[Turn], schema: dict[str, Any]) -> str:
         config = types.GenerateContentConfig(
             system_instruction=system,               # instruksi terpisah dari riwayat
             response_mime_type="application/json",   # paksa jawaban JSON...
-            response_json_schema=REPLY_JSON_SCHEMA,  # ...dengan bentuk {reply, urgent}
+            response_json_schema=schema,             # ...dengan bentuk yang diminta pemanggil
             temperature=self.temperature,
         )
         try:
