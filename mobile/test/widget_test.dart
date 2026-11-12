@@ -9,6 +9,7 @@ import 'package:mobile/app.dart';
 import 'package:mobile/core/widgets/app_empty.dart';
 import 'package:mobile/core/widgets/app_error.dart';
 import 'package:mobile/core/widgets/app_loading.dart';
+import 'package:mobile/features/auth/repositories/auth_repository.dart';
 import 'package:mobile/features/auth/repositories/mock_auth_repository.dart';
 import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
@@ -41,7 +42,7 @@ void main() {
       ProviderScope(
         overrides: [
           roleRepositoryProvider.overrideWithValue(_TestRoleRepository()),
-          mockAuthRepositoryProvider.overrideWithValue(
+          authRepositoryProvider.overrideWithValue(
             MockAuthRepository(latency: mockLatency),
           ),
         ],
@@ -610,6 +611,54 @@ void main() {
     expect(
       find.byKey(const Key('mother-meditation-list-scroll')),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('mother can open the Figma chat screen without a mock API call', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-nav-chat')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dampingi'), findsOneWidget);
+    expect(find.byKey(const Key('mother-chat-input')), findsOneWidget);
+    expect(find.byKey(const Key('mother-chat-send')), findsOneWidget);
+    expect(find.text('Hai gpt, aku hamil'), findsOneWidget);
+    expect(
+      find.text('Wow kamu hamil ya semoga lahiranya lancar nanti'),
+      findsOneWidget,
+    );
+    expect(find.text('Ringkasan Percakapan'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-chat-composer'))).height,
+      53,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('mother-chat-input')),
+      'Pesan ini tidak boleh dikirim dengan token mock.',
+    );
+    await tester.tap(find.byKey(const Key('mother-chat-send')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Mode pratinjau aktif. Pesan belum dikirim ke layanan AI.'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('mother-chat-input')))
+          .controller
+          ?.text,
+      'Pesan ini tidak boleh dikirim dengan token mock.',
     );
   });
 

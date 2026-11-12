@@ -3,12 +3,19 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-enum MotherNavigationTab { home, meditation }
+enum MotherNavigationTab {
+  home,
+  calendar,
+  recommendations,
+  meditation,
+  profile,
+}
 
 class MotherNavigationBar extends StatelessWidget {
   const MotherNavigationBar({
     required this.selectedTab,
     required this.onHomeTap,
+    required this.onChatTap,
     required this.onMeditationTap,
     required this.onLogout,
     super.key,
@@ -16,6 +23,7 @@ class MotherNavigationBar extends StatelessWidget {
 
   final MotherNavigationTab selectedTab;
   final VoidCallback onHomeTap;
+  final VoidCallback onChatTap;
   final VoidCallback onMeditationTap;
   final VoidCallback onLogout;
 
@@ -25,6 +33,10 @@ class MotherNavigationBar extends StatelessWidget {
       builder: (context, constraints) {
         final scale = (constraints.maxWidth / 390).clamp(0.7, 1.15).toDouble();
         double scaled(double value) => value * scale;
+        final bottomPadding =
+            (scaled(25) - MediaQuery.viewPaddingOf(context).bottom)
+                .clamp(0.0, scaled(25))
+                .toDouble();
 
         return Container(
           key: const Key('mother-bottom-navigation'),
@@ -37,54 +49,58 @@ class MotherNavigationBar extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 scaled(32),
-                scaled(selectedTab == MotherNavigationTab.meditation ? 25 : 16),
+                scaled(25),
                 scaled(32),
-                scaled(selectedTab == MotherNavigationTab.meditation ? 25 : 12),
+                bottomPadding,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _NavigationItem(
+                    tab: MotherNavigationTab.home,
                     label: 'Beranda',
-                    asset: 'nav-home.svg',
-                    selected: selectedTab == MotherNavigationTab.home,
-                    useMeditationAssets:
-                        selectedTab == MotherNavigationTab.meditation,
+                    inactiveAsset: 'home.svg',
+                    activeAsset: 'home-active.svg',
+                    selectedTab: selectedTab,
                     onTap: onHomeTap,
                     scale: scale,
                   ),
                   _NavigationItem(
+                    tab: MotherNavigationTab.calendar,
                     label: 'Kalender',
-                    asset: 'nav-calendar.svg',
-                    useMeditationAssets:
-                        selectedTab == MotherNavigationTab.meditation,
+                    inactiveAsset: 'calendar.svg',
+                    activeAsset: 'calendar-active.svg',
+                    selectedTab: selectedTab,
                     onTap: () => _showFeatureNotice(context, 'Kalender'),
                     scale: scale,
                   ),
                   _NavigationItem(
+                    itemKey: const Key('mother-nav-chat'),
+                    tab: MotherNavigationTab.recommendations,
                     label: 'Rekomendasi',
-                    asset: 'nav-recommendations.svg',
-                    useMeditationAssets:
-                        selectedTab == MotherNavigationTab.meditation,
-                    onTap: () => _showFeatureNotice(context, 'Rekomendasi'),
+                    inactiveAsset: 'recommendations.svg',
+                    activeAsset: 'recommendations-active.svg',
+                    selectedTab: selectedTab,
+                    onTap: onChatTap,
                     scale: scale,
                   ),
                   _NavigationItem(
                     itemKey: const Key('mother-nav-meditation'),
+                    tab: MotherNavigationTab.meditation,
                     label: 'Meditasi',
-                    asset: 'nav-meditation.svg',
-                    selected: selectedTab == MotherNavigationTab.meditation,
-                    useMeditationAssets:
-                        selectedTab == MotherNavigationTab.meditation,
+                    inactiveAsset: 'meditation.svg',
+                    activeAsset: 'meditation-active.svg',
+                    selectedTab: selectedTab,
                     onTap: onMeditationTap,
                     scale: scale,
                   ),
                   _NavigationItem(
                     itemKey: const Key('logout'),
+                    tab: MotherNavigationTab.profile,
                     label: 'Profil',
-                    asset: 'nav-profile.svg',
-                    useMeditationAssets:
-                        selectedTab == MotherNavigationTab.meditation,
+                    inactiveAsset: 'profile.svg',
+                    activeAsset: 'profile-active.svg',
+                    selectedTab: selectedTab,
                     onTap: onLogout,
                     scale: scale,
                   ),
@@ -106,32 +122,33 @@ void _showFeatureNotice(BuildContext context, String feature) {
 
 class _NavigationItem extends StatelessWidget {
   const _NavigationItem({
+    required this.tab,
     required this.label,
-    required this.asset,
+    required this.inactiveAsset,
+    required this.activeAsset,
+    required this.selectedTab,
     required this.scale,
-    required this.useMeditationAssets,
     this.itemKey,
-    this.selected = false,
     this.onTap,
   });
 
+  final MotherNavigationTab tab;
   final String label;
-  final String asset;
+  final String inactiveAsset;
+  final String activeAsset;
+  final MotherNavigationTab selectedTab;
   final double scale;
-  final bool useMeditationAssets;
   final Key? itemKey;
-  final bool selected;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     double scaled(double value) => value * scale;
-    final assetPath = useMeditationAssets
-        ? 'assets/images/meditation/$asset'
-        : 'assets/images/mother_home/$asset';
+    final selected = selectedTab == tab;
 
     return Semantics(
       button: true,
+      selected: selected,
       label: label,
       child: Material(
         color: Colors.transparent,
@@ -140,6 +157,7 @@ class _NavigationItem extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(scaled(24)),
           child: Container(
+            key: Key('mother-nav-item-${tab.name}'),
             width: scaled(56),
             height: scaled(56),
             alignment: Alignment.center,
@@ -154,13 +172,11 @@ class _NavigationItem extends StatelessWidget {
                 ),
               ],
             ),
-            child: useMeditationAssets
-                ? SvgPicture.asset(assetPath)
-                : SvgPicture.asset(
-                    assetPath,
-                    width: scaled(24),
-                    height: scaled(24),
-                  ),
+            child: SvgPicture.asset(
+              'assets/images/navigation/${selected ? activeAsset : inactiveAsset}',
+              width: scaled(24),
+              height: scaled(24),
+            ),
           ),
         ),
       ),

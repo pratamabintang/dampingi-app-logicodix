@@ -60,6 +60,8 @@ flutter:
   fonts:
     - family: Mona Sans
       fonts:
+        - asset: assets/fonts/mona_sans/MonaSans-Regular.ttf
+          weight: 400
         - asset: assets/fonts/mona_sans/MonaSans-SemiBold.ttf
           weight: 600
   assets:
@@ -83,6 +85,8 @@ flutter:
     - assets/images/mother_home/nav-profile.svg
     - assets/images/mother_home/nav-recommendations.svg
     - assets/images/mother_home/notification.svg
+    - assets/images/chat/
+    - assets/images/navigation/
     - assets/images/meditation/
     - assets/images/role_picker/
 
