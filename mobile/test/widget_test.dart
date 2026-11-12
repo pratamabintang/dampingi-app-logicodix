@@ -475,6 +475,144 @@ void main() {
     expect(find.byKey(const Key('mother-mood-entry-dialog')), findsNothing);
   });
 
+  testWidgets('mother meditation list opens and controls a breathing session', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mother-nav-meditation')));
+    await tester.pumpAndSettle();
+    expect(find.text('Saran hari ini'), findsOneWidget);
+    expect(
+      find.byKey(const Key('mother-meditation-suggestion')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('mother-meditation-activities')),
+      findsOneWidget,
+    );
+    expect(find.text('Meditasi Selamanya'), findsOneWidget);
+    expect(find.byKey(const Key('mother-meditation-activity-4')), findsNothing);
+    expect(
+      find.byKey(const Key('mother-meditation-activity-arrow')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-meditation-suggestion'))),
+      const Size(342, 200),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-meditation-activities'))),
+      const Size(342, 334),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-bottom-navigation'))).height,
+      107,
+    );
+
+    tester.view.physicalSize = const Size(382, 844);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('mother-meditation-suggestion-start')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Meditasi singkat'), findsOneWidget);
+    expect(find.byKey(const Key('mother-breathing-time')), findsOneWidget);
+    expect(find.byKey(const Key('mother-breathing-step-1')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-breathing-time'))),
+      const Size(238, 90),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-breathing-step-card-1'))),
+      const Size(83, 83),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('mother-breathing-decrement'))).dx,
+      lessThan(
+        tester
+            .getTopLeft(find.byKey(const Key('mother-breathing-increment')))
+            .dx,
+      ),
+    );
+    expect(
+      tester
+          .getTopLeft(find.byKey(const Key('mother-breathing-subtract-minute')))
+          .dx,
+      lessThan(
+        tester
+            .getTopLeft(find.byKey(const Key('mother-breathing-add-minute')))
+            .dx,
+      ),
+    );
+    expect(
+      tester.widget<Text>(find.text('1 Menit').first).style?.fontFamily,
+      'Mona Sans',
+    );
+    await tester.tap(find.byKey(const Key('mother-breathing-decrement')));
+    await tester.pumpAndSettle();
+    expect(find.text('02:00'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-breathing-increment')));
+    await tester.pumpAndSettle();
+    expect(find.text('03:00'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-breathing-subtract-minute')));
+    await tester.pumpAndSettle();
+    expect(find.text('02:00'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-breathing-add-minute')));
+    await tester.pumpAndSettle();
+    expect(find.text('03:00'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-breathing-back')));
+    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(320, 640);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .getSize(find.byKey(const Key('mother-meditation-suggestion')))
+          .width,
+      closeTo(320 - 48 * 320 / 390, 0.1),
+    );
+    await tester.tap(
+      find.byKey(const Key('mother-meditation-suggestion-start')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mother-breathing-increment')));
+    await tester.pumpAndSettle();
+    expect(find.text('04:00'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('mother-breathing-start')));
+    await tester.tap(find.byKey(const Key('mother-breathing-start')));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Jeda'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('mother-breathing-reset')));
+    await tester.tap(find.byKey(const Key('mother-breathing-reset')));
+    await tester.pumpAndSettle();
+    expect(find.text('Mulai'), findsOneWidget);
+    expect(find.text('04:00'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const Key('mother-breathing-session-scroll')),
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-breathing-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('mother-meditation-list-scroll')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('failed login and mock network/server errors are friendly', (
     tester,
   ) async {
@@ -555,9 +693,26 @@ void main() {
 
     expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
     expect(find.text('Saya Pendamping Ibu'), findsOneWidget);
-    expect(find.text('👩‍🍼'), findsOneWidget);
-    expect(find.text('👨‍💼'), findsOneWidget);
-    expect(find.text('🩺'), findsOneWidget);
+    expect(find.byKey(const Key('role-emoji-mother')), findsOneWidget);
+    expect(find.byKey(const Key('role-emoji-companion')), findsOneWidget);
+    expect(find.byKey(const Key('role-emoji-professional')), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Pilih Peranmu di Dampingi')).dy, 43);
+    expect(
+      tester
+          .widget<Text>(find.text('Pilih Peranmu di Dampingi'))
+          .style
+          ?.fontFamily,
+      'Mona Sans',
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('role-mother'))),
+      const Size(334, 142),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('role-emoji-mother'))),
+      const Size(36, 36),
+    );
+    expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('role-create-account')), findsOneWidget);
     expect(find.byKey(const Key('role-login')), findsOneWidget);
   });

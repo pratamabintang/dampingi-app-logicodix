@@ -9,6 +9,7 @@ import '../features/auth/view/register_page.dart';
 import '../features/companion/view/companion_page.dart';
 import '../features/doctor/view/doctor_page.dart';
 import '../features/mother/view/mother_page.dart';
+import '../features/mother/view/mother_meditation_pages.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/shared/view/role_picker_page.dart';
 import '../features/shared/view/route_error_page.dart';
@@ -114,6 +115,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/mother/meditation',
+        builder: (context, state) => const MotherMeditationListPage(),
+      ),
+      GoRoute(
+        path: '/mother/meditation/breathing',
+        builder: (context, state) => const MotherBreathingSessionPage(),
+      ),
+      GoRoute(
         path: '/companion',
         builder: (context, state) => const CompanionPage(),
       ),
@@ -129,7 +138,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 AppRole? _roleForLocation(String location) {
   for (final role in AppRole.values) {
-    if (role.location == location) return role;
+    if (role.location == location || location.startsWith('${role.location}/')) {
+      return role;
+    }
   }
   return null;
 }

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../auth/controller/auth_controller.dart';
+import 'mother_navigation.dart';
 
 class MotherPage extends ConsumerWidget {
   const MotherPage({this.showWeeklyEpds = false, super.key});
@@ -87,7 +88,10 @@ class MotherPage extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      _HomeNavigation(
+                      MotherNavigationBar(
+                        selectedTab: MotherNavigationTab.home,
+                        onHomeTap: () => context.go('/mother'),
+                        onMeditationTap: () => context.go('/mother/meditation'),
                         onLogout: () {
                           ref.read(authControllerProvider.notifier).logout();
                           context.go('/roles');
@@ -653,7 +657,7 @@ class _ActivitiesCard extends StatelessWidget {
           _SectionHeading(
             title: 'Saran Aktifitas',
             action: 'Lihat Semua',
-            onTap: () => _showFeatureNotice(context, 'Semua aktivitas'),
+            onTap: () => context.go('/mother/meditation'),
           ),
           SizedBox(height: context.scaled(24)),
           _ActivityRow(showArrow: showWeeklyEpds),
@@ -707,7 +711,8 @@ class _ActivityRow extends StatelessWidget {
           )
         else
           TextButton(
-            onPressed: () => _showFeatureNotice(context, 'Meditasi singkat'),
+            key: const Key('mother-start-meditation'),
+            onPressed: () => context.go('/mother/meditation/breathing'),
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.coralText,
               padding: EdgeInsets.zero,
@@ -724,118 +729,6 @@ class _ActivityRow extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _HomeNavigation extends StatelessWidget {
-  const _HomeNavigation({required this.onLogout});
-
-  final VoidCallback onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('mother-bottom-navigation'),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFDFDFD),
-        border: Border(top: BorderSide(color: Color(0xFFFAFAFA))),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.scaled(32),
-            context.scaled(16),
-            context.scaled(32),
-            context.scaled(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const _NavigationItem(
-                label: 'Beranda',
-                asset: 'nav-home.svg',
-                selected: true,
-              ),
-              _NavigationItem(
-                label: 'Kalender',
-                asset: 'nav-calendar.svg',
-                onTap: () => _showFeatureNotice(context, 'Kalender'),
-              ),
-              _NavigationItem(
-                label: 'Rekomendasi',
-                asset: 'nav-recommendations.svg',
-                onTap: () => _showFeatureNotice(context, 'Rekomendasi'),
-              ),
-              _NavigationItem(
-                label: 'Meditasi',
-                asset: 'nav-meditation.svg',
-                onTap: () => _showFeatureNotice(context, 'Meditasi'),
-              ),
-              _NavigationItem(
-                itemKey: const Key('logout'),
-                label: 'Profil',
-                asset: 'nav-profile.svg',
-                onTap: onLogout,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavigationItem extends StatelessWidget {
-  const _NavigationItem({
-    required this.label,
-    required this.asset,
-    this.itemKey,
-    this.selected = false,
-    this.onTap,
-  });
-
-  final String label;
-  final String asset;
-  final Key? itemKey;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: itemKey,
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(context.scaled(24)),
-          child: Container(
-            width: context.scaled(56),
-            height: context.scaled(56),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.coral : const Color(0xFFFDFDFD),
-              borderRadius: BorderRadius.circular(context.scaled(24)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0D101828),
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
-            ),
-            child: SvgPicture.asset(
-              'assets/images/mother_home/$asset',
-              width: context.scaled(24),
-              height: context.scaled(24),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
