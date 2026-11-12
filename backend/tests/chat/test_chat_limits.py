@@ -17,7 +17,7 @@ from app.chat.schemas import ChatRequest
 from app.chat.service import ChatService, DailyLimitReached, StillAnswering
 from app.chat.store import InMemoryChatStore, SupabaseChatStore
 
-pytestmark = pytest.mark.local
+pytestmark = [pytest.mark.local, pytest.mark.usefixtures("offline_env")]
 
 NADIA = "11111111-1111-4111-8111-111111111111"
 BUDI = "33333333-3333-4333-8333-333333333333"

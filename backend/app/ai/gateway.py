@@ -61,7 +61,7 @@ class AIGateway:
     async def reply(self, system: str, turns: list[Turn]) -> AIReply:
         try:
             raw = await asyncio.wait_for(self.provider.complete(system, turns), self.timeout_s)
-        except TimeoutError as exc:
+        except asyncio.TimeoutError as exc:
             raise AITimeout() from exc
         except AIError:
             raise

@@ -15,7 +15,7 @@ from app.chat.service import ChatService
 from app.chat.store import InMemoryChatStore
 from app.supabase import SupabaseError
 
-pytestmark = pytest.mark.local
+pytestmark = [pytest.mark.local, pytest.mark.usefixtures("offline_env")]
 
 USERS = {
     "tok-nadia": ("11111111-1111-4111-8111-111111111111", "mother"),
