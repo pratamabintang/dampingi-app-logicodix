@@ -461,6 +461,7 @@ class _StoriesCard extends StatelessWidget {
                 story: stories[index],
                 scale: _HomeScale.of(context),
                 keyPrefix: 'mother-story-${stories[index].id}',
+                snippetFontSize: 16,
                 onTap: () => context.push(
                   '/mother/calendar/story',
                   extra: stories[index],
@@ -506,7 +507,7 @@ class _SectionDivider extends StatelessWidget {
       builder: (context, constraints) {
         return SizedBox(
           width: constraints.maxWidth,
-          height: context.scaled(11),
+          height: context.scaled(20),
           child: Align(
             alignment: Alignment.center,
             child: SizedBox(

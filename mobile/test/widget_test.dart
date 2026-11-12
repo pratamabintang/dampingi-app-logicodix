@@ -251,10 +251,14 @@ void main() {
     final narrowStoryArrow = tester.getSize(
       find.byKey(const Key('mother-story-happy-arrow')),
     );
+    final narrowStorySnippet = tester.widget<Text>(
+      find.byKey(const Key('mother-story-very-sad-snippet')),
+    );
     expect(narrowMoodCard.width, lessThan(320));
     expect(narrowStoryFace.fit, BoxFit.contain);
     expect(narrowStoryArrow.width, lessThan(24));
     expect(narrowStoryArrow.height, lessThan(24));
+    expect(narrowStorySnippet.style?.fontSize, closeTo(16 * 320 / 390, 0.01));
     expect(
       tester
           .getSize(find.byKey(const Key('mother-story-very-happy-tile')))
@@ -274,6 +278,10 @@ void main() {
     expect(
       tester.getSize(find.byKey(const Key('mother-story-divider-1'))).width,
       closeTo(narrowStoriesCard.width - (40 * 320 / 390) - 2, 0.1),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-story-divider-1'))).height,
+      closeTo(20 * 320 / 390, 0.01),
     );
     expect(
       tester

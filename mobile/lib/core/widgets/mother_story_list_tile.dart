@@ -87,6 +87,7 @@ class MotherStoryListTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
+                      key: Key('$keyPrefix-title'),
                       story.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -99,6 +100,7 @@ class MotherStoryListTile extends StatelessWidget {
                     ),
                     SizedBox(height: 10 * scale),
                     Text(
+                      key: Key('$keyPrefix-snippet'),
                       story.note,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
