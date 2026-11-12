@@ -33,3 +33,14 @@ Perilaku model sungguhan dicek terpisah dengan `backend/scripts/ai_smoke.py` (me
 | | Kirim dobel bersamaan → satu ditolak (429), satu pasang pesan tersimpan | `test_chat_security.py::test_double_send_stores_one_pair` |
 | | Pesan & jawaban tersimpan dalam satu request (keduanya atau tidak sama sekali) | `test_chat_store.py::test_both_messages_are_inserted_in_one_request` |
 | **Kuota** | 50 pesan / 24 jam per pengguna; yang ditolak tidak memanggil AI | `test_chat_limits.py` |
+
+## Uji di backend yang berjalan (C10)
+
+Dua skrip di `backend/scripts/`, dijalankan manual dari root repo:
+
+| Skrip | Untuk apa | Memakai kuota? |
+|---|---|---|
+| `check_secrets.py` | Tidak ada kunci (Gemini, Supabase secret/service_role, OpenAI) di file yang di-track, `--history` di seluruh riwayat commit, `--apk` di dalam APK; `.env` tidak ikut di-commit; aplikasi tidak memanggil Gemini langsung | Tidak |
+| `chat_live_check.py` | Ujung ke ujung lewat HTTP ke backend sungguhan (`CHAT_CHECK_URL`): login, chat ibu (2 pesan), riwayat, 401/422, pendamping tidak bisa membaca/menulis chat ibu (404), pendamping dijawab tanpa data ibu | Ya, 3 pesan |
+
+Penjaga otomatis: `tests/ai/test_check_secrets.py::test_repository_has_no_secrets` gagal kalau ada kunci yang ter-commit.
