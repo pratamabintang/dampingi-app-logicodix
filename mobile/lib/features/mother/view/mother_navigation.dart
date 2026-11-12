@@ -15,6 +15,7 @@ class MotherNavigationBar extends StatelessWidget {
   const MotherNavigationBar({
     required this.selectedTab,
     required this.onHomeTap,
+    required this.onCalendarTap,
     required this.onChatTap,
     required this.onMeditationTap,
     required this.onLogout,
@@ -23,6 +24,7 @@ class MotherNavigationBar extends StatelessWidget {
 
   final MotherNavigationTab selectedTab;
   final VoidCallback onHomeTap;
+  final VoidCallback onCalendarTap;
   final VoidCallback onChatTap;
   final VoidCallback onMeditationTap;
   final VoidCallback onLogout;
@@ -71,7 +73,7 @@ class MotherNavigationBar extends StatelessWidget {
                     inactiveAsset: 'calendar.svg',
                     activeAsset: 'calendar-active.svg',
                     selectedTab: selectedTab,
-                    onTap: () => _showFeatureNotice(context, 'Kalender'),
+                    onTap: onCalendarTap,
                     scale: scale,
                   ),
                   _NavigationItem(
@@ -112,12 +114,6 @@ class MotherNavigationBar extends StatelessWidget {
       },
     );
   }
-}
-
-void _showFeatureNotice(BuildContext context, String feature) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$feature akan segera tersedia.')));
 }
 
 class _NavigationItem extends StatelessWidget {

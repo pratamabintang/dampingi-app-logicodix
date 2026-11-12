@@ -85,6 +85,7 @@ flutter:
     - assets/images/mother_home/nav-profile.svg
     - assets/images/mother_home/nav-recommendations.svg
     - assets/images/mother_home/notification.svg
+    - assets/images/mother_calendar/
     - assets/images/chat/
     - assets/images/navigation/
     - assets/images/meditation/

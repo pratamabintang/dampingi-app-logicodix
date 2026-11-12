@@ -614,6 +614,30 @@ void main() {
     );
   });
 
+  testWidgets('mother calendar is reachable from the bottom navigation', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mother-nav-item-calendar')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1-7 Agu 2026'), findsOneWidget);
+    expect(
+      find.byKey(const Key('mother-calendar-epds-summary')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('mother-nav-item-calendar')), findsOneWidget);
+  });
+
   testWidgets('mother can open the Figma chat screen without a mock API call', (
     tester,
   ) async {

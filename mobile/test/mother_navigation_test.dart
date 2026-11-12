@@ -23,6 +23,7 @@ void main() {
                 MotherNavigationBar(
                   selectedTab: selectedTab,
                   onHomeTap: () {},
+                  onCalendarTap: () {},
                   onChatTap: () {},
                   onMeditationTap: () {},
                   onLogout: () {},
@@ -36,7 +37,9 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(
-        tester.getSize(find.byKey(const Key('mother-bottom-navigation'))).height,
+        tester
+            .getSize(find.byKey(const Key('mother-bottom-navigation')))
+            .height,
         107,
       );
       for (final tab in MotherNavigationTab.values) {

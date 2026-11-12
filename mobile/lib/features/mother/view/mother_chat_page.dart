@@ -157,6 +157,7 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
                     MotherNavigationBar(
                       selectedTab: MotherNavigationTab.recommendations,
                       onHomeTap: () => context.go('/mother'),
+                      onCalendarTap: () => context.go('/mother/calendar'),
                       onChatTap: () => context.go('/mother/chat'),
                       onMeditationTap: () => context.go('/mother/meditation'),
                       onLogout: () {

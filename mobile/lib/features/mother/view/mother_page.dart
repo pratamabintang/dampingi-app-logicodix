@@ -91,6 +91,7 @@ class MotherPage extends ConsumerWidget {
                       MotherNavigationBar(
                         selectedTab: MotherNavigationTab.home,
                         onHomeTap: () => context.go('/mother'),
+                        onCalendarTap: () => context.go('/mother/calendar'),
                         onChatTap: () => context.go('/mother/chat'),
                         onMeditationTap: () => context.go('/mother/meditation'),
                         onLogout: () {
