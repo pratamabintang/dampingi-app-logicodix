@@ -1,4 +1,6 @@
+import logging
 import os
+import traceback
 from dataclasses import dataclass
 from functools import lru_cache
 from uuid import UUID
@@ -18,9 +20,11 @@ from .store import SupabaseChatStore
 from .context import SupabaseMoodSource
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
 
 CHAT_ROLES = {"mother", "companion"}
 DB_DOWN = "Riwayat chat sedang tidak dapat diakses. Coba lagi nanti."
+UNEXPECTED = "Terjadi kesalahan pada chat. Coba lagi nanti, ya."
 
 
 @dataclass(frozen=True)
@@ -67,6 +71,13 @@ async def _guard(coro):
         raise HTTPException(status_code=503, detail=exc.user_message)
     except SupabaseError:
         raise HTTPException(status_code=503, detail=DB_DOWN)
+    except Exception as exc:
+        # Bug yang tidak terduga: jangan sampai detailnya (yang bisa memuat isi chat)
+        # muncul di respons maupun log. Cukup jenis error dan lokasinya.
+        frame = traceback.extract_tb(exc.__traceback__)[-1]
+        logger.error("Chat error tak terduga: %s di %s:%s",
+                     type(exc).__name__, frame.filename, frame.lineno)
+        raise HTTPException(status_code=500, detail=UNEXPECTED)
 
 
 @router.post("", response_model=ChatResponse, summary="Kirim pesan ke chatbot")
