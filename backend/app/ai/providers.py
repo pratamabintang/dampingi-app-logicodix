@@ -7,7 +7,7 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 
-from .errors import AIBadOutput, AIBusy, AIUnavailable
+from .errors import AIBadOutput, AIBusy, AITimeout, AIUnavailable
 from .gateway import Turn
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,8 @@ class GeminiProvider:
             logger.warning("Gemini menolak permintaan: %s %s", exc.code, exc.status)
             if exc.code == 429:  # kuota / rate limit Gemini habis
                 raise AIBusy() from exc
+            if exc.code == 504:  # DEADLINE_EXCEEDED: Gemini kehabisan waktu di sisinya
+                raise AITimeout() from exc
             raise AIUnavailable() from exc
         text = resp.text
         if not text:  # misalnya diblokir filter keamanan Gemini

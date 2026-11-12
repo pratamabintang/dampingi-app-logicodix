@@ -46,7 +46,8 @@ class FailingModels:
 def gemini_failing(code, status):
     body = {"error": {"code": code, "status": status,
                       "message": f"ditolak untuk key AIza-rahasia: isi-rahasia-ibu"}}
-    exc = genai_errors.ClientError(code, body)
+    error_class = genai_errors.ServerError if code >= 500 else genai_errors.ClientError
+    exc = error_class(code, body)
     client = SimpleNamespace(aio=SimpleNamespace(models=FailingModels(exc)))
     return GeminiProvider(cast(Any, client), "model-x")
 
@@ -58,6 +59,11 @@ def test_gemini_quota_exhausted_is_busy(caplog):
     assert "429 RESOURCE_EXHAUSTED" in caplog.text           # kode tetap tercatat untuk tim
     assert not any(s in caplog.text for s in SECRETS[:2])    # tapi isi pesan Google tidak
 
+def test_gemini_deadline_exceeded_is_timeout(caplog):
+    # Ditemukan di regresi C12: Gemini membalas 504 DEADLINE_EXCEEDED saat lambat.
+    with caplog.at_level(logging.WARNING), pytest.raises(AITimeout):
+        run(AIGateway(gemini_failing(504, "DEADLINE_EXCEEDED")).reply("s", [Turn("user", "halo")]))
+    assert "504 DEADLINE_EXCEEDED" in caplog.text
 
 def test_gemini_other_error_is_unavailable(caplog):
     with caplog.at_level(logging.WARNING), pytest.raises(AIUnavailable):

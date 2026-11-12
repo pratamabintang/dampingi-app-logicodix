@@ -7,6 +7,11 @@ Memakai Supabase dan Gemini sungguhan (3 pesan = 3 jatah kuota). Pesan fiktif sa
     DEMO_COMPANION_EMAIL=... DEMO_COMPANION_PASSWORD=... \\
     python backend/scripts/chat_live_check.py
 
+Akun seed milik B (`python -m app.seed` dari folder backend) bisa langsung dipakai:
+    DEMO_MOTHER_EMAIL=seed.mother@gmail.com          DEMO_MOTHER_PASSWORD='Seed!123'
+    DEMO_COMPANION_EMAIL=seed.companion@gmail.com    DEMO_COMPANION_PASSWORD='Seed!123'
+    DEMO_PROFESSIONAL_EMAIL=seed.professional@gmail.com DEMO_PROFESSIONAL_PASSWORD='Seed!123'
+
 Tambahkan `--register` untuk membuat akun demo kalau belum ada (Supabase LOKAL saja).
 """
 import argparse
@@ -89,6 +94,11 @@ def run(client: httpx.Client, register: bool = False) -> int:
         check(r.status_code == 404, "pendamping TIDAK bisa menulis ke chat ibu (404)")
         r = client.post("/chat", headers=cauth, json={"message": "Bagaimana cara mendukung istriku yang baru melahirkan?"})
         check(r.status_code == 200 and r.json()["context_used"] == [], "pendamping: dijawab AI tanpa data ibu")
+
+    professional = login(client, "PROFESSIONAL", "professional", register)
+    if professional:
+        r = client.post("/chat", headers={"Authorization": f"Bearer {professional}"}, json={"message": "halo"})
+        check(r.status_code == 403, "profesional TIDAK bisa memakai chatbot (403)")
 
     return summary()
 
