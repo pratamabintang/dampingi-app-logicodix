@@ -79,6 +79,11 @@ Isi satu percakapan, urut dari yang terlama.
 | 422 | pesan kosong / terlalu panjang / field asing | tampilkan pesan validasi |
 | 429 | pesan sebelumnya masih diproses, **atau** sudah mencapai batas pesan per 24 jam (default 50) | tampilkan `detail`; nonaktifkan tombol kirim selama menunggu jawaban |
 | 503 | AI atau database sedang bermasalah | tampilkan `detail`, pesan pengguna tetap di kolom input |
+| 500 | bug tak terduga di server (detail tidak pernah ditampilkan) | sama seperti 503 |
+
+Selain `422`, semua error berbentuk `{"detail": "..."}` dengan pesan berbahasa Indonesia yang aman ditampilkan apa adanya.
+Pesan `503` bisa berbeda-beda: AI terlalu lama, AI sedang banyak dipakai (kuota Gemini habis),
+AI menjawab tidak sesuai format, atau database bermasalah. Aplikasi cukup menampilkan `detail`.
 
 ## Batasan chatbot
 
