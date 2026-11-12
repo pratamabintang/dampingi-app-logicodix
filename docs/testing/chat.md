@@ -44,3 +44,30 @@ Dua skrip di `backend/scripts/`, dijalankan manual dari root repo:
 | `chat_live_check.py` | Ujung ke ujung lewat HTTP ke backend sungguhan (`CHAT_CHECK_URL`): login, chat ibu (2 pesan), riwayat, 401/422, pendamping tidak bisa membaca/menulis chat ibu (404), pendamping dijawab tanpa data ibu | Ya, 3 pesan |
 
 Penjaga otomatis: `tests/ai/test_check_secrets.py::test_repository_has_no_secrets` gagal kalau ada kunci yang ter-commit.
+
+## Regresi dan laporan (C12)
+
+```bash
+python backend/scripts/chat_regression.py
+```
+
+Menjalankan ulang semua pengujian di atas dan menulis laporan ke `docs/testing/reports/chat-<tanggal>.md` (commit, versi Python, model, versi prompt, hasil tiap langkah, dan log bila gagal). Smoke test Gemini dan uji HTTP hanya dijalankan bila pengaturannya ada; selain itu tercatat **"tidak dijalankan"**, bukan lulus.
+
+## Keterbatasan yang diketahui
+
+Chatbot versi demo, apa adanya:
+
+| Keterbatasan | Dampak | Mitigasi saat ini |
+|---|---|---|
+| Bukan tenaga kesehatan | Jawaban bisa kurang tepat untuk keluhan medis | Prompt melarang diagnosis/dosis dan mengarahkan ke bidan/dokter; diuji di `ai_smoke.py` |
+| Deteksi tanda bahaya (`urgent`) bergantung pada model | Bisa terlewat bila diungkapkan sangat samar | Kasus jelas diuji di `ai_smoke.py`; batasan chatbot tercantum di `docs/api/chat.md` untuk ditampilkan aplikasi |
+| Perilaku model tidak 100% konsisten | Gaya bahasa atau panjang jawaban bisa berbeda antarpercakapan | Prompt dan konfigurasi dibekukan (`test_chat_prompts.py`); jawaban di luar skema ditolak |
+| Ingatan terbatas | Hanya 10 pesan / 6.000 karakter terakhir dari sesi yang sama yang dikirim ke AI | Disengaja untuk hemat kuota dan minimasi data |
+| Konteks ibu hanya mood | Chatbot tidak membaca jurnal, observasi pendamping, atau catatan profesional | Disengaja (privasi); dikunci `test_chat_privacy.py` |
+| Rentang 7 hari mood dihitung dari tanggal UTC | Bisa mencakup satu hari lebih awal di zona WIB/WITA/WIT | Tetap dibatasi 7 entri terbaru |
+| Pendamping tidak mendapat konteks ibu | Saran untuk pendamping bersifat umum | Konteks berbasis izin ibu belum dibuat |
+| "Satu pesan dalam proses" disimpan di memori proses | Bila backend berjalan lebih dari satu proses/instance, pengaman ini per proses | Demo memakai satu proses; batas harian tetap dari database |
+| Bergantung pada layanan Gemini | Saat kuota habis atau Gemini gangguan, chat tidak menjawab | Pesan 503 yang jelas; tidak ada data tersimpan sehingga bisa kirim ulang |
+| Gemini sesekali lambat (> 20 dtk) | Tercatat di regresi 12 Nov: 1 dari 8 kasus smoke test kena `504 DEADLINE_EXCEEDED` | Dipetakan ke pesan "butuh waktu terlalu lama, kirim ulang" (`AITimeout`); tanpa retry otomatis supaya kuota tidak terbuang |
+| Tier Gemini gratis | Isi permintaan dapat dipakai/ditinjau Google | Demo memakai akun dan isi fiktif; billing disarankan sebelum data sungguhan |
+| Tanpa streaming | Jawaban muncul sekaligus setelah 1–5 dtk | Aplikasi perlu menampilkan indikator menunggu dan menonaktifkan tombol kirim (`docs/api/chat.md`, kode 429) |
