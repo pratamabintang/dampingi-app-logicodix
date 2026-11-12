@@ -1,11 +1,15 @@
 import asyncio
 import json
+import logging
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
-from .errors import AIBadOutput
+from .errors import AIBadOutput, AIBusy, AIUnavailable
 from .gateway import REPLY_JSON_SCHEMA, Turn
+
+logger = logging.getLogger(__name__)
 
 
 class FakeProvider:
@@ -59,9 +63,16 @@ class GeminiProvider:
             response_json_schema=REPLY_JSON_SCHEMA,  # ...dengan bentuk {reply, urgent}
             temperature=self.temperature,
         )
-        resp = await self.client.aio.models.generate_content(
-            model=self.model, contents=[_to_content(t) for t in turns], config=config
-        )
+        try:
+            resp = await self.client.aio.models.generate_content(
+                model=self.model, contents=[_to_content(t) for t in turns], config=config
+            )
+        except genai_errors.APIError as exc:
+            # Catat kode dan status saja. Pesan error Google bisa memuat isi request.
+            logger.warning("Gemini menolak permintaan: %s %s", exc.code, exc.status)
+            if exc.code == 429:  # kuota / rate limit Gemini habis
+                raise AIBusy() from exc
+            raise AIUnavailable() from exc
         text = resp.text
         if not text:  # misalnya diblokir filter keamanan Gemini
             raise AIBadOutput()
