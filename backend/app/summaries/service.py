@@ -1,18 +1,32 @@
-from app.config import get_settings
+import asyncio
+import json
+from functools import lru_cache
+
+from app.ai import AIGateway, AIError, Turn
+from app.ai.config import build_gateway
 from app.moods import service as mood_service
+from app.summaries.prompts import SYSTEM_PROMPT
+from app.summaries.schemas import (
+    MoodSummaryAIOut,
+    MoodSummaryOut,
+    MoodSummaryRequest,
+)
 
-from app.summaries.provider import generate_summary
-from app.summaries.schemas import MoodSummaryOut, MoodSummaryRequest
+
+@lru_cache(maxsize=1)
+def get_summary_gateway() -> AIGateway:
+    return build_gateway()
 
 
-def create_weekly_summary(
+async def create_weekly_summary(
     user_id: str,
     request: MoodSummaryRequest,
 ) -> MoodSummaryOut:
     period_start = request.period_start.isoformat()
     period_end = request.period_end.isoformat()
 
-    mood_result = mood_service.list_moods(
+    mood_result = await asyncio.to_thread(
+        mood_service.list_moods,
         user_id=user_id,
         start_date=period_start,
         end_date=period_end,
@@ -30,30 +44,31 @@ def create_weekly_summary(
             overview=None,
         )
 
-    # Only send dates and numeric mood scores to the AI provider.
-    mood_payload = [
-        {
-            "date": mood.created_at,
-            "mood": mood.mood,
-        }
-        for mood in moods
-    ]
-
-    settings = get_settings()
+    # Only send dates and numeric mood scores to the AI.
+    mood_payload = {
+        "period_start": period_start,
+        "period_end": period_end,
+        "moods": [
+            {
+                "date": mood.created_at,
+                "mood": mood.mood,
+            }
+            for mood in moods
+        ],
+    }
 
     try:
-        overview = generate_summary(
-            moods=mood_payload,
-            period_start=period_start,
-            period_end=period_end,
-            api_key=settings.gemini_api_key,
-            model=settings.gemini_model,
+        result = await get_summary_gateway().generate(
+            system=SYSTEM_PROMPT,
+            turns=[
+                Turn(
+                    role="user",
+                    content=json.dumps(mood_payload, ensure_ascii=False),
+                )
+            ],
+            output=MoodSummaryAIOut,
         )
-
-        if not overview or not overview.strip():
-            raise ValueError("Empty summary")
-
-    except Exception:
+    except AIError:
         return MoodSummaryOut(
             status="unavailable",
             period_start=request.period_start,
@@ -67,5 +82,5 @@ def create_weekly_summary(
         period_start=request.period_start,
         period_end=request.period_end,
         mood_count=mood_count,
-        overview=overview.strip(),
+        overview=result.overview,
     )

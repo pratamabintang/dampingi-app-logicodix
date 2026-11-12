@@ -22,12 +22,12 @@ mother_only = require_role("mother")
         "mood records. Only mood dates and numeric scores are sent to AI."
     ),
 )
-def create_weekly_summary(
+async def create_weekly_summary(
     payload: MoodSummaryRequest,
     session: auth_service.Session = Depends(mother_only),
 ) -> MoodSummaryOut:
     try:
-        return service.create_weekly_summary(
+        return await service.create_weekly_summary(
             user_id=session.user_id,
             request=payload,
         )

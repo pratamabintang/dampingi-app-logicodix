@@ -15,5 +15,8 @@ Rules:
 8. Use neutral, supportive, and non-judgmental language.
 9. Never invent information that is not present in the input.
 
-Return only the summary text.
+Output requirements:
+- Return a JSON object with exactly one field: "overview".
+- The value of "overview" must contain the summary text.
+- Do not include Markdown or additional fields.
 """

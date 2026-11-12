@@ -1,14 +1,17 @@
+import asyncio
+import json
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock
 
 import pytest
 
-from app.summaries.schemas import MoodSummaryRequest
-from app.summaries.service import create_weekly_summary
+from app.ai import AIBusy
 from app.moods.schemas import MoodOut, MoodListOut
+from app.summaries.schemas import MoodSummaryAIOut, MoodSummaryRequest
 
 pytestmark = pytest.mark.local
+
 
 @pytest.fixture
 def summary_request():
@@ -46,89 +49,146 @@ def mock_moods():
     )
 
 
-@patch("app.summaries.service.mood_service.list_moods")
-def test_returns_insufficient_data_when_no_moods(mock_list, summary_request):
-    mock_list.return_value = MoodListOut(
-        moods=[],
-        count=0,
-        offset=0,
-        limit=0,
-        total=0,
+@pytest.fixture
+def mock_gateway():
+    return SimpleNamespace(
+        generate=AsyncMock(
+            return_value=MoodSummaryAIOut(
+                overview="Ringkasan mood mingguan."
+            )
+        )
     )
 
-    with patch("app.summaries.service.generate_summary") as mock_ai:
-        result = create_weekly_summary("user-123", summary_request)
+
+def test_returns_insufficient_data_when_no_moods(
+    monkeypatch, summary_request, mock_gateway
+):
+    from app.summaries import service
+
+    monkeypatch.setattr(
+        service.mood_service,
+        "list_moods",
+        lambda **kwargs: MoodListOut(
+            moods=[],
+            count=0,
+            offset=0,
+            limit=0,
+            total=0,
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "get_summary_gateway",
+        lambda: mock_gateway,
+    )
+
+    result = asyncio.run(
+        service.create_weekly_summary("user-123", summary_request)
+    )
 
     assert result.status == "insufficient_data"
     assert result.mood_count == 0
     assert result.overview is None
-    mock_ai.assert_not_called()
+    mock_gateway.generate.assert_not_awaited()
 
 
-@patch("app.summaries.service.get_settings")
-@patch("app.summaries.service.generate_summary")
-@patch("app.summaries.service.mood_service.list_moods")
-def test_returns_complete_summary(mock_list, mock_ai, mock_settings, summary_request, mock_moods):
-    mock_list.return_value = mock_moods
-    mock_ai.return_value = "Ringkasan mood mingguan."
-    mock_settings.return_value = SimpleNamespace(
-        gemini_api_key="fake-test-key",
-        gemini_model="gemini-3.1-flash-lite",
+def test_returns_complete_summary(
+    monkeypatch, summary_request, mock_moods, mock_gateway
+):
+    from app.summaries import service
+
+    monkeypatch.setattr(
+        service.mood_service,
+        "list_moods",
+        lambda **kwargs: mock_moods,
+    )
+    monkeypatch.setattr(
+        service,
+        "get_summary_gateway",
+        lambda: mock_gateway,
     )
 
-    result = create_weekly_summary("user-123", summary_request)
+    result = asyncio.run(
+        service.create_weekly_summary("user-123", summary_request)
+    )
 
     assert result.status == "complete"
     assert result.mood_count == 2
     assert result.overview == "Ringkasan mood mingguan."
 
-    mock_ai.assert_called_once_with(
-        moods=[
+    mock_gateway.generate.assert_awaited_once()
+
+    call = mock_gateway.generate.call_args.kwargs
+
+    assert call["output"] is MoodSummaryAIOut
+    assert call["turns"][0].role == "user"
+
+    payload = json.loads(call["turns"][0].content)
+
+    assert payload == {
+        "period_start": "2026-11-04",
+        "period_end": "2026-11-10",
+        "moods": [
             {"date": "2026-11-09", "mood": 4},
             {"date": "2026-11-08", "mood": 3},
         ],
-        period_start="2026-11-04",
-        period_end="2026-11-10",
-        api_key="fake-test-key",
-        model="gemini-3.1-flash-lite",
-    )
+    }
 
 
-@patch("app.summaries.service.get_settings")
-@patch("app.summaries.service.generate_summary")
-@patch("app.summaries.service.mood_service.list_moods")
 def test_returns_unavailable_when_ai_fails(
-    mock_list, mock_ai, mock_settings, summary_request, mock_moods
+    monkeypatch, summary_request, mock_moods, mock_gateway
 ):
-    mock_list.return_value = mock_moods
-    mock_ai.side_effect = RuntimeError("Gemini unavailable")
-    mock_settings.return_value = SimpleNamespace(
-        gemini_api_key="fake-test-key",
-        gemini_model="gemini-3.1-flash-lite",
+    from app.summaries import service
+
+    mock_gateway.generate.side_effect = AIBusy()
+
+    monkeypatch.setattr(
+        service.mood_service,
+        "list_moods",
+        lambda **kwargs: mock_moods,
+    )
+    monkeypatch.setattr(
+        service,
+        "get_summary_gateway",
+        lambda: mock_gateway,
     )
 
-    result = create_weekly_summary("user-123", summary_request)
+    result = asyncio.run(
+        service.create_weekly_summary("user-123", summary_request)
+    )
 
     assert result.status == "unavailable"
     assert result.mood_count == 2
     assert result.overview is None
 
 
-@patch("app.summaries.service.get_settings")
-@patch("app.summaries.service.generate_summary")
-@patch("app.summaries.service.mood_service.list_moods")
 def test_does_not_send_private_descriptions_to_ai(
-    mock_list, mock_ai, mock_settings, summary_request, mock_moods
+    monkeypatch, summary_request, mock_moods, mock_gateway
 ):
-    mock_list.return_value = mock_moods
-    mock_ai.return_value = "Ringkasan."
-    mock_settings.return_value = SimpleNamespace(
-        gemini_api_key="fake-test-key",
-        gemini_model="gemini-3.1-flash-lite",
+    from app.summaries import service
+
+    monkeypatch.setattr(
+        service.mood_service,
+        "list_moods",
+        lambda **kwargs: mock_moods,
+    )
+    monkeypatch.setattr(
+        service,
+        "get_summary_gateway",
+        lambda: mock_gateway,
     )
 
-    create_weekly_summary("user-123", summary_request)
+    asyncio.run(
+        service.create_weekly_summary("user-123", summary_request)
+    )
 
-    sent_moods = mock_ai.call_args.kwargs["moods"]
+    sent_payload = json.loads(
+        mock_gateway.generate.call_args.kwargs["turns"][0].content
+    )
 
-    assert all("description" not in mood for mood in sent_moods)
+    assert all(
+        "description" not in mood
+        for mood in sent_payload["moods"]
+    )
+    assert "Private note" not in str(sent_payload)
+    assert "Another private note" not in str(sent_payload)

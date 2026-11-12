@@ -42,7 +42,7 @@ def summary_client(offline_env):
 def test_create_weekly_summary_success(summary_client, monkeypatch):
     client, session = summary_client
 
-    def mock_create_summary(user_id, request):
+    async def mock_create_summary(user_id, request):
         assert user_id == session.user_id
         assert request.period_start == date(2026, 11, 4)
         assert request.period_end == date(2026, 11, 10)
