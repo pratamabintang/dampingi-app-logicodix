@@ -58,7 +58,7 @@ class _RolePickerContent extends StatelessWidget {
           constraints: BoxConstraints(minHeight: constraints.maxHeight),
           child: IntrinsicHeight(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 19, 24, 24),
+              padding: const EdgeInsets.fromLTRB(28, 43, 28, 44),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -122,7 +122,10 @@ class _RolePickerContent extends StatelessWidget {
                             height: 24 / 16,
                           ),
                         ),
-                        child: const Text('Masuk'),
+                        child: const Text(
+                          'Masuk',
+                          style: TextStyle(fontFamily: 'Mona Sans'),
+                        ),
                       ),
                     ],
                   ),
@@ -146,7 +149,8 @@ class _RolePickerHeader extends StatelessWidget {
         Text(
           'Pilih Peranmu di Dampingi',
           textAlign: TextAlign.center,
-          style: GoogleFonts.dmSans(
+          style: const TextStyle(
+            fontFamily: 'Mona Sans',
             color: AppTheme.coral,
             fontSize: 24,
             fontWeight: FontWeight.w600,
@@ -189,7 +193,7 @@ class _RoleCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 23),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
             border: selected
@@ -201,15 +205,11 @@ class _RoleCard extends StatelessWidget {
               CircleAvatar(
                 radius: 47,
                 backgroundColor: selected ? AppTheme.pink2 : AppTheme.gray200,
-                child: Text(
-                  _roleEmoji(role),
+                child: SvgPicture.asset(
+                  'assets/images/role_picker/${_roleAsset(role)}',
                   key: Key('role-emoji-${role.value}'),
-                  style: GoogleFonts.dmSans(
-                    color: AppTheme.ink,
-                    fontSize: 36,
-                    height: 44 / 36,
-                    letterSpacing: -0.72,
-                  ),
+                  width: 36,
+                  height: 36,
                 ),
               ),
               const SizedBox(width: 24),
@@ -281,8 +281,8 @@ String _roleDescription(AppRole role) => switch (role) {
   AppRole.professional => 'Lihat ringkasan tren perkembangan ibu',
 };
 
-String _roleEmoji(AppRole role) => switch (role) {
-  AppRole.mother => '👩‍🍼',
-  AppRole.companion => '👨‍💼',
-  AppRole.professional => '🩺',
+String _roleAsset(AppRole role) => switch (role) {
+  AppRole.mother => 'mother.svg',
+  AppRole.companion => 'companion.svg',
+  AppRole.professional => 'professional.svg',
 };

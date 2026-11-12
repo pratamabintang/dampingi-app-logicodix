@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/app_role.dart';
+import '../../../services/backend_api.dart';
 import '../../../services/role_repository.dart';
 import '../models/login_models.dart';
+import '../repositories/auth_repository.dart';
 import '../repositories/mock_auth_repository.dart';
 
 final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(
@@ -52,7 +54,7 @@ class AuthController extends AsyncNotifier<AuthState> {
 
     try {
       final response = await ref
-          .read(mockAuthRepositoryProvider)
+          .read(authRepositoryProvider)
           .login(
             request: LoginRequest(email: email.trim(), password: password),
             selectedRole: selectedRole,
@@ -92,6 +94,20 @@ class AuthController extends AsyncNotifier<AuthState> {
         current,
         'Respons masuk tidak dapat digunakan. Silakan coba lagi.',
       );
+    } on ApiConfigurationException catch (error) {
+      return _setFailure(current, error.message);
+    } on ApiNetworkException catch (error) {
+      return _setFailure(current, error.message);
+    } on BackendApiException catch (error) {
+      if (error.statusCode == 401) {
+        return _setFailure(current, 'Email atau kata sandi tidak benar.');
+      }
+      return _setFailure(current, error.message);
+    } on ApiResponseFormatException {
+      return _setFailure(
+        current,
+        'Respons masuk tidak dapat digunakan. Silakan coba lagi.',
+      );
     }
   }
 
@@ -113,7 +129,7 @@ class AuthController extends AsyncNotifier<AuthState> {
 
     try {
       await ref
-          .read(mockAuthRepositoryProvider)
+          .read(authRepositoryProvider)
           .register(
             request: RegisterRequest(
               name: name.trim(),
@@ -140,6 +156,23 @@ class AuthController extends AsyncNotifier<AuthState> {
       return _setRegistrationFailure(
         current,
         'Layanan sedang bermasalah. Coba lagi beberapa saat.',
+      );
+    } on ApiConfigurationException catch (error) {
+      return _setRegistrationFailure(current, error.message);
+    } on ApiNetworkException catch (error) {
+      return _setRegistrationFailure(current, error.message);
+    } on BackendApiException catch (error) {
+      if (error.statusCode == 409) {
+        return _setRegistrationFailure(
+          current,
+          'Email sudah terdaftar. Silakan masuk dengan akun tersebut.',
+        );
+      }
+      return _setRegistrationFailure(current, error.message);
+    } on ApiResponseFormatException {
+      return _setRegistrationFailure(
+        current,
+        'Respons pendaftaran tidak dapat digunakan. Silakan coba lagi.',
       );
     }
   }

@@ -13,6 +13,7 @@ class DampingiApp extends ConsumerWidget {
     return MaterialApp.router(
       title: AppConfig.appName,
       theme: AppTheme.light,
+      debugShowCheckedModeBanner: false,
       routerConfig: ref.watch(appRouterProvider),
     );
   }

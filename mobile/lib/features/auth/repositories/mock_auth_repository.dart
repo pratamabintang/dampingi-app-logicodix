@@ -1,11 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../models/login_models.dart';
 import '../../../models/app_role.dart';
-
-final mockAuthRepositoryProvider = Provider<MockAuthRepository>(
-  (ref) => MockAuthRepository(),
-);
+import 'auth_repository.dart';
 
 sealed class MockAuthException implements Exception {
   const MockAuthException();
@@ -23,15 +18,11 @@ class MockServerException extends MockAuthException {
   const MockServerException();
 }
 
-class RoleMismatchException extends MockAuthException {
-  const RoleMismatchException();
-}
-
 class EmailAlreadyRegisteredException extends MockAuthException {
   const EmailAlreadyRegisteredException();
 }
 
-class MockAuthRepository {
+class MockAuthRepository implements AuthRepository {
   MockAuthRepository({this.latency = const Duration(milliseconds: 350)})
     : _users = {
         'demo.mother@dampingi.test': const _MockAccount(
@@ -60,6 +51,7 @@ class MockAuthRepository {
 
   static const _demoPassword = 'demo1234';
 
+  @override
   Future<LoginResponse> login({
     required LoginRequest request,
     required AppRole selectedRole,
@@ -93,6 +85,7 @@ class MockAuthRepository {
     });
   }
 
+  @override
   Future<void> register({required RegisterRequest request}) async {
     await Future<void>.delayed(latency);
 

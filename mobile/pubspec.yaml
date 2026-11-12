@@ -57,12 +57,39 @@ flutter:
   # included with your application, so that you can use the icons in
   # the Material Icons class.
   uses-material-design: true
+  fonts:
+    - family: Mona Sans
+      fonts:
+        - asset: assets/fonts/mona_sans/MonaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/mona_sans/MonaSans-SemiBold.ttf
+          weight: 600
   assets:
     - assets/fixtures/profiles-select-2026-11-09.json
     - assets/images/login_hero.png
     - assets/images/role_selected_check.svg
     - assets/images/splash_illustration.png
     - assets/images/splash_illustration_mask.svg
+    - assets/images/mother_home/avatar-a.png
+    - assets/images/mother_home/arrow-right.svg
+    - assets/images/mother_home/close.svg
+    - assets/images/mother_home/divider.svg
+    - assets/images/mother_home/mood-happy.svg
+    - assets/images/mother_home/mood-neutral.svg
+    - assets/images/mother_home/mood-sad.svg
+    - assets/images/mother_home/mood-very-happy.svg
+    - assets/images/mother_home/mood-very-sad.svg
+    - assets/images/mother_home/nav-calendar.svg
+    - assets/images/mother_home/nav-home.svg
+    - assets/images/mother_home/nav-meditation.svg
+    - assets/images/mother_home/nav-profile.svg
+    - assets/images/mother_home/nav-recommendations.svg
+    - assets/images/mother_home/notification.svg
+    - assets/images/mother_calendar/
+    - assets/images/chat/
+    - assets/images/navigation/
+    - assets/images/meditation/
+    - assets/images/role_picker/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
