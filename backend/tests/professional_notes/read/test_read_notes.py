@@ -276,3 +276,57 @@ def test_invalid_list_parameters_are_422(
     resp = client.get("/professional-notes", headers=AUTH, params=params)
 
     assert resp.status_code == 422, resp.text
+
+def test_one_professionals_caseload_stays_apart_per_connection(
+    mock_client, professional_notes_table, as_author
+):
+    client = _client(mock_client, as_author, CONNECTIONS_PROFESSIONAL)
+    first = _active()
+    second = _active(mother=CONNECTIONS_OTHER_MOTHER)
+    first_note = professional_note_row(first["id"])
+    second_note = professional_note_row(second["id"])
+    professional_notes_table(
+        connections=[first, second],
+        professional_notes=[first_note, second_note],
+    )
+
+    filtered = client.get(
+        "/professional-notes",
+        headers=AUTH,
+        params={"connection_id": first["id"]},
+    )
+    assert filtered.status_code == 200, filtered.text
+    assert [note["id"] for note in filtered.json()["notes"]] == [first_note["id"]]
+
+    whole_caseload = client.get("/professional-notes", headers=AUTH)
+    assert whole_caseload.status_code == 200, whole_caseload.text
+    assert {note["id"] for note in whole_caseload.json()["notes"]} == {
+        first_note["id"],
+        second_note["id"],
+    }
+
+
+def test_a_replacement_professional_does_not_inherit_the_prior_notes(
+    mock_client, professional_notes_table, as_author
+):
+    previous = _active(professional=CONNECTIONS_OTHER_PROFESSIONAL)
+    previous["ended_at"] = "2026-11-18T12:00:00+00:00"
+    current = _active()  # same Mother, CONNECTIONS_PROFESSIONAL, active
+    old_note = professional_note_row(previous["id"])
+    professional_notes_table(
+        connections=[previous, current],
+        professional_notes=[old_note],
+    )
+    client = mock_client[0]
+
+    as_author(CONNECTIONS_PROFESSIONAL)
+    replacement = client.get(f"/professional-notes/{old_note['id']}", headers=AUTH)
+    assert replacement.status_code == 404, replacement.text
+
+    as_author(CONNECTIONS_OTHER_PROFESSIONAL)
+    author = client.get(f"/professional-notes/{old_note['id']}", headers=AUTH)
+    assert author.status_code == 200, author.text
+
+    as_author(CONNECTIONS_MOTHER)
+    mother = client.get(f"/professional-notes/{old_note['id']}", headers=AUTH)
+    assert mother.status_code == 200, mother.text

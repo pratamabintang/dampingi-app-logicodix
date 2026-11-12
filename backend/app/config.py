@@ -1,7 +1,10 @@
+from pathlib import Path
 from typing import Optional
 
 from pydantic import AliasChoices, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
+
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -24,7 +27,7 @@ class Settings(BaseSettings):
         )
     )
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
 
     @property
     def is_development(self) -> bool:
