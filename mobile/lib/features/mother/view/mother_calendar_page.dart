@@ -10,7 +10,6 @@ import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/mother_story_list_tile.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/controller/auth_controller.dart';
 import '../models/mother_story.dart';
 import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
@@ -114,10 +113,7 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                           onChatTap: () => context.go('/mother/chat'),
                           onMeditationTap: () =>
                               context.go('/mother/meditation'),
-                          onLogout: () {
-                            ref.read(authControllerProvider.notifier).logout();
-                            context.go('/roles');
-                          },
+                          onProfileTap: () => context.go('/mother/profile'),
                         ),
                       ],
                     ),

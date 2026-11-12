@@ -112,10 +112,7 @@ class MotherPage extends ConsumerWidget {
                         onCalendarTap: () => context.go('/mother/calendar'),
                         onChatTap: () => context.go('/mother/chat'),
                         onMeditationTap: () => context.go('/mother/meditation'),
-                        onLogout: () {
-                          ref.read(authControllerProvider.notifier).logout();
-                          context.go('/roles');
-                        },
+                        onProfileTap: () => context.go('/mother/profile'),
                       ),
                     ],
                   ),

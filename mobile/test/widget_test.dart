@@ -16,6 +16,7 @@ import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
+import 'package:mobile/features/mother/view/mother_profile_page.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/shared/view/role_picker_page.dart';
 import 'package:mobile/features/shared/view/route_error_page.dart';
@@ -229,7 +230,10 @@ void main() {
     expect(find.byKey(const Key('mother-mood-card')), findsOneWidget);
     expect(find.byKey(const Key('mother-epds-card')), findsNothing);
     expect(find.byKey(const Key('mother-bottom-navigation')), findsOneWidget);
-    expect(tester.getSize(find.byKey(const Key('logout'))).width, 56);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-nav-profile'))).width,
+      56,
+    );
 
     tester.view.physicalSize = const Size(320, 640);
     await tester.pumpAndSettle();
@@ -289,20 +293,23 @@ void main() {
           .right,
       lessThan(narrowStoriesCard.right),
     );
-    expect(tester.getSize(find.byKey(const Key('logout'))).width, lessThan(56));
     expect(
-      tester.getRect(find.byKey(const Key('logout'))).right,
+      tester.getSize(find.byKey(const Key('mother-nav-profile'))).width,
+      lessThan(56),
+    );
+    expect(
+      tester.getRect(find.byKey(const Key('mother-nav-profile'))).right,
       lessThan(320),
     );
 
     tester.view.physicalSize = const Size(430, 844);
     await tester.pumpAndSettle();
     expect(
-      tester.getSize(find.byKey(const Key('logout'))).width,
+      tester.getSize(find.byKey(const Key('mother-nav-profile'))).width,
       greaterThan(56),
     );
     expect(
-      tester.getRect(find.byKey(const Key('logout'))).right,
+      tester.getRect(find.byKey(const Key('mother-nav-profile'))).right,
       lessThan(430),
     );
 
@@ -369,7 +376,15 @@ void main() {
     GoRouter.of(tester.element(find.byType(MotherPage))).go('/mother');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('logout')));
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('mother-profile-scroll')),
+      const Offset(0, -1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('mother-profile-logout')));
+    await tester.tap(find.byKey(const Key('mother-profile-logout')));
     await tester.pumpAndSettle();
     await selectRoleAndOpenLogin(tester, role: 'companion');
     await enterCredentials(
@@ -717,6 +732,69 @@ void main() {
     expect(find.byKey(const Key('mother-chat-input')), findsOneWidget);
   });
 
+  testWidgets('mother profile matches Figma and its privacy toggles work', (
+    tester,
+  ) async {
+    await startApp(tester, viewport: const Size(390, 1237));
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MotherProfilePage), findsOneWidget);
+    expect(find.text('Dampingi'), findsOneWidget);
+    expect(find.text('Ibu Demo'), findsOneWidget);
+    expect(find.text('demo.mother@dampingi.test'), findsOneWidget);
+    expect(find.text('Kode Pendampingan : K4DSTP'), findsOneWidget);
+    expect(
+      find.text('Pilih data yang boleh dilihat orang yang terhubung'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('mother-profile-companion-enzokulin')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('mother-profile-companion-indra')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-information-card'))),
+      const Size(342, 369),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-permissions-card'))),
+      const Size(342, 494),
+    );
+    final toggleKey = find.byKey(
+      const Key('mother-profile-toggle-enzokulin-weekly-summary'),
+    );
+    await tester.tap(toggleKey);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const Key('mother-profile-toggle-enzokulin-weekly-summary-off'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.drag(
+      find.byKey(const Key('mother-profile-scroll')),
+      const Offset(0, -1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('mother-profile-logout')));
+    await tester.tap(find.byKey(const Key('mother-profile-logout')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
+  });
+
   testWidgets('mother can open the Figma chat screen without a mock API call', (
     tester,
   ) async {
@@ -1029,7 +1107,15 @@ void main() {
     await tester.tap(find.byKey(const Key('login-submit')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('logout')));
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('mother-profile-scroll')),
+      const Offset(0, -1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('mother-profile-logout')));
+    await tester.tap(find.byKey(const Key('mother-profile-logout')));
     await tester.pumpAndSettle();
     expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
 

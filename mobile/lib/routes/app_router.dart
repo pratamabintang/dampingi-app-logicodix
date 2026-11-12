@@ -14,6 +14,7 @@ import '../features/mother/view/mother_calendar_page.dart';
 import '../features/mother/view/mother_story_detail_page.dart';
 import '../features/mother/view/mother_meditation_pages.dart';
 import '../features/mother/models/mother_story.dart';
+import '../features/mother/view/mother_profile_page.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/shared/view/role_picker_page.dart';
 import '../features/shared/view/route_error_page.dart';
@@ -129,6 +130,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/mother/calendar',
         builder: (context, state) => const MotherCalendarPage(),
+      ),
+      GoRoute(
+        path: '/mother/profile',
+        builder: (context, state) => const MotherProfilePage(),
       ),
       GoRoute(
         path: '/mother/calendar/story',
