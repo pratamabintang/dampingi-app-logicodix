@@ -127,7 +127,7 @@ def test_without_mood_source_chat_still_works():
 
 def test_mood_prompt_has_safety_rules():
     version, text = build_system_prompt("mother", [{"date": "2026-11-09", "mood": 2}])
-    assert version == "chat-mother-mood-v1"
+    assert version == "chat-mother-mood-v2"
     assert PROMPTS["mother"][1] in text
     assert "BUKAN hasil pemeriksaan" in text
     assert "BUKAN berarti ibu baik-baik saja" in text
