@@ -6,10 +6,9 @@ import pytest
 
 from app.summaries.schemas import MoodSummaryRequest
 from app.summaries.service import create_weekly_summary
-
+from app.moods.schemas import MoodOut, MoodListOut
 
 pytestmark = pytest.mark.local
-
 
 @pytest.fixture
 def summary_request():
@@ -21,15 +20,41 @@ def summary_request():
 
 @pytest.fixture
 def mock_moods():
-    return [
-        SimpleNamespace(created_at="2026-11-09", mood=4, description="Private note"),
-        SimpleNamespace(created_at="2026-11-08", mood=3, description="Another private note"),
+    moods = [
+        MoodOut(
+            id="mood-1",
+            user_id="user-123",
+            created_at="2026-11-09",
+            mood=4,
+            description="Private note",
+        ),
+        MoodOut(
+            id="mood-2",
+            user_id="user-123",
+            created_at="2026-11-08",
+            mood=3,
+            description="Another private note",
+        ),
     ]
+
+    return MoodListOut(
+        moods=moods,
+        count=2,
+        offset=0,
+        limit=2,
+        total=2,
+    )
 
 
 @patch("app.summaries.service.mood_service.list_moods")
 def test_returns_insufficient_data_when_no_moods(mock_list, summary_request):
-    mock_list.return_value = []
+    mock_list.return_value = MoodListOut(
+        moods=[],
+        count=0,
+        offset=0,
+        limit=0,
+        total=0,
+    )
 
     with patch("app.summaries.service.generate_summary") as mock_ai:
         result = create_weekly_summary("user-123", summary_request)

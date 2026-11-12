@@ -12,13 +12,14 @@ def create_weekly_summary(
     period_start = request.period_start.isoformat()
     period_end = request.period_end.isoformat()
 
-    moods = mood_service.list_moods(
+    mood_result = mood_service.list_moods(
         user_id=user_id,
         start_date=period_start,
         end_date=period_end,
     )
 
-    mood_count = len(moods)
+    moods = mood_result.moods
+    mood_count = mood_result.count
 
     if mood_count == 0:
         return MoodSummaryOut(
