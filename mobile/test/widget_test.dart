@@ -636,6 +636,27 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('mother-nav-item-calendar')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-calendar-day-Sab')));
+    await tester.pumpAndSettle();
+    final storyRow = find.byKey(const Key('mother-calendar-story-row-0'));
+    await tester.ensureVisible(storyRow);
+    await tester.tap(storyRow);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Anda merasa sangat sedih'), findsOneWidget);
+    expect(find.text('Ringkasan AI'), findsOneWidget);
+    expect(find.byKey(const Key('mother-story-open-chat')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-story-detail-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Cerita terakhirmu'), findsOneWidget);
+
+    await tester.ensureVisible(storyRow);
+    await tester.tap(storyRow);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-story-open-chat')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mother-chat-input')), findsOneWidget);
   });
 
   testWidgets('mother can open the Figma chat screen without a mock API call', (

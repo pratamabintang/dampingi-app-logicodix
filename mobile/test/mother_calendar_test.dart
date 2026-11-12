@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile/core/theme/app_theme.dart';
 import 'package:mobile/features/mother/view/mother_calendar_page.dart';
+import 'package:mobile/features/mother/view/mother_story_detail_page.dart';
 
 void main() {
   testWidgets('calendar shows weekly overview and selected-day design', (
@@ -34,11 +35,26 @@ void main() {
     );
     expect(mondayExpression.width, closeTo(32.3235, 0.001));
     expect(mondayExpression.height, closeTo(16.6992, 0.001));
+    final tuesdayExpression = tester.getSize(
+      find.byKey(const Key('mother-calendar-expression-Sel')),
+    );
+    expect(tuesdayExpression.width, closeTo(31.6212, 0.001));
+    expect(tuesdayExpression.height, closeTo(15.0165, 0.001));
     final thursdayExpression = tester.getSize(
       find.byKey(const Key('mother-calendar-expression-Kam')),
     );
     expect(thursdayExpression.width, closeTo(31.6192, 0.001));
     expect(thursdayExpression.height, closeTo(9.1278, 0.001));
+    final fridayExpression = tester.getSize(
+      find.byKey(const Key('mother-calendar-expression-Jum')),
+    );
+    expect(fridayExpression.width, closeTo(31.6752, 0.001));
+    expect(fridayExpression.height, closeTo(15.0167, 0.001));
+    final saturdayExpression = tester.getSize(
+      find.byKey(const Key('mother-calendar-expression-Sab')),
+    );
+    expect(saturdayExpression.width, closeTo(32.3745, 0.001));
+    expect(saturdayExpression.height, closeTo(15.0168, 0.001));
     final sundayExpression = tester.getSize(
       find.byKey(const Key('mother-calendar-expression-Min')),
     );
@@ -70,13 +86,68 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('mother-calendar-story-face-5')),
+      find.byKey(const Key('mother-calendar-story-face-0')),
       findsOneWidget,
     );
     final unselectedDay = tester.widget<Container>(
       find.byKey(const Key('mother-calendar-day-Sab')),
     );
     expect((unselectedDay.decoration! as BoxDecoration).border, isNull);
+  });
+
+  testWidgets('story detail matches the Figma content and expands the note', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: MotherStoryDetailPage())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Senin, 12 Agustus 2026'), findsOneWidget);
+    expect(find.text('Anda merasa sangat sedih'), findsOneWidget);
+    expect(find.text('Ringkasan AI'), findsOneWidget);
+    expect(find.text('Hal Kecil yang berarti'), findsOneWidget);
+    expect(find.text('Buka di chat AI'), findsOneWidget);
+    expect(find.text('Ubah catatan mood'), findsOneWidget);
+
+    final storyText = tester.widget<Text>(
+      find.byKey(const Key('mother-story-detail-text')),
+    );
+    expect(storyText.maxLines, 1);
+    await tester.tap(find.byKey(const Key('mother-story-toggle-text')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('mother-story-detail-text')))
+          .maxLines,
+      isNull,
+    );
+    expect(find.text('Lihat lebih sedikit'), findsOneWidget);
+
+    final editMoodButton = find.byKey(const Key('mother-story-edit-mood'));
+    await tester.scrollUntilVisible(
+      editMoodButton,
+      120,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const Key('mother-story-detail-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(editMoodButton);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mother-mood-entry-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-close')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('week arrows update the date range and show an empty state', (

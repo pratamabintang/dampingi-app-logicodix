@@ -314,7 +314,7 @@ class _MoodCard extends StatelessWidget {
             height: context.scaled(48),
             child: FilledButton(
               key: const Key('mother-record-mood'),
-              onPressed: () => _showMoodEntry(context),
+              onPressed: () => showMotherMoodEntry(context),
               style: FilledButton.styleFrom(
                 minimumSize: Size.fromHeight(context.scaled(48)),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -741,7 +741,7 @@ void _showFeatureNotice(BuildContext context, String feature) {
     ..showSnackBar(SnackBar(content: Text('$feature akan segera tersedia.')));
 }
 
-Future<void> _showMoodEntry(BuildContext context) {
+Future<void> showMotherMoodEntry(BuildContext context) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,

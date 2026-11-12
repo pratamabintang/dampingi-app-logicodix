@@ -85,6 +85,8 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                                 stories: _storiesForSelection(),
                                 showEmptyMessage:
                                     !_isSampleWeek || _selectedDay != null,
+                                onStoryTap: () =>
+                                    context.push('/mother/calendar/story'),
                               ),
                             ],
                           ),
@@ -333,7 +335,7 @@ class _MoodDay extends StatelessWidget {
               children: [
                 if (mood != null)
                   Positioned(
-                    top: scale(13.5),
+                    top: scale(mood!.top),
                     child: _MoodIcon(
                       key: Key('mother-calendar-expression-$day'),
                       mood: mood!,
@@ -439,10 +441,15 @@ class _EpdsSummaryCard extends StatelessWidget {
 }
 
 class _StoriesCard extends StatelessWidget {
-  const _StoriesCard({required this.stories, required this.showEmptyMessage});
+  const _StoriesCard({
+    required this.stories,
+    required this.showEmptyMessage,
+    required this.onStoryTap,
+  });
 
   final List<_StoryPreview> stories;
   final bool showEmptyMessage;
+  final VoidCallback onStoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -481,7 +488,7 @@ class _StoriesCard extends StatelessWidget {
             )
           else
             for (var index = 0; index < stories.length; index++) ...[
-              _StoryRow(story: stories[index], index: index),
+              _StoryRow(story: stories[index], index: index, onTap: onStoryTap),
               if (index < stories.length - 1)
                 _StorySeparator(
                   key: Key('mother-calendar-story-separator-$index'),
@@ -495,89 +502,106 @@ class _StoriesCard extends StatelessWidget {
 }
 
 class _StoryRow extends StatelessWidget {
-  const _StoryRow({required this.story, required this.index});
+  const _StoryRow({
+    required this.story,
+    required this.index,
+    required this.onTap,
+  });
 
   final _StoryPreview story;
   final int index;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scale = context.calendarScale;
     final faceHeight = scale(story.faceHeight);
-    return Row(
-      children: [
-        SizedBox(
-          key: Key('mother-calendar-story-face-$index'),
-          width: scale(83),
-          height: scale(83),
-          child: Stack(
+    return Semantics(
+      button: true,
+      label: 'Buka cerita Hal Kecil yang berarti',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: Key('mother-calendar-story-row-$index'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(scale(16)),
+          child: Row(
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.pink2,
-                  borderRadius: BorderRadius.circular(scale(32)),
+              SizedBox(
+                key: Key('mother-calendar-story-face-$index'),
+                width: scale(83),
+                height: scale(83),
+                child: Stack(
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppTheme.pink2,
+                        borderRadius: BorderRadius.circular(scale(32)),
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                    Positioned(
+                      left: scale(15),
+                      top: scale(15),
+                      child: Container(
+                        width: scale(54),
+                        height: scale(53),
+                        decoration: BoxDecoration(
+                          color: story.color,
+                          borderRadius: BorderRadius.circular(scale(12)),
+                        ),
+                        alignment: Alignment.center,
+                        child: SvgPicture.asset(
+                          'assets/images/mother_home/${story.faceAsset}',
+                          width: scale(38),
+                          height: faceHeight,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: const SizedBox.expand(),
               ),
-              Positioned(
-                left: scale(15),
-                top: scale(15),
-                child: Container(
-                  width: scale(54),
-                  height: scale(53),
-                  decoration: BoxDecoration(
-                    color: story.color,
-                    borderRadius: BorderRadius.circular(scale(12)),
-                  ),
-                  alignment: Alignment.center,
-                  child: SvgPicture.asset(
-                    'assets/images/mother_home/${story.faceAsset}',
-                    width: scale(38),
-                    height: faceHeight,
-                  ),
+              SizedBox(width: scale(16)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Hal Kecil yang berarti',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: const Color(0xFF252B37),
+                        fontSize: scale(14),
+                        fontWeight: FontWeight.w600,
+                        height: 20 / 14,
+                      ),
+                    ),
+                    SizedBox(height: scale(10)),
+                    Text(
+                      'Senang karena ada suami yang',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: scale(16),
+                        height: 24 / 16,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              SizedBox(width: scale(16)),
+              SvgPicture.asset(
+                'assets/images/mother_calendar/story-arrow-right.svg',
+                width: scale(24),
+                height: scale(24),
               ),
             ],
           ),
         ),
-        SizedBox(width: scale(16)),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Hal Kecil yang berarti',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: const Color(0xFF252B37),
-                  fontSize: scale(14),
-                  fontWeight: FontWeight.w600,
-                  height: 20 / 14,
-                ),
-              ),
-              SizedBox(height: scale(10)),
-              Text(
-                'Senang karena ada suami yang',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppTheme.muted,
-                  fontSize: scale(16),
-                  height: 24 / 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: scale(16)),
-        SvgPicture.asset(
-          'assets/images/mother_calendar/story-arrow-right.svg',
-          width: scale(24),
-          height: scale(24),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -637,13 +661,13 @@ String _indonesianMonth(int month) => switch (month) {
 const _weekDays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
 const _weekMoods = <_MoodPreview>[
-  _MoodPreview(color: Color(0xFFB093C4), asset: 'sen.svg'),
-  _MoodPreview(color: Color(0xFFA2B1EA), asset: 'sel.svg'),
-  _MoodPreview(color: Color(0xFFF5F5F5), neutralEyes: true),
-  _MoodPreview(color: Color(0xFFDDD6CA), asset: 'kam.svg'),
-  _MoodPreview(color: Color(0xFFAFEAAB), asset: 'jum.svg'),
-  _MoodPreview(color: Color(0xFFAFEAAB), asset: 'sab.svg'),
-  _MoodPreview(color: Color(0xFFFBE567), asset: 'min.svg'),
+  _MoodPreview(color: Color(0xFFB093C4), asset: 'sen.svg', top: 15.14),
+  _MoodPreview(color: Color(0xFFA2B1EA), asset: 'sel.svg', top: 15.14),
+  _MoodPreview(color: Color(0xFFF5F5F5), neutralEyes: true, top: 13.46),
+  _MoodPreview(color: Color(0xFFDDD6CA), asset: 'kam.svg', top: 15.14),
+  _MoodPreview(color: Color(0xFFAFEAAB), asset: 'jum.svg', top: 15.14),
+  _MoodPreview(color: Color(0xFFAFEAAB), asset: 'sab.svg', top: 15.14),
+  _MoodPreview(color: Color(0xFFFBE567), asset: 'min.svg', top: 15.14),
 ];
 
 const _weeklyStories = <_StoryPreview>[
@@ -684,11 +708,13 @@ class _MoodPreview {
     required this.color,
     this.asset,
     this.neutralEyes = false,
+    this.top = 15.14,
   });
 
   final Color color;
   final String? asset;
   final bool neutralEyes;
+  final double top;
 }
 
 class _StoryPreview {
