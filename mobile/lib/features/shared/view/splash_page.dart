@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_header.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -46,16 +46,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
           children: [
             const _SplashIllustration(),
             const SizedBox(height: 24),
-            Text(
-              'Dampingi',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.coral,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                height: 32 / 24,
-                letterSpacing: 0,
-              ),
-            ),
+            const AppBrandMark(),
           ],
         ),
       ),

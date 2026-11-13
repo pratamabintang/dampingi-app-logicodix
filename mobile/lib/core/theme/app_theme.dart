@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppTheme {
+  static const fontFamily = 'Mona Sans';
   static const coral = Color(0xFFFDA29B);
   static const coralText = Color(0xFFF97066);
   static const coralLight = Color(0xFFFEE4E2);
@@ -21,6 +21,7 @@ abstract final class AppTheme {
   ];
 
   static final light = ThemeData(
+    fontFamily: fontFamily,
     colorScheme: ColorScheme.fromSeed(
       seedColor: coral,
       primary: coral,
@@ -48,11 +49,15 @@ abstract final class AppTheme {
         fontWeight: FontWeight.w600,
         height: 24 / 16,
       ),
-    ).apply(fontFamily: GoogleFonts.dmSans().fontFamily),
+    ).apply(fontFamily: fontFamily),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      hintStyle: GoogleFonts.dmSans(color: secondary, fontSize: 16),
+      hintStyle: TextStyle(
+        fontFamily: fontFamily,
+        color: secondary,
+        fontSize: 16,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -83,7 +88,8 @@ abstract final class AppTheme {
         elevation: 1,
         shadowColor: const Color(0x0D101828),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: GoogleFonts.dmSans(
+        textStyle: const TextStyle(
+          fontFamily: fontFamily,
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
@@ -92,7 +98,10 @@ abstract final class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: coral,
-        textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     ),
   );

@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_password_field.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -76,7 +76,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     final baseTheme = Theme.of(context);
     final pageTheme = baseTheme.copyWith(
       inputDecorationTheme: baseTheme.inputDecorationTheme.copyWith(
-        hintStyle: GoogleFonts.dmSans(
+        hintStyle: const TextStyle(
+          fontFamily: AppTheme.fontFamily,
           color: AppTheme.secondary,
           fontSize: 16,
           height: 24 / 16,
@@ -197,21 +198,13 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       children: [
         Column(
           children: [
-            Text(
-              'Dampingi',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                color: AppTheme.coral,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                height: 32 / 24,
-              ),
-            ),
+            const AppBrandMark(),
             const SizedBox(height: 10),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
+              style: const TextStyle(
+                fontFamily: AppTheme.fontFamily,
                 color: AppTheme.muted,
                 fontSize: 16,
                 height: 24 / 16,
@@ -230,7 +223,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                 key: Key('reset-submit-${widget.stage.name}'),
                 label: buttonLabel,
                 onPressed: _submit,
-                textStyle: GoogleFonts.dmSans(
+                textStyle: const TextStyle(
+                  fontFamily: AppTheme.fontFamily,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   height: 24 / 16,
@@ -243,7 +237,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                 children: [
                   Text(
                     'Belum punya akun?',
-                    style: GoogleFonts.dmSans(
+                    style: const TextStyle(
+                      fontFamily: AppTheme.fontFamily,
                       color: AppTheme.secondary,
                       fontSize: 14,
                       height: 20 / 14,
@@ -257,7 +252,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                       minimumSize: Size.zero,
                       padding: EdgeInsets.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      textStyle: GoogleFonts.dmSans(
+                      textStyle: const TextStyle(
+                        fontFamily: AppTheme.fontFamily,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         height: 20 / 14,
@@ -325,14 +321,16 @@ String? _validateDemoCode(String? value) {
   return null;
 }
 
-final _fieldLabelStyle = GoogleFonts.dmSans(
+const _fieldLabelStyle = TextStyle(
+  fontFamily: AppTheme.fontFamily,
   color: AppTheme.body,
   fontSize: 14,
   fontWeight: FontWeight.w500,
   height: 20 / 14,
 );
 
-final _fieldTextStyle = GoogleFonts.dmSans(
+const _fieldTextStyle = TextStyle(
+  fontFamily: AppTheme.fontFamily,
   color: AppTheme.body,
   fontSize: 16,
   height: 24 / 16,

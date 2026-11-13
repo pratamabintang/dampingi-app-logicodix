@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_error.dart';
@@ -97,7 +96,8 @@ class _RolePickerContent extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          textStyle: GoogleFonts.dmSans(
+                          textStyle: const TextStyle(
+                            fontFamily: AppTheme.fontFamily,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             height: 24 / 16,
@@ -116,7 +116,8 @@ class _RolePickerContent extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          textStyle: GoogleFonts.dmSans(
+                          textStyle: const TextStyle(
+                            fontFamily: AppTheme.fontFamily,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             height: 24 / 16,
@@ -124,7 +125,7 @@ class _RolePickerContent extends StatelessWidget {
                         ),
                         child: const Text(
                           'Masuk',
-                          style: TextStyle(fontFamily: 'Mona Sans'),
+                          style: TextStyle(fontFamily: AppTheme.fontFamily),
                         ),
                       ),
                     ],
@@ -150,7 +151,7 @@ class _RolePickerHeader extends StatelessWidget {
           'Pilih Peranmu di Dampingi',
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'Mona Sans',
+            fontFamily: AppTheme.fontFamily,
             color: AppTheme.coral,
             fontSize: 24,
             fontWeight: FontWeight.w600,
@@ -161,7 +162,8 @@ class _RolePickerHeader extends StatelessWidget {
         Text(
           'Bersama merawat kesehatan mental ibu dan keluarga pasca-melahirkan.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.dmSans(
+          style: const TextStyle(
+            fontFamily: AppTheme.fontFamily,
             color: AppTheme.muted,
             fontSize: 16,
             height: 24 / 16,
@@ -226,7 +228,8 @@ class _RoleCard extends StatelessWidget {
                             _roleTitle(role),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
+                            style: const TextStyle(
+                              fontFamily: AppTheme.fontFamily,
                               color: AppTheme.ink,
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -238,7 +241,8 @@ class _RoleCard extends StatelessWidget {
                             _roleDescription(role),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
+                            style: const TextStyle(
+                              fontFamily: AppTheme.fontFamily,
                               color: AppTheme.gray500,
                               fontSize: 16,
                               height: 24 / 16,

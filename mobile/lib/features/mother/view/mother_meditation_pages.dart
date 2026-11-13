@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_header.dart';
 import 'mother_navigation.dart';
 
 class MotherMeditationListPage extends ConsumerWidget {
@@ -49,20 +50,7 @@ class MotherMeditationListPage extends ConsumerWidget {
                           scaled(24),
                         ),
                         children: [
-                          SizedBox(
-                            height: scaled(56),
-                            child: Center(
-                              child: Text(
-                                'Dampingi',
-                                style: TextStyle(
-                                  color: AppTheme.coral,
-                                  fontSize: scaled(24),
-                                  fontWeight: FontWeight.w600,
-                                  height: 32 / 24,
-                                ),
-                              ),
-                            ),
-                          ),
+                          AppBrandHeader(scale: scaled),
                           SizedBox(height: scaled(36)),
                           _SuggestionCard(
                             scale: scale,
@@ -695,7 +683,7 @@ class _DurationAdjustmentButton extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Mona Sans',
+                    fontFamily: AppTheme.fontFamily,
                     color: AppTheme.coralText,
                     fontSize: 16 * scale,
                     fontWeight: FontWeight.w600,
