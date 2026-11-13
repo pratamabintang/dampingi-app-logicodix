@@ -16,6 +16,12 @@ LOGIN_PER_ACCOUNT = 10
 REGISTER_PER_ADDRESS = 10
 REGISTER_PER_ACCOUNT = 5
 
+VERIFY_PER_ADDRESS = 30
+VERIFY_PER_ACCOUNT = 10
+
+RESEND_PER_ADDRESS = 5
+RESEND_PER_ACCOUNT = 3
+
 REDEEM_PER_USER = 10
 
 
@@ -99,9 +105,31 @@ def record_login(request: Request, email: str) -> Optional[int]:
 
 
 def record_registration(request: Request, email: str) -> None:
+    _record_pair("register", request, email, REGISTER_PER_ADDRESS, REGISTER_PER_ACCOUNT)
+
+
+def record_verification(request: Request, email: str) -> None:
+    _record_pair("verify", request, email, VERIFY_PER_ADDRESS, VERIFY_PER_ACCOUNT)
+
+
+def record_resend(request: Request, email: str) -> None:
+    _record_pair("resend", request, email, RESEND_PER_ADDRESS, RESEND_PER_ACCOUNT)
+
+
+def _record_pair(
+    scope_prefix: str, request: Request, email: str, per_address: int, per_account: int
+) -> None:
     for scope, key, limit in (
-        ("register:address", f"register:address:{caller_address(request)}", REGISTER_PER_ADDRESS),
-        ("register:account", f"register:account:{_normalise(email)}", REGISTER_PER_ACCOUNT),
+        (
+            f"{scope_prefix}:address",
+            f"{scope_prefix}:address:{caller_address(request)}",
+            per_address,
+        ),
+        (
+            f"{scope_prefix}:account",
+            f"{scope_prefix}:account:{_normalise(email)}",
+            per_account,
+        ),
     ):
         retry = _hit(scope, key, limit)
         if retry is not None:

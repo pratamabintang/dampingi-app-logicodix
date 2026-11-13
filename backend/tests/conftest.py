@@ -75,6 +75,21 @@ def supabase_env():
     return base_url
 
 
+@pytest.fixture(scope="session")
+def email_confirmation_on(supabase_env):
+    """Whether the project requires confirming an address before login."""
+    import httpx
+
+    resp = httpx.get(
+        f"{supabase_env}/auth/v1/settings",
+        headers={"apikey": os.environ["SUPABASE_PUBLISHABLE_KEY"]},
+        timeout=10,
+    )
+    if resp.status_code >= 400:
+        pytest.skip(f"auth settings not reachable: {resp.status_code}")
+    return not resp.json().get("mailer_autoconfirm", True)
+
+
 @pytest.fixture(autouse=True)
 def _no_throttle():
     from app import throttle
@@ -121,6 +136,31 @@ def pytest_sessionfinish(session, exitstatus):
         pass
 
 
+def _confirm_email(client, email: str) -> str:
+    """Finish the email-confirmation flow using an admin-minted code.
+
+    The live suite has no mailbox, so the code comes from the admin API
+    (`generate_link`) instead of from the email Supabase sent.
+    """
+    from app.auth import supabase
+
+    code = supabase.generate_signup_otp(email)
+    resp = client.post("/auth/verify-email", json={"email": email, "token": code})
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
+def _adopt_existing(client, email: str, password: str) -> tuple:
+    """Token plus `/me` view for an account that already exists."""
+    login = client.post("/auth/login", json={"email": email, "password": password})
+    token = login.json()["access_token"] if login.status_code == 200 else ""
+    if not token:
+        token = _confirm_email(client, email)
+    me = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200, me.text
+    return me.json(), token
+
+
 @pytest.fixture
 def register(client, unique_email, tracked_users):
 
@@ -130,21 +170,45 @@ def register(client, unique_email, tracked_users):
         role: str = "mother",
     ):
         email = unique_email()
-        resp = client.post(
-            "/auth/register",
-            json={"name": name, "email": email, "password": password, "role": role},
-        )
-        if resp.status_code == 400 and "rate limit" in resp.text.lower():
+
+        def _post():
+            return client.post(
+                "/auth/register",
+                json={
+                    "name": name,
+                    "email": email,
+                    "password": password,
+                    "role": role,
+                },
+            )
+
+        resp = _post()
+        if resp.status_code == 503 and "unreachable" in resp.text.lower():
+            # A dropped connection says nothing about whether the account was
+            # created. One retry tells a flake from a real outage: a lost
+            # first attempt comes back as `409` and is adopted below, a real
+            # outage comes back `503` again and fails the test.
+            resp = _post()
+        if resp.status_code == 429 or (
+            resp.status_code == 400 and "rate limit" in resp.text.lower()
+        ):
             pytest.fail(
                 "Supabase rate limit hit (per-IP Auth throttle). The suite "
                 "makes ~110 auth calls per run, so back-to-back runs trip it. "
                 "Wait ~5 minutes and rerun (see docs/supabase-setup.md, "
                 "Troubleshooting)."
             )
+        if resp.status_code == 409:
+            user, token = _adopt_existing(client, email, password)
+            tracked_users.append(user["id"])
+            return email, user, token
         assert resp.status_code == 201, resp.text
         body = resp.json()
         tracked_users.append(body["user"]["id"])
-        return email, body["user"], body["access_token"]
+        token = body["access_token"]
+        if token is None:
+            token = _confirm_email(client, email)
+        return email, body["user"], token
 
     return _register
 

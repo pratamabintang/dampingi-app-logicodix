@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import pytest
 
 pytestmark = pytest.mark.live
@@ -14,19 +12,26 @@ def test_register_creates_user_session_and_profile(
     assert access_token
 
 
-def test_register_duplicate_gmail_conflicts(client, supabase_env, tracked_users):
-    email = f"pytest.{uuid4().hex[:12]}@gmail.com"
-    payload = {
-        "name": "Dup",
-        "email": email,
-        "password": "Sup3rSecure!",
-        "role": "mother",
-    }
-    first = client.post("/auth/register", json=payload)
-    assert first.status_code == 201, first.text
-    tracked_users.append(first.json()["user"]["id"])
-    second = client.post("/auth/register", json=payload)
-    assert second.status_code == 409, second.text
+def test_register_duplicate_gmail_conflicts(client, supabase_env, register):
+    """A confirmed address is refused, whichever shape Supabase answers with.
+
+    With confirmation on, Supabase answers `200` plus a fabricated user
+    instead of an error; the backend recognises it and still says `409`.
+    """
+    email, _, _ = register(name="Dup")
+
+    resp = client.post(
+        "/auth/register",
+        json={
+            "name": "Dup",
+            "email": email,
+            "password": "Sup3rSecure!",
+            "role": "mother",
+        },
+    )
+
+    assert resp.status_code == 409, resp.text
+    assert "already registered" in resp.json()["detail"].lower()
 
 
 def test_register_rejects_non_gmail(client, supabase_env, unique_email):
