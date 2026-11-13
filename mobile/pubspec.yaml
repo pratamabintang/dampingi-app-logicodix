@@ -74,9 +74,14 @@ flutter:
     - assets/images/mother_home/arrow-right.svg
     - assets/images/mother_home/close.svg
     - assets/images/mother_home/divider.svg
+    - assets/images/mother_home/mood-daily-happy.svg
+    - assets/images/mother_home/mood-daily-very-happy.svg
+    - assets/images/mother_home/mood-daily-very-sad.svg
     - assets/images/mother_home/mood-happy.svg
     - assets/images/mother_home/mood-neutral.svg
     - assets/images/mother_home/mood-sad.svg
+    - assets/images/mother_home/mood-unset-eye-left.png
+    - assets/images/mother_home/mood-unset-eye-right.png
     - assets/images/mother_home/mood-very-happy.svg
     - assets/images/mother_home/mood-very-sad.svg
     - assets/images/mother_home/nav-calendar.svg

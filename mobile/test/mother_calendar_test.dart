@@ -6,6 +6,7 @@ import 'package:mobile/core/theme/app_theme.dart';
 import 'package:mobile/features/mother/models/mother_story.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/mother/view/mother_calendar_page.dart';
+import 'package:mobile/features/mother/view/mother_meditation_pages.dart';
 import 'package:mobile/features/mother/view/mother_story_detail_page.dart';
 
 import 'mother_story_test_data.dart';
@@ -143,6 +144,32 @@ void main() {
     expect(brand.style?.fontSize, 24);
   });
 
+  testWidgets('calendar brand position matches the activity suggestions page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _withStoryFixture(const MaterialApp(home: MotherCalendarPage())),
+    );
+    await tester.pumpAndSettle();
+    final calendarLogoRect = tester.getRect(find.text('Dampingi'));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        key: UniqueKey(),
+        child: const MaterialApp(home: MotherMeditationListPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final activitiesLogoRect = tester.getRect(find.text('Dampingi'));
+
+    expect(calendarLogoRect, activitiesLogoRect);
+  });
+
   testWidgets('story detail matches the Figma content and expands the note', (
     tester,
   ) async {
@@ -231,6 +258,16 @@ void main() {
     expect(
       find.byKey(const Key('mother-calendar-empty-stories')),
       findsOneWidget,
+    );
+    final unsetMoodDay = tester.widget<Container>(
+      find.byKey(const Key('mother-calendar-day-Sen')),
+    );
+    final unsetMoodDecoration = unsetMoodDay.decoration! as BoxDecoration;
+    expect(unsetMoodDecoration.color, AppTheme.unselectedSurface);
+    expect(unsetMoodDecoration.borderRadius, BorderRadius.circular(12));
+    expect(
+      find.byKey(const Key('mother-calendar-expression-Sen')),
+      findsNothing,
     );
     expect(tester.takeException(), isNull);
   });
