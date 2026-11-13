@@ -214,6 +214,38 @@ def admin_confirm_user(user_id: str) -> dict:
     return resp.json()
 
 
+def admin_create_user(
+    name: str,
+    email: str,
+    password: str,
+    role: str,
+    timezone: str = "Asia/Jakarta",
+) -> dict:
+    """Create a confirmed account without sending a confirmation email.
+
+    The live suite needs a few hundred authenticated fixtures per run.
+    `POST /auth/register` mails a code for every one of them, which would
+    spend the project's whole send quota on tests. This admin call sends
+    nothing; the `handle_new_user` trigger still writes the Profile row
+    from the metadata, exactly as a signup would.
+    """
+    resp = _request(
+        _client().post,
+        f"{_base_url()}/auth/v1/admin/users",
+        headers=supabase_service_http(),
+        json={
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {"name": name, "role": role, "timezone": timezone},
+        },
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    return resp.json()
+
+
 def revoke_sessions(user_token: str, scope: str = "global") -> None:
     resp = _request(
         _client().post,

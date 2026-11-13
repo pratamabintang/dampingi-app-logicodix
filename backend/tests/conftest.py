@@ -150,65 +150,44 @@ def _confirm_email(client, email: str) -> str:
     return resp.json()["access_token"]
 
 
-def _adopt_existing(client, email: str, password: str) -> tuple:
-    """Token plus `/me` view for an account that already exists."""
-    login = client.post("/auth/login", json={"email": email, "password": password})
-    token = login.json()["access_token"] if login.status_code == 200 else ""
-    if not token:
-        token = _confirm_email(client, email)
-    me = client.get("/me", headers={"Authorization": f"Bearer {token}"})
-    assert me.status_code == 200, me.text
-    return me.json(), token
-
-
 @pytest.fixture
 def register(client, unique_email, tracked_users):
+    """A confirmed account plus a session, created without sending email.
+
+    The admin API creates the account with `email_confirm: true`, so nothing
+    is mailed. The suite builds a few hundred accounts per run, and every
+    `POST /auth/register` would mail a confirmation code, spending the
+    project's whole send quota on tests. The route itself is still covered
+    live by `tests/auth/register/test_register.py` and offline by
+    `tests/auth/offline/`.
+    """
 
     def _register(
         name: str = "Test User",
         password: str = "Sup3rSecure!",
         role: str = "mother",
+        timezone: str = "Asia/Jakarta",
     ):
+        from app.auth import supabase
+
         email = unique_email()
+        user = supabase.admin_create_user(
+            name=name,
+            email=email,
+            password=password,
+            role=role,
+            timezone=timezone,
+        )
+        tracked_users.append(user["id"])
 
-        def _post():
-            return client.post(
-                "/auth/register",
-                json={
-                    "name": name,
-                    "email": email,
-                    "password": password,
-                    "role": role,
-                },
-            )
-
-        resp = _post()
-        if resp.status_code == 503 and "unreachable" in resp.text.lower():
-            # A dropped connection says nothing about whether the account was
-            # created. One retry tells a flake from a real outage: a lost
-            # first attempt comes back as `409` and is adopted below, a real
-            # outage comes back `503` again and fails the test.
-            resp = _post()
-        if resp.status_code == 429 or (
-            resp.status_code == 400 and "rate limit" in resp.text.lower()
-        ):
-            pytest.fail(
-                "Supabase rate limit hit (per-IP Auth throttle). The suite "
-                "makes ~110 auth calls per run, so back-to-back runs trip it. "
-                "Wait ~5 minutes and rerun (see docs/supabase-setup.md, "
-                "Troubleshooting)."
-            )
-        if resp.status_code == 409:
-            user, token = _adopt_existing(client, email, password)
-            tracked_users.append(user["id"])
-            return email, user, token
-        assert resp.status_code == 201, resp.text
-        body = resp.json()
-        tracked_users.append(body["user"]["id"])
-        token = body["access_token"]
-        if token is None:
-            token = _confirm_email(client, email)
-        return email, body["user"], token
+        login = client.post(
+            "/auth/login", json={"email": email, "password": password}
+        )
+        assert login.status_code == 200, login.text
+        token = login.json()["access_token"]
+        me = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+        assert me.status_code == 200, me.text
+        return email, me.json(), token
 
     return _register
 
