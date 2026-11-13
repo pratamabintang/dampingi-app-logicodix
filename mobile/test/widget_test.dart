@@ -500,10 +500,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
     expect(find.text('Halo, dr. Maya Estiyanti'), findsOneWidget);
+    expect(find.text('Senin, 28 Oktober 2026'), findsOneWidget);
+    expect(find.byKey(const Key('doctor-home-avatar')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-invitation-card')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-invite-patient')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-patients-card')), findsOneWidget);
     expect(find.byKey(const Key('doctor-bottom-navigation')), findsOneWidget);
+    final notificationIcon = tester.widget<SvgPicture>(
+      find.descendant(
+        of: find.byKey(const Key('doctor-home-notifications')),
+        matching: find.byType(SvgPicture),
+      ),
+    );
+    expect(notificationIcon.width, 19.478);
+    expect(notificationIcon.height, 22);
     for (final tab in DoctorNavigationTab.values) {
       expect(find.byKey(Key('doctor-nav-item-${tab.name}')), findsOneWidget);
     }
+    expect(find.text('Cari nama pasien'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('doctor-patient-search')));
+    await tester.enterText(
+      find.byKey(const Key('doctor-patient-search')),
+      'Menunggu persetujuan',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .getSize(find.byKey(const Key('doctor-patient-search-composer')))
+          .height,
+      53,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('doctor-patient-search-button'))),
+      const Size(36, 36),
+    );
+    expect(find.byKey(const Key('doctor-patient-search-icon')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-patient-search-button')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(const Key('doctor-patient-search')),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .focusNode
+          .hasFocus,
+      isFalse,
+    );
+    expect(find.byKey(const Key('doctor-patient-row-0')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('doctor-patient-row-0')),
+        matching: find.text('Menunggu persetujuan'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Ringkasan Belum ditinjau'), findsNothing);
   });
 
   testWidgets('companion links a mother and browses its dashboard tabs', (

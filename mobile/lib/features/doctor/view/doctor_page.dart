@@ -126,6 +126,7 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                             searchController: _searchController,
                             searchFocusNode: _searchFocusNode,
                             patients: patients,
+                            onSearch: _searchPatients,
                             onSearchChanged: (value) {
                               setState(() => _searchQuery = value);
                             },
@@ -156,6 +157,11 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _searchPatients() {
+    _searchFocusNode.unfocus();
+    setState(() => _searchQuery = _searchController.text);
   }
 }
 
@@ -196,8 +202,8 @@ class _DoctorHeader extends StatelessWidget {
           ),
           icon: SvgPicture.asset(
             'assets/images/mother_home/notification.svg',
-            width: 24 * scale,
-            height: 24 * scale,
+            width: 19.478 * scale,
+            height: 22 * scale,
           ),
         ),
       ],
@@ -278,6 +284,7 @@ class _PatientsCard extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.patients,
+    required this.onSearch,
     required this.onSearchChanged,
   });
 
@@ -285,6 +292,7 @@ class _PatientsCard extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final List<_DoctorPatient> patients;
+  final VoidCallback onSearch;
   final ValueChanged<String> onSearchChanged;
 
   @override
@@ -308,7 +316,8 @@ class _PatientsCard extends StatelessWidget {
           ),
           SizedBox(height: 16 * scale),
           SizedBox(
-            height: 54 * scale,
+            key: const Key('doctor-patient-search-composer'),
+            height: 53 * scale,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -316,53 +325,72 @@ class _PatientsCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8 * scale),
                 boxShadow: AppTheme.inputShadow,
               ),
+              padding: EdgeInsets.symmetric(
+                horizontal: 14 * scale,
+                vertical: 7.5 * scale,
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      key: const Key('doctor-patient-search'),
-                      controller: searchController,
-                      focusNode: searchFocusNode,
-                      onChanged: onSearchChanged,
-                      textInputAction: TextInputAction.search,
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontFamily,
-                        color: AppTheme.body,
-                        fontSize: 16 * scale,
-                        height: 24 / 16,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Masukan nama pasien',
-                        hintStyle: TextStyle(
-                          fontFamily: AppTheme.fontFamily,
-                          color: AppTheme.secondary,
-                          fontSize: 16 * scale,
-                          height: 24 / 16,
-                        ),
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14 * scale,
+                    child: SizedBox(
+                      height: 36 * scale,
+                      child: Center(
+                        child: TextField(
+                          key: const Key('doctor-patient-search'),
+                          controller: searchController,
+                          focusNode: searchFocusNode,
+                          onChanged: onSearchChanged,
+                          onSubmitted: (_) => onSearch(),
+                          maxLines: 1,
+                          textAlignVertical: TextAlignVertical.center,
+                          textInputAction: TextInputAction.search,
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontFamily,
+                            color: AppTheme.body,
+                            fontSize: 16 * scale,
+                            height: 24 / 16,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama pasien',
+                            hintStyle: TextStyle(
+                              fontFamily: AppTheme.fontFamily,
+                              color: AppTheme.secondary,
+                              fontSize: 16 * scale,
+                              height: 24 / 16,
+                            ),
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(right: 8 * scale),
+                  SizedBox(width: 8 * scale),
+                  Semantics(
+                    button: true,
+                    label: 'Cari pasien',
                     child: Material(
                       color: AppTheme.coral,
                       borderRadius: BorderRadius.circular(8 * scale),
                       child: InkWell(
                         key: const Key('doctor-patient-search-button'),
-                        onTap: searchFocusNode.requestFocus,
+                        onTap: onSearch,
                         borderRadius: BorderRadius.circular(8 * scale),
                         child: SizedBox(
                           width: 36 * scale,
                           height: 36 * scale,
-                          child: Icon(
-                            Icons.search,
-                            color: Colors.white,
-                            size: 24 * scale,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/images/doctor/search.svg',
+                              key: const Key('doctor-patient-search-icon'),
+                              width: 20 * scale,
+                              height: 20 * scale,
+                            ),
                           ),
                         ),
                       ),
@@ -416,7 +444,6 @@ class _DoctorPatientRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: key,
       padding: EdgeInsets.all(8 * scale),
       decoration: BoxDecoration(
         color: AppTheme.selectedSurface,
