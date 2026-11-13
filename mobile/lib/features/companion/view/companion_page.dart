@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
@@ -8,6 +9,7 @@ import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../mother/view/mother_navigation.dart';
+import 'companion_extra_pages.dart';
 
 class CompanionPage extends ConsumerStatefulWidget {
   const CompanionPage({super.key});
@@ -22,14 +24,8 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userName = ref
-        .watch(authControllerProvider)
-        .asData
-        ?.value
-        .session
-        ?.user
-        .name
-        ?.trim();
+    final user = ref.watch(authControllerProvider).asData?.value.session?.user;
+    final userName = user?.name?.trim();
     final greetingName = userName == null || userName.isEmpty
         ? 'Jhon doe'
         : userName;
@@ -77,13 +73,44 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                                 () => _screen = _CompanionScreen.observations,
                               ),
                             ),
+                          _CompanionScreen.support =>
+                              CompanionSupportPage(
+                                scale: scale,
+                              onAction: (action) =>
+                                  _showNotice(context, action),
+                            ),
+                          _CompanionScreen.profile =>
+                              CompanionProfilePage(
+                                scale: scale,
+                              userName: greetingName,
+                              email: user?.email ?? '',
+                              onEdit: () =>
+                                  _showNotice(context, 'Ubah profil'),
+                              onEnterCode: () {
+                                if (_hasMother) {
+                                  _showNotice(context, 'Ibu sudah terhubung.');
+                                } else {
+                                  _startMotherAssignment(scale);
+                                }
+                              },
+                              onLogout: _logout,
+                            ),
                         },
                       ),
                       if (!isDetail)
                         MotherNavigationBar(
-                          selectedTab: _screen == _CompanionScreen.observations
-                              ? MotherNavigationTab.calendar
-                              : MotherNavigationTab.home,
+                          selectedTab: switch (_screen) {
+                            _CompanionScreen.home =>
+                              MotherNavigationTab.home,
+                            _CompanionScreen.observations =>
+                              MotherNavigationTab.calendar,
+                            _CompanionScreen.support =>
+                              MotherNavigationTab.meditation,
+                            _CompanionScreen.profile =>
+                              MotherNavigationTab.profile,
+                            _CompanionScreen.noteDetail =>
+                              MotherNavigationTab.calendar,
+                          },
                           onHomeTap: () => setState(
                             () => _screen = _CompanionScreen.home,
                           ),
@@ -91,14 +118,20 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             () => _screen = _CompanionScreen.observations,
                           ),
                           onChatTap: () =>
-                              _showNotice(context, 'Dukungan belum tersedia.'),
-                          onMeditationTap: () =>
-                              _showNotice(context, 'Catatan belum tersedia.'),
-                          onProfileTap: () =>
-                              _showNotice(context, 'Profil belum tersedia.'),
+                              _showNotice(context, 'Chat AI belum tersedia.'),
+                          onMeditationTap: () => setState(
+                            () => _screen = _CompanionScreen.support,
+                          ),
+                          onProfileTap: () => setState(
+                            () => _screen = _CompanionScreen.profile,
+                          ),
                           calendarLabel: 'Observasi',
-                          chatLabel: 'Dukungan',
-                          meditationLabel: 'Catatan',
+                          chatLabel: 'Chat AI',
+                          meditationLabel: 'Dukungan',
+                          calendarInactiveAsset: 'observation.svg',
+                          calendarActiveAsset: 'observation-active.svg',
+                          meditationInactiveAsset: 'support.svg',
+                          meditationActiveAsset: 'support-active.svg',
                         ),
                     ],
                   ),
@@ -154,7 +187,9 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
               setState(() => _screen = _CompanionScreen.noteDetail),
         ),
         SizedBox(height: scale * 24),
-        _SupportCard(onSeeAll: () => _showNotice(context, 'Dukungan hari ini')),
+        _SupportCard(
+          onSeeAll: () => setState(() => _screen = _CompanionScreen.support),
+        ),
       ],
     );
   }
@@ -194,9 +229,14 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
       return;
     }
   }
+
+  void _logout() {
+    ref.read(authControllerProvider.notifier).logout();
+    context.go('/roles');
+  }
 }
 
-enum _CompanionScreen { home, observations, noteDetail }
+enum _CompanionScreen { home, observations, noteDetail, support, profile }
 
 const _previewMotherCode = 'K4DSTP';
 
@@ -622,148 +662,6 @@ class _CompanionNoteRow extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CompanionNavigationBar extends StatelessWidget {
-  const _CompanionNavigationBar({
-    required this.selectedTab,
-    required this.onItemTap,
-  });
-
-  final _CompanionTab selectedTab;
-  final ValueChanged<_CompanionTab> onItemTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final scale = (constraints.maxWidth / 390).clamp(0.7, 1.15).toDouble();
-        final bottomPadding =
-            (scale * 25 - MediaQuery.viewPaddingOf(context).bottom)
-                .clamp(0.0, scale * 25)
-                .toDouble();
-
-        return Container(
-          key: const Key('companion-bottom-navigation'),
-          decoration: const BoxDecoration(
-            color: Color(0xFFFDFDFD),
-            border: Border(top: BorderSide(color: Color(0xFFFAFAFA))),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                scale * 32,
-                scale * 25,
-                scale * 32,
-                bottomPadding,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _CompanionNavItem(
-                    tab: _CompanionTab.home,
-                    selectedTab: selectedTab,
-                    asset: 'home',
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.observations,
-                    selectedTab: selectedTab,
-                    icon: Icons.assignment_turned_in_outlined,
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.support,
-                    selectedTab: selectedTab,
-                    asset: 'recommendations',
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.notes,
-                    selectedTab: selectedTab,
-                    icon: Icons.menu_book_outlined,
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.profile,
-                    selectedTab: selectedTab,
-                    asset: 'profile',
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _CompanionNavItem extends StatelessWidget {
-  const _CompanionNavItem({
-    required this.tab,
-    required this.selectedTab,
-    required this.onTap,
-    required this.scale,
-    this.asset,
-    this.icon,
-  });
-
-  final _CompanionTab tab;
-  final _CompanionTab selectedTab;
-  final String? asset;
-  final IconData? icon;
-  final ValueChanged<_CompanionTab> onTap;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = selectedTab == tab;
-    final color = selected ? Colors.white : AppTheme.gray500;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: tab.label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: Key('companion-nav-${tab.name}'),
-          onTap: () => onTap(tab),
-          borderRadius: BorderRadius.circular(24 * scale),
-          child: Container(
-            width: 56 * scale,
-            height: 56 * scale,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.coral : const Color(0xFFFDFDFD),
-              borderRadius: BorderRadius.circular(24 * scale),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0D101828),
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
-            ),
-            child: asset != null
-                ? SvgPicture.asset(
-                    'assets/images/navigation/${asset!}${selected ? '-active' : ''}.svg',
-                    width: 24 * scale,
-                    height: 24 * scale,
-                  )
-                : Icon(icon, size: 24 * scale, color: color),
           ),
         ),
       ),
