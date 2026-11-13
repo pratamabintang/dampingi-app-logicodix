@@ -1468,34 +1468,27 @@ void main() {
     );
   });
 
-  testWidgets('role mismatch is rejected and wrong role routes are guarded', (
-    tester,
-  ) async {
-    await startApp(tester);
-    await selectRoleAndOpenLogin(tester, role: 'mother');
-    await enterCredentials(
-      tester,
-      email: 'demo.companion@dampingi.test',
-      password: 'demo1234',
-    );
-    await tapLoginSubmit(tester);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Peran akun tidak sesuai'), findsOneWidget);
+  testWidgets(
+    'login follows the account role regardless of role selection and guards other roles',
+    (tester) async {
+      await startApp(tester);
+      await selectRoleAndOpenLogin(tester, role: 'mother');
+      await enterCredentials(
+        tester,
+        email: 'demo.companion@dampingi.test',
+        password: 'demo1234',
+      );
+      await tapLoginSubmit(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(CompanionPage), findsOneWidget);
+      expect(find.textContaining('Peran akun tidak sesuai'), findsNothing);
 
-    await enterCredentials(
-      tester,
-      email: 'demo.mother@dampingi.test',
-      password: 'demo1234',
-    );
-    await tester.tap(find.byKey(const Key('login-submit')));
-    await tester.pumpAndSettle();
-    expect(find.byType(MotherPage), findsOneWidget);
-
-    GoRouter.of(tester.element(find.byType(MotherPage))).go('/doctor');
-    await tester.pumpAndSettle();
-    expect(find.byType(RouteErrorPage), findsOneWidget);
-    expect(find.text('Akses tidak tersedia'), findsOneWidget);
-  });
+      GoRouter.of(tester.element(find.byType(CompanionPage))).go('/doctor');
+      await tester.pumpAndSettle();
+      expect(find.byType(RouteErrorPage), findsOneWidget);
+      expect(find.text('Akses tidak tersedia'), findsOneWidget);
+    },
+  );
 
   testWidgets('unauthenticated role route redirects to login', (tester) async {
     await startApp(tester);

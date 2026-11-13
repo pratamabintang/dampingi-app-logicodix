@@ -130,10 +130,7 @@ class _MotherRoleRepository extends RoleRepository {
 
 class _ValidAuthRepository implements AuthRepository {
   @override
-  Future<LoginResponse> login({
-    required LoginRequest request,
-    required AppRole selectedRole,
-  }) async {
+  Future<LoginResponse> login({required LoginRequest request}) async {
     return const LoginResponse(
       accessToken: 'valid-access-token',
       user: AuthUser(

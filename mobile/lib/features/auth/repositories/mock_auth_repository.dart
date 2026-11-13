@@ -52,10 +52,7 @@ class MockAuthRepository implements AuthRepository {
   static const _demoPassword = 'demo1234';
 
   @override
-  Future<LoginResponse> login({
-    required LoginRequest request,
-    required AppRole selectedRole,
-  }) async {
+  Future<LoginResponse> login({required LoginRequest request}) async {
     await Future<void>.delayed(latency);
 
     if (request.email == 'network@dampingi.test') {
@@ -70,10 +67,6 @@ class MockAuthRepository implements AuthRepository {
     if (account == null || request.password != account.password) {
       throw const InvalidCredentialsException();
     }
-    if (account.role != selectedRole) {
-      throw const RoleMismatchException();
-    }
-
     return LoginResponse.fromJson({
       'access_token': 'mock-access-token',
       'user': {
