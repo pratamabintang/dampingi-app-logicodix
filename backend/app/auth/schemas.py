@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -16,6 +17,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
     role: Role
+    timezone: str = Field(default="Asia/Jakarta", min_length=1, max_length=64)
 
     @field_validator("email")
     @classmethod
@@ -24,10 +26,30 @@ class RegisterRequest(BaseModel):
             raise ValueError("registration is restricted to Gmail addresses")
         return value
 
+    @field_validator("timezone")
+    @classmethod
+    def must_be_an_iana_zone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError, TypeError) as exc:
+            raise ValueError(
+                f"unknown IANA timezone: {value!r}"
+            ) from exc
+        return value
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1)
+
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    token: str = Field(min_length=1, max_length=64)
+
+
+class ResendConfirmationRequest(BaseModel):
+    email: EmailStr
 
 
 class UserOut(BaseModel):

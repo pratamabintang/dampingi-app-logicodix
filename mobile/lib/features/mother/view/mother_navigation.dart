@@ -19,6 +19,9 @@ class MotherNavigationBar extends StatelessWidget {
     required this.onChatTap,
     required this.onMeditationTap,
     required this.onProfileTap,
+    this.calendarLabel = 'Kalender',
+    this.chatLabel = 'Rekomendasi',
+    this.meditationLabel = 'Meditasi',
     super.key,
   });
 
@@ -28,6 +31,9 @@ class MotherNavigationBar extends StatelessWidget {
   final VoidCallback onChatTap;
   final VoidCallback onMeditationTap;
   final VoidCallback onProfileTap;
+  final String calendarLabel;
+  final String chatLabel;
+  final String meditationLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +75,7 @@ class MotherNavigationBar extends StatelessWidget {
                   ),
                   _NavigationItem(
                     tab: MotherNavigationTab.calendar,
-                    label: 'Kalender',
+                    label: calendarLabel,
                     inactiveAsset: 'calendar.svg',
                     activeAsset: 'calendar-active.svg',
                     selectedTab: selectedTab,
@@ -79,7 +85,7 @@ class MotherNavigationBar extends StatelessWidget {
                   _NavigationItem(
                     itemKey: const Key('mother-nav-chat'),
                     tab: MotherNavigationTab.recommendations,
-                    label: 'Rekomendasi',
+                    label: chatLabel,
                     inactiveAsset: 'recommendations.svg',
                     activeAsset: 'recommendations-active.svg',
                     selectedTab: selectedTab,
@@ -89,7 +95,7 @@ class MotherNavigationBar extends StatelessWidget {
                   _NavigationItem(
                     itemKey: const Key('mother-nav-meditation'),
                     tab: MotherNavigationTab.meditation,
-                    label: 'Meditasi',
+                    label: meditationLabel,
                     inactiveAsset: 'meditation.svg',
                     activeAsset: 'meditation-active.svg',
                     selectedTab: selectedTab,

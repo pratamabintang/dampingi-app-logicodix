@@ -99,19 +99,39 @@ def test_the_day_is_the_callers_local_one(mock_client, moods_table):
     assert day_for("Pacific/Kiritimati") != day_for("Etc/GMT+12")
 
 
-def test_an_unusable_timezone_falls_back_to_utc(mock_client, moods_table):
-    from datetime import datetime, timezone
+def test_an_unusable_timezone_falls_back_to_jakarta(mock_client, moods_table):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
     client, session = mock_client
     moods_table({**PROFILE, "timezone": "Not/AZone"})
-    before = datetime.now(timezone.utc).date().isoformat()
+    before = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
 
     resp = client.post(
         "/moods",
         headers={"Authorization": f"Bearer {session.token}"},
         json={"mood": 4},
     )
-    after = datetime.now(timezone.utc).date().isoformat()
+    after = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
+
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["created_at"] in {before, after}
+
+
+def test_a_missing_timezone_falls_back_to_jakarta(mock_client, moods_table):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    client, session = mock_client
+    moods_table({**PROFILE, "timezone": None})
+    before = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
+
+    resp = client.post(
+        "/moods",
+        headers={"Authorization": f"Bearer {session.token}"},
+        json={"mood": 4},
+    )
+    after = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
 
     assert resp.status_code == 201, resp.text
     assert resp.json()["created_at"] in {before, after}

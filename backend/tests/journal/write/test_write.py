@@ -338,18 +338,23 @@ def test_no_token_is_refused(offline_env):
     assert resp.status_code == 401
 
 
-def test_an_unusable_timezone_falls_back_to_utc(mock_client, journals_table):
+def test_an_unusable_timezone_falls_back_to_jakarta(mock_client, journals_table):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
     client, _ = mock_client
     journals_table({**PROFILE, "timezone": "Not/AZone"})
+    before = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
 
     resp = client.post(
         "/journals",
         headers=AUTH,
         json={"title": "Fallback", "content": "Still works."},
     )
+    after = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
 
     assert resp.status_code == 201, resp.text
-    assert len(resp.json()["created_at"]) == 10
+    assert resp.json()["created_at"] in {before, after}
 
 
 def test_the_day_is_the_authors_local_one(mock_client, journals_table):
