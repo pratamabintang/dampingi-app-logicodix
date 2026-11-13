@@ -517,6 +517,16 @@ void main() {
     await tester.pumpAndSettle();
 
     final firstStory = find.byKey(const Key('mother-story-very-sad-row'));
+    final homeScroll = find
+        .descendant(
+          of: find.byKey(
+            const PageStorageKey<String>('mother-home-weekly-scroll'),
+          ),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.drag(homeScroll, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(firstStory);
     await tester.tap(firstStory);
     await tester.pumpAndSettle();

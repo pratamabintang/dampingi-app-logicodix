@@ -249,7 +249,7 @@ class _StoryCard extends StatelessWidget {
                     child: SvgPicture.asset(
                       story.mood == MotherMood.verySad
                           ? 'assets/images/mother_calendar/story-mood-very-sad.svg'
-                          : 'assets/images/mother_home/${story.faceAsset ?? story.mood.asset}',
+                          : 'assets/images/mother_home/${story.mood.asset}',
                       width: scale(38),
                       height: scale(story.mood.faceHeight),
                     ),

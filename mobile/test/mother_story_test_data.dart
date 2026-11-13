@@ -20,7 +20,6 @@ const motherStoryTestData = <MotherStory>[
     weekdayIndex: 1,
     date: 'Selasa, 2 Agustus 2026',
     mood: MotherMood.veryHappy,
-    faceAsset: 'mood-happy.svg',
     moodLabel: 'Anda merasa sangat bahagia',
     title: 'Hal Kecil yang berarti',
     note: 'Hari ini aku merasa sangat bahagia karena bisa menghabiskan waktu bersama keluarga.',
@@ -31,7 +30,6 @@ const motherStoryTestData = <MotherStory>[
     weekdayIndex: 2,
     date: 'Rabu, 3 Agustus 2026',
     mood: MotherMood.happy,
-    faceAsset: 'mood-very-happy.svg',
     moodLabel: 'Anda merasa bahagia',
     title: 'Hal Kecil yang berarti',
     note: 'Aku senang karena hari ini bisa beristirahat dengan tenang.',
@@ -42,7 +40,6 @@ const motherStoryTestData = <MotherStory>[
     weekdayIndex: 5,
     date: 'Sabtu, 6 Agustus 2026',
     mood: MotherMood.happy,
-    faceAsset: 'mood-happy.svg',
     moodLabel: 'Anda merasa bahagia',
     title: 'Hal Kecil yang berarti',
     note:
