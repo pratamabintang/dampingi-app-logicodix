@@ -17,6 +17,7 @@ import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_edit_page.dart';
+import 'package:mobile/features/mother/view/mother_notifications_page.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/shared/view/role_picker_page.dart';
 import 'package:mobile/features/shared/view/route_error_page.dart';
@@ -408,6 +409,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
   });
+
+  testWidgets(
+    'mother notifications match the Figma screen and open from home',
+    (tester) async {
+      await startApp(tester);
+      await selectRoleAndOpenLogin(tester, role: 'mother');
+      await enterCredentials(
+        tester,
+        email: 'demo.mother@dampingi.test',
+        password: 'demo1234',
+      );
+      await tapLoginSubmit(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('mother-notifications')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MotherNotificationsPage), findsOneWidget);
+      expect(find.text('Notifikasi anda'), findsOneWidget);
+      expect(find.text('Sdr. Enzokulin Mengundang anda'), findsOneWidget);
+      expect(find.text('Dr. Aisyah Salsabila Mengundang anda'), findsOneWidget);
+      expect(
+        find.text('Lakukan gerakan yoga ini supaya segar'),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSize(
+          find.byKey(const Key('mother-notification-companion-invitation')),
+        ),
+        const Size(342, 94),
+      );
+      expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('mother-notifications-back')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MotherPage), findsOneWidget);
+    },
+  );
 
   testWidgets('login exposes loading state and disables form controls', (
     tester,
