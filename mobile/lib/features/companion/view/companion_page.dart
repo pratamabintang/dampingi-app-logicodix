@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
@@ -8,6 +9,7 @@ import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../mother/view/mother_navigation.dart';
+import 'companion_extra_pages.dart';
 
 class CompanionPage extends ConsumerStatefulWidget {
   const CompanionPage({super.key});
@@ -19,17 +21,12 @@ class CompanionPage extends ConsumerStatefulWidget {
 class _CompanionPageState extends ConsumerState<CompanionPage> {
   _CompanionScreen _screen = _CompanionScreen.home;
   bool _hasMother = false;
+  bool _observationCompleted = false;
 
   @override
   Widget build(BuildContext context) {
-    final userName = ref
-        .watch(authControllerProvider)
-        .asData
-        ?.value
-        .session
-        ?.user
-        .name
-        ?.trim();
+    final user = ref.watch(authControllerProvider).asData?.value.session?.user;
+    final userName = user?.name?.trim();
     final greetingName = userName == null || userName.isEmpty
         ? 'Jhon doe'
         : userName;
@@ -47,6 +44,7 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                 ? constraints.maxWidth
                 : 390 * scale;
             final isDetail = _screen == _CompanionScreen.noteDetail;
+            final isChat = _screen == _CompanionScreen.chat;
 
             return _CompanionScale(
               factor: scale,
@@ -64,6 +62,8 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                           ),
                           _CompanionScreen.observations =>
                             _CompanionObservationPage(
+                              onStartObservation: () =>
+                                  _startObservationFlow(scale),
                               onNoteTap: () => setState(
                                 () => _screen = _CompanionScreen.noteDetail,
                               ),
@@ -77,28 +77,72 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                                 () => _screen = _CompanionScreen.observations,
                               ),
                             ),
+                          _CompanionScreen.support => CompanionSupportPage(
+                            scale: scale,
+                            onAction: (action) => _showNotice(context, action),
+                          ),
+                          _CompanionScreen.profile => CompanionProfilePage(
+                            scale: scale,
+                            userName: greetingName,
+                            email: user?.email ?? '',
+                            onEdit: () => _showNotice(context, 'Ubah profil'),
+                            onEnterCode: () {
+                              if (_hasMother) {
+                                _showNotice(context, 'Ibu sudah terhubung.');
+                              } else {
+                                _startMotherAssignment(scale);
+                              }
+                            },
+                            onLogout: _logout,
+                          ),
+                          _CompanionScreen.chat => CompanionChatPage(
+                            scale: scale,
+                          ),
                         },
                       ),
                       if (!isDetail)
                         MotherNavigationBar(
-                          selectedTab: _screen == _CompanionScreen.observations
-                              ? MotherNavigationTab.calendar
-                              : MotherNavigationTab.home,
-                          onHomeTap: () => setState(
-                            () => _screen = _CompanionScreen.home,
-                          ),
+                          selectedTab: switch (_screen) {
+                            _CompanionScreen.home => MotherNavigationTab.home,
+                            _CompanionScreen.observations =>
+                              MotherNavigationTab.calendar,
+                            _CompanionScreen.support =>
+                              MotherNavigationTab.meditation,
+                            _CompanionScreen.profile =>
+                              MotherNavigationTab.profile,
+                            _CompanionScreen.chat =>
+                              MotherNavigationTab.recommendations,
+                            _CompanionScreen.noteDetail =>
+                              MotherNavigationTab.calendar,
+                          },
+                          onHomeTap: () =>
+                              setState(() => _screen = _CompanionScreen.home),
                           onCalendarTap: () => setState(
                             () => _screen = _CompanionScreen.observations,
                           ),
                           onChatTap: () =>
-                              _showNotice(context, 'Dukungan belum tersedia.'),
-                          onMeditationTap: () =>
-                              _showNotice(context, 'Catatan belum tersedia.'),
-                          onProfileTap: () =>
-                              _showNotice(context, 'Profil belum tersedia.'),
-                          calendarLabel: 'Observasi',
-                          chatLabel: 'Dukungan',
-                          meditationLabel: 'Catatan',
+                              setState(() => _screen = _CompanionScreen.chat),
+                          onMeditationTap: () => setState(
+                            () => _screen = _CompanionScreen.support,
+                          ),
+                          onProfileTap: () => setState(
+                            () => _screen = _CompanionScreen.profile,
+                          ),
+                          calendarLabel: isChat ? 'Kalender' : 'Observasi',
+                          chatLabel: isChat ? 'Rekomendasi' : 'Chat AI',
+                          meditationLabel: isChat ? 'Meditasi' : 'Dukungan',
+                          calendarInactiveAsset: isChat
+                              ? 'calendar.svg'
+                              : 'observation.svg',
+                          calendarActiveAsset: isChat
+                              ? 'calendar-active.svg'
+                              : 'observation-active.svg',
+                          meditationInactiveAsset: isChat
+                              ? 'meditation.svg'
+                              : 'support.svg',
+                          meditationActiveAsset: isChat
+                              ? 'meditation-active.svg'
+                              : 'support-active.svg',
                         ),
                     ],
                   ),
@@ -143,7 +187,8 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
           _UnassignedMotherCard(onTap: () => _startMotherAssignment(scale)),
         SizedBox(height: scale * 24),
         _ObservationCard(
-          onTap: () => _showNotice(context, 'Form observasi belum tersedia.'),
+          completed: _observationCompleted,
+          onTap: () => _startObservationFlow(scale),
         ),
         SizedBox(height: scale * 24),
         _CompanionStoriesCard(
@@ -154,7 +199,9 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
               setState(() => _screen = _CompanionScreen.noteDetail),
         ),
         SizedBox(height: scale * 24),
-        _SupportCard(onSeeAll: () => _showNotice(context, 'Dukungan hari ini')),
+        _SupportCard(
+          onSeeAll: () => setState(() => _screen = _CompanionScreen.support),
+        ),
       ],
     );
   }
@@ -194,9 +241,58 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
       return;
     }
   }
+
+  Future<void> _startObservationFlow(double scale) async {
+    var selectedAnswer = 0;
+    var title = '';
+    var note = '';
+
+    while (true) {
+      if (!mounted) return;
+      final answer = await showDialog<int>(
+        context: context,
+        builder: (dialogContext) => _ObservationQuestionDialog(
+          scale: scale,
+          initialAnswer: selectedAnswer,
+        ),
+      );
+      if (!mounted) return;
+      if (answer == null) return;
+      selectedAnswer = answer;
+
+      final draft = await showDialog<_ObservationDraft>(
+        context: context,
+        builder: (dialogContext) => _ObservationNoteDialog(
+          scale: scale,
+          initialTitle: title,
+          initialNote: note,
+        ),
+      );
+      if (!mounted) return;
+      if (draft == null) return;
+      title = draft.title;
+      note = draft.note;
+      if (draft.backToQuestion) continue;
+
+      setState(() => _observationCompleted = true);
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => _ObservationSuccessDialog(
+          scale: scale,
+          onDone: () => Navigator.of(dialogContext).pop(),
+        ),
+      );
+      return;
+    }
+  }
+
+  void _logout() {
+    ref.read(authControllerProvider.notifier).logout();
+    context.go('/roles');
+  }
 }
 
-enum _CompanionScreen { home, observations, noteDetail }
+enum _CompanionScreen { home, observations, noteDetail, support, profile, chat }
 
 const _previewMotherCode = 'K4DSTP';
 
@@ -409,9 +505,10 @@ class _UnassignedMotherCard extends StatelessWidget {
 }
 
 class _ObservationCard extends StatelessWidget {
-  const _ObservationCard({required this.onTap});
+  const _ObservationCard({required this.onTap, this.completed = false});
 
   final VoidCallback onTap;
+  final bool completed;
 
   @override
   Widget build(BuildContext context) {
@@ -428,7 +525,9 @@ class _ObservationCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Observasi hari ini - Belum diisi',
+            completed
+                ? 'Observasi hari ini - Sudah diisi'
+                : 'Observasi hari ini - Belum diisi',
             style: TextStyle(
               color: AppTheme.coralText,
               fontFamily: AppTheme.fontFamily,
@@ -622,148 +721,6 @@ class _CompanionNoteRow extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CompanionNavigationBar extends StatelessWidget {
-  const _CompanionNavigationBar({
-    required this.selectedTab,
-    required this.onItemTap,
-  });
-
-  final _CompanionTab selectedTab;
-  final ValueChanged<_CompanionTab> onItemTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final scale = (constraints.maxWidth / 390).clamp(0.7, 1.15).toDouble();
-        final bottomPadding =
-            (scale * 25 - MediaQuery.viewPaddingOf(context).bottom)
-                .clamp(0.0, scale * 25)
-                .toDouble();
-
-        return Container(
-          key: const Key('companion-bottom-navigation'),
-          decoration: const BoxDecoration(
-            color: Color(0xFFFDFDFD),
-            border: Border(top: BorderSide(color: Color(0xFFFAFAFA))),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                scale * 32,
-                scale * 25,
-                scale * 32,
-                bottomPadding,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _CompanionNavItem(
-                    tab: _CompanionTab.home,
-                    selectedTab: selectedTab,
-                    asset: 'home',
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.observations,
-                    selectedTab: selectedTab,
-                    icon: Icons.assignment_turned_in_outlined,
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.support,
-                    selectedTab: selectedTab,
-                    asset: 'recommendations',
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.notes,
-                    selectedTab: selectedTab,
-                    icon: Icons.menu_book_outlined,
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                  _CompanionNavItem(
-                    tab: _CompanionTab.profile,
-                    selectedTab: selectedTab,
-                    asset: 'profile',
-                    onTap: onItemTap,
-                    scale: scale,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _CompanionNavItem extends StatelessWidget {
-  const _CompanionNavItem({
-    required this.tab,
-    required this.selectedTab,
-    required this.onTap,
-    required this.scale,
-    this.asset,
-    this.icon,
-  });
-
-  final _CompanionTab tab;
-  final _CompanionTab selectedTab;
-  final String? asset;
-  final IconData? icon;
-  final ValueChanged<_CompanionTab> onTap;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = selectedTab == tab;
-    final color = selected ? Colors.white : AppTheme.gray500;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: tab.label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: Key('companion-nav-${tab.name}'),
-          onTap: () => onTap(tab),
-          borderRadius: BorderRadius.circular(24 * scale),
-          child: Container(
-            width: 56 * scale,
-            height: 56 * scale,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.coral : const Color(0xFFFDFDFD),
-              borderRadius: BorderRadius.circular(24 * scale),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0D101828),
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
-            ),
-            child: asset != null
-                ? SvgPicture.asset(
-                    'assets/images/navigation/${asset!}${selected ? '-active' : ''}.svg',
-                    width: 24 * scale,
-                    height: 24 * scale,
-                  )
-                : Icon(icon, size: 24 * scale, color: color),
           ),
         ),
       ),
@@ -1148,6 +1105,497 @@ class _CompanionSuccessDialog extends StatelessWidget {
   }
 }
 
+const _observationOptions = [
+  'Sangat bahagia lorem ipsum dolor sit amet',
+  'Sangat bahagia lorem ipsum dolor sit amet',
+  'Sangat bahagia lorem ipsum dolor sit amet',
+  'Sangat bahagia lorem ipsum dolor sit amet',
+];
+
+class _ObservationQuestionDialog extends StatefulWidget {
+  const _ObservationQuestionDialog({
+    required this.scale,
+    required this.initialAnswer,
+  });
+
+  final double scale;
+  final int initialAnswer;
+
+  @override
+  State<_ObservationQuestionDialog> createState() =>
+      _ObservationQuestionDialogState();
+}
+
+class _ObservationQuestionDialogState
+    extends State<_ObservationQuestionDialog> {
+  late int _selectedAnswer = widget.initialAnswer;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = widget.scale;
+    return Dialog(
+      key: const Key('companion-observation-question-dialog'),
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: scale * 24),
+      child: Container(
+        width: scale * 342,
+        padding: EdgeInsets.fromLTRB(
+          scale * 24,
+          scale * 16,
+          scale * 24,
+          scale * 24,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(scale * 32),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A101828),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                key: const Key('companion-observation-question-close'),
+                tooltip: 'Tutup',
+                onPressed: () => Navigator.of(context).pop(),
+                icon: Icon(
+                  Icons.close,
+                  color: AppTheme.coral,
+                  size: scale * 24,
+                ),
+                constraints: BoxConstraints.tightFor(
+                  width: scale * 32,
+                  height: scale * 32,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            SizedBox(height: scale * 12),
+            Text(
+              '1. Bagaimana anda menggambarkan perasaan Ibu hari ini?',
+              textAlign: TextAlign.left,
+              style: TextStyle(
+                color: AppTheme.ink,
+                fontFamily: AppTheme.fontFamily,
+                fontSize: scale * 16,
+                fontWeight: FontWeight.w600,
+                height: 24 / 16,
+              ),
+            ),
+            SizedBox(height: scale * 20),
+            for (
+              var index = 0;
+              index < _observationOptions.length;
+              index++
+            ) ...[
+              _ObservationAnswerOption(
+                key: Key('companion-observation-answer-$index'),
+                label: _observationOptions[index],
+                selected: index == _selectedAnswer,
+                scale: scale,
+                onTap: () => setState(() => _selectedAnswer = index),
+              ),
+              if (index < _observationOptions.length - 1)
+                SizedBox(height: scale * 8),
+            ],
+            SizedBox(height: scale * 24),
+            _CompanionDialogButton(
+              key: const Key('companion-observation-question-continue'),
+              label: 'Lanjut',
+              scale: scale,
+              onPressed: () => Navigator.of(context).pop(_selectedAnswer),
+            ),
+            SizedBox(height: scale * 10),
+            _CompanionDialogButton(
+              key: const Key('companion-observation-question-back'),
+              label: 'Kembali',
+              scale: scale,
+              onPressed: () => Navigator.of(context).pop(),
+              secondary: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObservationAnswerOption extends StatelessWidget {
+  const _ObservationAnswerOption({
+    required this.label,
+    required this.selected,
+    required this.scale,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final bool selected;
+  final double scale;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? Colors.white : const Color(0xFFFAFAFA),
+      borderRadius: BorderRadius.circular(scale * 8),
+      child: InkWell(
+        key: Key('companion-observation-answer-${label.toLowerCase()}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(scale * 8),
+        child: Container(
+          width: double.infinity,
+          height: scale * 62,
+          padding: EdgeInsets.symmetric(horizontal: scale * 12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF32D583)
+                  : AppTheme.unselectedSurface,
+            ),
+            borderRadius: BorderRadius.circular(scale * 8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: selected ? const Color(0xFF12B76A) : AppTheme.muted,
+                size: scale * 20,
+              ),
+              SizedBox(width: scale * 12),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.ink,
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: scale * 16,
+                    height: 24 / 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ObservationDraft {
+  const _ObservationDraft({
+    required this.title,
+    required this.note,
+    required this.backToQuestion,
+  });
+
+  final String title;
+  final String note;
+  final bool backToQuestion;
+}
+
+class _ObservationNoteDialog extends StatefulWidget {
+  const _ObservationNoteDialog({
+    required this.scale,
+    required this.initialTitle,
+    required this.initialNote,
+  });
+
+  final double scale;
+  final String initialTitle;
+  final String initialNote;
+
+  @override
+  State<_ObservationNoteDialog> createState() => _ObservationNoteDialogState();
+}
+
+class _ObservationNoteDialogState extends State<_ObservationNoteDialog> {
+  late final _titleController = TextEditingController(
+    text: widget.initialTitle,
+  );
+  late final _noteController = TextEditingController(text: widget.initialNote);
+  String? _error;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _pop({required bool backToQuestion}) {
+    Navigator.of(context).pop(
+      _ObservationDraft(
+        title: _titleController.text.trim(),
+        note: _noteController.text.trim(),
+        backToQuestion: backToQuestion,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = widget.scale;
+    return Dialog(
+      key: const Key('companion-observation-note-dialog'),
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: scale * 24),
+      child: Container(
+        width: scale * 342,
+        padding: EdgeInsets.fromLTRB(
+          scale * 24,
+          scale * 16,
+          scale * 24,
+          scale * 24,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(scale * 32),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A101828),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                key: const Key('companion-observation-note-close'),
+                tooltip: 'Tutup',
+                onPressed: () => Navigator.of(context).pop(),
+                icon: Icon(
+                  Icons.close,
+                  color: AppTheme.coral,
+                  size: scale * 24,
+                ),
+                constraints: BoxConstraints.tightFor(
+                  width: scale * 32,
+                  height: scale * 32,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            SizedBox(height: scale * 12),
+            Text(
+              'Tulis catatan harian anda',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.coralText,
+                fontFamily: AppTheme.fontFamily,
+                fontSize: scale * 20,
+                fontWeight: FontWeight.w600,
+                height: 30 / 20,
+              ),
+            ),
+            SizedBox(height: scale * 20),
+            _ObservationTextField(
+              key: const Key('companion-observation-title'),
+              controller: _titleController,
+              scale: scale,
+              hintText: 'Masukan judul',
+            ),
+            SizedBox(height: scale * 12),
+            _ObservationTextField(
+              key: const Key('companion-observation-note'),
+              controller: _noteController,
+              scale: scale,
+              hintText: 'Ceritakan perasaanmu hari ini',
+              maxLines: 5,
+            ),
+            SizedBox(height: scale * 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '*Opsional',
+                style: TextStyle(
+                  color: AppTheme.muted,
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: scale * 12,
+                  height: 18 / 12,
+                ),
+              ),
+            ),
+            if (_error != null) ...[
+              SizedBox(height: scale * 8),
+              Text(
+                _error!,
+                key: const Key('companion-observation-error'),
+                style: TextStyle(
+                  color: AppTheme.coralText,
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: scale * 12,
+                ),
+              ),
+            ],
+            SizedBox(height: scale * 24),
+            _CompanionDialogButton(
+              key: const Key('companion-observation-note-done'),
+              label: 'Selesai',
+              scale: scale,
+              onPressed: () {
+                if (_titleController.text.trim().isEmpty) {
+                  setState(() => _error = 'Judul catatan harus diisi.');
+                  return;
+                }
+                _pop(backToQuestion: false);
+              },
+            ),
+            SizedBox(height: scale * 10),
+            _CompanionDialogButton(
+              key: const Key('companion-observation-note-back'),
+              label: 'Kembali',
+              scale: scale,
+              onPressed: () => _pop(backToQuestion: true),
+              secondary: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObservationTextField extends StatelessWidget {
+  const _ObservationTextField({
+    required this.controller,
+    required this.scale,
+    required this.hintText,
+    this.maxLines = 1,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final double scale;
+  final String hintText;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      style: TextStyle(
+        color: AppTheme.ink,
+        fontFamily: AppTheme.fontFamily,
+        fontSize: scale * 14,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: AppTheme.muted,
+          fontFamily: AppTheme.fontFamily,
+          fontSize: scale * 14,
+        ),
+        contentPadding: EdgeInsets.all(scale * 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(scale * 8),
+          borderSide: const BorderSide(color: AppTheme.unselectedSurface),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(scale * 8),
+          borderSide: const BorderSide(color: AppTheme.unselectedSurface),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(scale * 8),
+          borderSide: const BorderSide(color: AppTheme.coral),
+        ),
+      ),
+    );
+  }
+}
+
+class _ObservationSuccessDialog extends StatelessWidget {
+  const _ObservationSuccessDialog({required this.scale, required this.onDone});
+
+  final double scale;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      key: const Key('companion-observation-success-dialog'),
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: scale * 24),
+      child: Container(
+        width: scale * 342,
+        padding: EdgeInsets.fromLTRB(
+          scale * 24,
+          scale * 16,
+          scale * 24,
+          scale * 24,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(scale * 32),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A101828),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                key: const Key('companion-observation-success-close'),
+                tooltip: 'Tutup',
+                onPressed: onDone,
+                icon: Icon(
+                  Icons.close,
+                  color: AppTheme.coral,
+                  size: scale * 24,
+                ),
+                constraints: BoxConstraints.tightFor(
+                  width: scale * 32,
+                  height: scale * 32,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            SizedBox(height: scale * 20),
+            Text(
+              'Terima kasih sudah mengisi observasi hari ini!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.coralText,
+                fontFamily: AppTheme.fontFamily,
+                fontSize: scale * 20,
+                fontWeight: FontWeight.w600,
+                height: 30 / 20,
+              ),
+            ),
+            SizedBox(height: scale * 24),
+            _CompanionDialogButton(
+              key: const Key('companion-observation-success-done'),
+              label: 'Selesai',
+              scale: scale,
+              onPressed: onDone,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CompanionDialogButton extends StatelessWidget {
   const _CompanionDialogButton({
     required this.label,
@@ -1190,8 +1638,12 @@ class _CompanionDialogButton extends StatelessWidget {
 }
 
 class _CompanionObservationPage extends StatefulWidget {
-  const _CompanionObservationPage({required this.onNoteTap});
+  const _CompanionObservationPage({
+    required this.onStartObservation,
+    required this.onNoteTap,
+  });
 
+  final VoidCallback onStartObservation;
   final VoidCallback onNoteTap;
 
   @override
@@ -1264,9 +1716,7 @@ class _CompanionObservationPageState extends State<_CompanionObservationPage> {
           ],
         ),
         SizedBox(height: scale(32)),
-        _ObservationCard(
-          onTap: () => _showNotice(context, 'Form observasi belum tersedia.'),
-        ),
+        _ObservationCard(onTap: widget.onStartObservation),
         SizedBox(height: scale(24)),
         AppCard(
           key: const Key('companion-observation-notes-card'),

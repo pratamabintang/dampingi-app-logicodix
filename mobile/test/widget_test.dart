@@ -413,10 +413,7 @@ void main() {
       scrollable: companionScroll,
     );
     expect(find.byKey(const Key('companion-support-card')), findsOneWidget);
-    expect(
-      find.byKey(const Key('companion-bottom-navigation')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('mother-bottom-navigation')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     final companionContainer = ProviderScope.containerOf(
@@ -436,7 +433,7 @@ void main() {
     expect(find.byType(DoctorPage), findsOneWidget);
   });
 
-  testWidgets('companion links a mother and opens an observation detail', (
+  testWidgets('companion links a mother and browses its dashboard tabs', (
     tester,
   ) async {
     await startApp(tester);
@@ -448,6 +445,48 @@ void main() {
     );
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('companion-observation-start')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-question-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('companion-observation-answer-2')));
+    await tester.tap(
+      find.byKey(const Key('companion-observation-question-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-note-dialog')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('companion-observation-title')),
+      'Hari yang lebih tenang',
+    );
+    await tester.tap(find.byKey(const Key('companion-observation-note-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-question-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('companion-observation-question-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Hari yang lebih tenang'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('companion-observation-note-done')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-success-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('companion-observation-success-done')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Observasi hari ini - Sudah diisi'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('companion-enter-mother-code')));
     await tester.pumpAndSettle();
@@ -488,23 +527,19 @@ void main() {
     expect(find.byKey(const Key('companion-mother-summary')), findsOneWidget);
     expect(find.byKey(const Key('companion-unassigned-card')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('companion-nav-observations')));
+    await tester.tap(find.byKey(const Key('mother-nav-item-calendar')));
     await tester.pumpAndSettle();
     expect(find.text('1-7 Agu 2026'), findsOneWidget);
     expect(find.text('Catatan anda'), findsOneWidget);
     expect(
-      tester
-          .widget<Semantics>(
-            find
-                .ancestor(
-                  of: find.byKey(const Key('companion-nav-observations')),
-                  matching: find.byType(Semantics),
-                )
-                .first,
-          )
-          .properties
-          .selected,
-      isTrue,
+      (tester
+                  .widget<Container>(
+                    find.byKey(const Key('mother-nav-item-calendar')),
+                  )
+                  .decoration!
+              as BoxDecoration)
+          .color,
+      const Color(0xFFFDA29B),
     );
 
     final observationScroll = find
@@ -521,10 +556,63 @@ void main() {
     await tester.tap(find.byKey(const Key('companion-observation-note-0')));
     await tester.pumpAndSettle();
     expect(find.text('Ringkasan AI'), findsOneWidget);
-    expect(find.byKey(const Key('companion-bottom-navigation')), findsNothing);
+    expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
     await tester.tap(find.byKey(const Key('companion-note-detail-back')));
     await tester.pumpAndSettle();
     expect(find.text('Catatan anda'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-nav-chat')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('companion-chat-page')), findsOneWidget);
+    expect(find.text('Hai gpt, aku hamil'), findsOneWidget);
+    expect(
+      find.text('Wow kamu hamil ya semoga lahiranya lancar nanti'),
+      findsOneWidget,
+    );
+    expect(find.text('Ringkasan Percakapan'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('companion-chat-input')),
+      'Pesan preview',
+    );
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Mode pratinjau aktif. Pesan belum dikirim ke layanan AI.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('mother-nav-meditation')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('companion-support-screen')), findsOneWidget);
+    expect(find.text('Dukungan hari ini'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('companion-support-prompt')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Tanyakan dengan lembut, lalu beri waktu untuk bercerita.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
+    final weeklyToggle = find.byKey(
+      const Key('companion-profile-weekly-toggle'),
+    );
+    await tester.drag(
+      find.byKey(const Key('companion-profile-scroll')),
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(weeklyToggle).value, isTrue);
+    await tester.tap(weeklyToggle);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(weeklyToggle).value, isFalse);
+    await tester.ensureVisible(
+      find.byKey(const Key('companion-profile-logout')),
+    );
+    await tester.tap(find.byKey(const Key('companion-profile-logout')));
+    await tester.pumpAndSettle();
+    expect(find.byType(RolePickerPage), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
