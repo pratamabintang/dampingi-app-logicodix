@@ -151,6 +151,34 @@ def test_create_weekly_summary_rejects_companion_role(
 
     assert response.status_code == 403
 
+def test_get_weekly_summary_rejects_companion_role(
+    offline_env, monkeypatch
+):
+    from app.main import app
+    from app.auth.router import verified_session
+
+    companion_session = auth_service.Session(
+        user_id="00000000-0000-4000-8000-000000000002",
+        email="companion@gmail.com",
+        token="offline-token",
+    )
+
+    monkeypatch.setattr(
+        "app.auth.guards.auth_supabase.fetch_profile",
+        lambda user_id: {"role": "companion"},
+    )
+    app.dependency_overrides[verified_session] = lambda: companion_session
+
+    try:
+        with TestClient(app) as client:
+            response = client.get(
+                "/summaries/weekly",
+                params={"period_start": "2026-11-09"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 403
 
 def test_get_weekly_summary_success(summary_client, monkeypatch):
     client, session = summary_client

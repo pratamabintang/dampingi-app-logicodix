@@ -262,3 +262,22 @@ def test_aggregate_weekly_data_keeps_mother_and_companion_sources_separate():
 
     assert [item["id"] for item in result["mood_entries"]] == ["m1"]
     assert [item["id"] for item in result["companion_observations"]] == ["o1"]
+
+def test_aggregate_weekly_data_preserves_conflicting_reports():
+    result = aggregate_weekly_data(
+        date(2026, 11, 9),
+        [{"id": "m1", "created_at": "2026-11-09", "mood": 1}],
+        companion_observations=[
+            {
+                "id": "o1",
+                "status": "completed",
+                "day": "2026-11-09",
+                "answers": {"condition": "good"},
+            }
+        ],
+    )
+
+    assert result["mood_entries"][0]["mood"] == 1
+    assert result["companion_observations"][0]["answers"] == {
+        "condition": "good"
+    }
