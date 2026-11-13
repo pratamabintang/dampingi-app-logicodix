@@ -68,7 +68,7 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                             scaled(34),
                           ),
                           children: [
-                            AppBrandHeader(scale: scaled),
+                            const AppBrandHeader(),
                             SizedBox(height: scaled(36)),
                             _ProfileInformationCard(
                               name: name == null || name.isEmpty
@@ -78,9 +78,8 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                                   ? 'janedoe@gmail.com'
                                   : email,
                               scale: scaled,
-                              onEditProfile: () => _showUnavailableNotice(
-                                'Fitur ubah profil belum tersedia.',
-                              ),
+                              onEditProfile: () =>
+                                  context.push('/mother/profile/edit'),
                               onAddCompanion: _showAddCompanionFlow,
                             ),
                             SizedBox(height: scaled(36)),
@@ -146,12 +145,6 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
     setState(() {
       _permissions[companionId]![permission] = value;
     });
-  }
-
-  void _showUnavailableNotice(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showAddCompanionFlow() async {

@@ -16,6 +16,7 @@ import 'package:mobile/features/companion/view/companion_page.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
+import 'package:mobile/features/mother/view/mother_profile_edit_page.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/shared/view/role_picker_page.dart';
 import 'package:mobile/features/shared/view/route_error_page.dart';
@@ -792,6 +793,66 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-profile-logout')));
     await tester.pumpAndSettle();
     expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
+  });
+
+  testWidgets('mother can open and return from profile edit design', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-profile-edit')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MotherProfileEditPage), findsOneWidget);
+    expect(find.text('Ubah Foto'), findsOneWidget);
+    expect(find.text('Simpan Perubahan'), findsOneWidget);
+    expect(find.text('Ubah kata sandi'), findsOneWidget);
+    expect(find.text('Ibu Demo'), findsOneWidget);
+    expect(find.text('demo.mother@dampingi.test'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-edit-avatar'))),
+      const Size(85, 85),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-edit-photo'))),
+      const Size(121, 48),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-edit-save'))),
+      const Size(342, 48),
+    );
+    expect(
+      tester.getSize(
+        find.byKey(const Key('mother-profile-edit-change-password')),
+      ),
+      const Size(342, 48),
+    );
+    final avatar = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('mother-profile-edit-avatar')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (avatar.image as AssetImage).assetName,
+      'assets/images/mother_home/avatar-a.png',
+    );
+    final backIcon = tester.widget<SvgPicture>(find.byType(SvgPicture));
+    expect(backIcon.width, 24);
+    expect(backIcon.height, 24);
+
+    await tester.tap(find.byKey(const Key('mother-profile-edit-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(MotherProfilePage), findsOneWidget);
   });
 
   testWidgets('mother profile follows the three Figma add-companion dialogs', (

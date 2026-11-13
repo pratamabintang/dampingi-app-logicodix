@@ -50,7 +50,7 @@ class MotherMeditationListPage extends ConsumerWidget {
                           scaled(24),
                         ),
                         children: [
-                          AppBrandHeader(scale: scaled),
+                          const AppBrandHeader(),
                           SizedBox(height: scaled(36)),
                           _SuggestionCard(
                             scale: scale,

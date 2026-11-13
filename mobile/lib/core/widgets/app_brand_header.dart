@@ -25,15 +25,13 @@ class AppBrandMark extends StatelessWidget {
 }
 
 class AppBrandHeader extends StatelessWidget {
-  const AppBrandHeader({required this.scale, super.key});
-
-  final double Function(double) scale;
+  const AppBrandHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: scale(56),
-      child: Center(child: AppBrandMark(fontSize: scale(24))),
+      height: 56,
+      child: const Center(child: AppBrandMark()),
     );
   }
 }

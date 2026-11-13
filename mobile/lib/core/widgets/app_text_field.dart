@@ -22,6 +22,7 @@ class AppTextField extends StatelessWidget {
     this.focusNode,
     this.autocorrect = true,
     this.textCapitalization = TextCapitalization.none,
+    this.obscureText = false,
     super.key,
   });
 
@@ -43,6 +44,7 @@ class AppTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final bool autocorrect;
   final TextCapitalization textCapitalization;
+  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +87,7 @@ class AppTextField extends StatelessWidget {
               style: textStyle,
               focusNode: focusNode,
               validator: validator,
+              obscureText: obscureText,
               keyboardType: keyboardType,
               textInputAction: textInputAction,
               onFieldSubmitted: onFieldSubmitted,

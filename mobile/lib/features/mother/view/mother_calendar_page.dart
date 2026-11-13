@@ -67,7 +67,7 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                               context.calendarScale(24),
                             ),
                             children: [
-                              AppBrandHeader(scale: context.calendarScale),
+                              const AppBrandHeader(),
                               SizedBox(height: context.calendarScale(36)),
                               _WeekSelector(
                                 label: _weekLabel(_weekStart),

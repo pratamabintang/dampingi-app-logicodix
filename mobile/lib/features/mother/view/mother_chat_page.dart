@@ -84,7 +84,7 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
                         scaled(24),
                         0,
                       ),
-                      child: AppBrandHeader(scale: scaled),
+                      child: const AppBrandHeader(),
                     ),
                     SizedBox(height: scaled(36)),
                     Expanded(
