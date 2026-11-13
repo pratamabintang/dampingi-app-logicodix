@@ -106,3 +106,58 @@ def test_mood_summary_out_rejects_extra_fields():
             overview="Summary",
             private_data="should not be accepted",
         )
+
+
+def test_mood_summary_out_rejects_reversed_period():
+    with pytest.raises(ValidationError):
+        MoodSummaryOut(
+            status="complete",
+            period_start=date(2026, 11, 10),
+            period_end=date(2026, 11, 4),
+            mood_count=2,
+            overview="Summary",
+        )
+
+
+def test_mood_summary_out_rejects_complete_without_moods():
+    with pytest.raises(ValidationError):
+        MoodSummaryOut(
+            status="complete",
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            mood_count=0,
+            overview="Summary",
+        )
+
+
+def test_mood_summary_out_rejects_complete_with_blank_overview():
+    with pytest.raises(ValidationError):
+        MoodSummaryOut(
+            status="complete",
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            mood_count=2,
+            overview="   ",
+        )
+
+
+def test_mood_summary_out_rejects_insufficient_data_with_moods():
+    with pytest.raises(ValidationError):
+        MoodSummaryOut(
+            status="insufficient_data",
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            mood_count=1,
+            overview=None,
+        )
+
+
+def test_mood_summary_out_rejects_unavailable_without_moods():
+    with pytest.raises(ValidationError):
+        MoodSummaryOut(
+            status="unavailable",
+            period_start=date(2026, 11, 4),
+            period_end=date(2026, 11, 10),
+            mood_count=0,
+            overview=None,
+        )

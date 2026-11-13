@@ -3,15 +3,13 @@ import json
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-
 import pytest
-
 from app.ai import AIBusy
 from app.moods.schemas import MoodOut, MoodListOut
 from app.summaries.schemas import MoodSummaryAIOut, MoodSummaryRequest
+from app.ai.errors import AITimeout, AIUnavailable, AIBadOutput
 
 pytestmark = pytest.mark.local
-
 
 @pytest.fixture
 def summary_request():
@@ -97,10 +95,16 @@ def test_returns_complete_summary(
 ):
     from app.summaries import service
 
+    captured_kwargs = {}
+
+    def mock_list_moods(**kwargs):
+        captured_kwargs.update(kwargs)
+        return mock_moods
+
     monkeypatch.setattr(
         service.mood_service,
         "list_moods",
-        lambda **kwargs: mock_moods,
+        mock_list_moods,
     )
     monkeypatch.setattr(
         service,
@@ -111,6 +115,12 @@ def test_returns_complete_summary(
     result = asyncio.run(
         service.create_weekly_summary("user-123", summary_request)
     )
+
+    assert captured_kwargs == {
+        "user_id": "user-123",
+        "start_date": "2026-11-04",
+        "end_date": "2026-11-10",
+    }
 
     assert result.status == "complete"
     assert result.mood_count == 2
@@ -192,3 +202,55 @@ def test_does_not_send_private_descriptions_to_ai(
     )
     assert "Private note" not in str(sent_payload)
     assert "Another private note" not in str(sent_payload)
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    [AITimeout, AIUnavailable, AIBadOutput],
+)
+def test_returns_unavailable_for_all_ai_errors(
+    error_type,
+    monkeypatch,
+    summary_request,
+    mock_moods,
+    mock_gateway,
+):
+    from app.summaries import service
+
+    mock_gateway.generate.side_effect = error_type()
+
+    monkeypatch.setattr(
+        service.mood_service,
+        "list_moods",
+        lambda **kwargs: mock_moods,
+    )
+    monkeypatch.setattr(
+        service,
+        "get_summary_gateway",
+        lambda: mock_gateway,
+    )
+
+    result = asyncio.run(
+        service.create_weekly_summary("user-123", summary_request)
+    )
+
+    assert result.status == "unavailable"
+    assert result.mood_count == 2
+    assert result.overview is None
+
+def test_propagates_mood_service_errors(monkeypatch, summary_request):
+    from app.summaries import service
+
+    def raise_mood_error(**kwargs):
+        raise RuntimeError("Mood service failed")
+
+    monkeypatch.setattr(
+        service.mood_service,
+        "list_moods",
+        raise_mood_error,
+    )
+
+    with pytest.raises(RuntimeError, match="Mood service failed"):
+        asyncio.run(
+            service.create_weekly_summary("user-123", summary_request)
+        )
