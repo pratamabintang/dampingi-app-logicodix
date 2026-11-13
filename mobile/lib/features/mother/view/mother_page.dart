@@ -250,11 +250,25 @@ class _WeeklyEpdsCard extends StatelessWidget {
   }
 }
 
-class _MoodCard extends StatelessWidget {
+class _MoodCard extends ConsumerWidget {
   const _MoodCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(recentMoodsProvider);
+    final isPreview = recent is AsyncData && recent.value == null;
+    final days = recentMoodDays(recent.asData?.value ?? const [], DateTime.now());
+    final todayMood = days.firstWhere((day) => day.isToday).mood;
+
+    final String status;
+    if (recent.hasError) {
+      status = 'Belum dapat dimuat';
+    } else if (!isPreview && todayMood != null) {
+      status = moodTitle(todayMood);
+    } else {
+      status = 'Belum dicatat';
+    }
+
     return Container(
       key: const Key('mother-mood-card'),
       padding: EdgeInsets.all(context.scaled(20)),
@@ -276,7 +290,8 @@ class _MoodCard extends StatelessWidget {
           ),
           SizedBox(height: context.scaled(10)),
           Text(
-            'Belum dicatat',
+            status,
+            key: const Key('mother-mood-status'),
             style: TextStyle(
               color: AppTheme.coralText,
               fontSize: context.scaled(20),
@@ -287,33 +302,16 @@ class _MoodCard extends StatelessWidget {
           SizedBox(height: context.scaled(16)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _MoodItem(
-                faceKey: const Key('mother-mood-face-sen'),
-                label: 'Sen',
-                mood: MotherMood.verySad,
-              ),
-              _MoodItem(
-                faceKey: const Key('mother-mood-face-sel'),
-                label: 'Sel',
-                mood: MotherMood.sad,
-              ),
-              _MoodItem(
-                faceKey: const Key('mother-mood-face-rab'),
-                label: 'Rab',
-                mood: MotherMood.neutral,
-              ),
-              _MoodItem(
-                faceKey: const Key('mother-mood-face-kam'),
-                label: 'Kam',
-                mood: MotherMood.happy,
-              ),
-              _MoodItem(
-                faceKey: const Key('mother-mood-face-jum'),
-                label: 'Jum',
-                mood: MotherMood.veryHappy,
-              ),
-            ],
+            children: isPreview
+                ? _sampleMoodItems
+                : [
+                    for (final day in days)
+                      _MoodItem(
+                        faceKey: Key('mother-mood-face-${isoDate(day.date)}'),
+                        label: day.label,
+                        mood: day.mood,
+                      ),
+                  ],
           ),
           SizedBox(height: context.scaled(16)),
           SizedBox(
@@ -334,6 +332,15 @@ class _MoodCard extends StatelessWidget {
     );
   }
 }
+
+/// Contoh untuk mode preview (sama seperti desain A).
+const _sampleMoodItems = <Widget>[
+  _MoodItem(faceKey: Key('mother-mood-face-sen'), label: 'Sen', mood: MotherMood.verySad),
+  _MoodItem(faceKey: Key('mother-mood-face-sel'), label: 'Sel', mood: MotherMood.sad),
+  _MoodItem(faceKey: Key('mother-mood-face-rab'), label: 'Rab', mood: MotherMood.neutral),
+  _MoodItem(faceKey: Key('mother-mood-face-kam'), label: 'Kam', mood: MotherMood.happy),
+  _MoodItem(faceKey: Key('mother-mood-face-jum'), label: 'Jum', mood: MotherMood.veryHappy),
+];
 
 class _MoodItem extends StatelessWidget {
   const _MoodItem({
@@ -358,12 +365,16 @@ class _MoodItem extends StatelessWidget {
             scale: context.scaled(1),
             expressionKey: mood == null ? null : faceKey,
           ),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppTheme.muted,
-              fontSize: context.scaled(14),
-              height: 24 / 14,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontSize: context.scaled(14),
+                height: 24 / 14,
+              ),
             ),
           ),
         ],
