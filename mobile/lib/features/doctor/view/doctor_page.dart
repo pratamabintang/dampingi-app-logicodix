@@ -6,7 +6,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../shared/view/app_bottom_navigation_bar.dart';
+import 'doctor_guide_page.dart';
 import 'doctor_invitation_flow.dart';
+import 'doctor_profile_page.dart';
+import 'doctor_patient_summary_page.dart';
 
 class DoctorPage extends ConsumerStatefulWidget {
   const DoctorPage({super.key});
@@ -19,6 +22,7 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   String _searchQuery = '';
+  DoctorNavigationTab _selectedTab = DoctorNavigationTab.home;
 
   @override
   void dispose() {
@@ -51,6 +55,51 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
               patient.status.toLowerCase().contains(query),
         )
         .toList();
+
+    if (_selectedTab == DoctorNavigationTab.patients) {
+      return DoctorPatientSummaryPage(
+        bottomNavigation: DoctorNavigationBar(
+          selectedTab: DoctorNavigationTab.patients,
+          onHomeTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.home),
+          onPatientsTap: () {},
+          onGuideTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.guide),
+          onProfileTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.profile),
+        ),
+      );
+    }
+
+    if (_selectedTab == DoctorNavigationTab.guide) {
+      return DoctorGuidePage(
+        bottomNavigation: DoctorNavigationBar(
+          selectedTab: DoctorNavigationTab.guide,
+          onHomeTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.home),
+          onPatientsTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.patients),
+          onGuideTap: () {},
+          onProfileTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.profile),
+        ),
+      );
+    }
+
+    if (_selectedTab == DoctorNavigationTab.profile) {
+      return DoctorProfilePage(
+        bottomNavigation: DoctorNavigationBar(
+          selectedTab: DoctorNavigationTab.profile,
+          onHomeTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.home),
+          onPatientsTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.patients),
+          onGuideTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.guide),
+          onProfileTap: () {},
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -134,13 +183,19 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                       ),
                     ),
                     DoctorNavigationBar(
-                      selectedTab: DoctorNavigationTab.home,
-                      onPatientsTap: () =>
-                          _showNotice(context, 'Menu pasien belum tersedia.'),
-                      onGuideTap: () =>
-                          _showNotice(context, 'Menu panduan belum tersedia.'),
-                      onProfileTap: () =>
-                          _showNotice(context, 'Menu profil belum tersedia.'),
+                      selectedTab: _selectedTab,
+                      onHomeTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.home,
+                      ),
+                      onPatientsTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.patients,
+                      ),
+                      onGuideTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.guide,
+                      ),
+                      onProfileTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.profile,
+                      ),
                     ),
                   ],
                 ),
