@@ -163,6 +163,27 @@ class AuthController extends AsyncNotifier<AuthState> {
     }
   }
 
+  /// Perbarui nama di sesi setelah `PATCH /me` berhasil, tanpa login ulang.
+  void updateUserName(String name) {
+    final current = state.asData?.value;
+    final session = current?.session;
+    if (current == null || session == null) return;
+    final user = session.user;
+    state = AsyncData(
+      current.copyWith(
+        session: LoginResponse(
+          accessToken: session.accessToken,
+          user: AuthUser(
+            id: user.id,
+            email: user.email,
+            name: name,
+            role: user.role,
+          ),
+        ),
+      ),
+    );
+  }
+
   void logout() {
     final current = state.requireValue;
     state = AsyncData(AuthState(selectedRole: current.selectedRole));
