@@ -1051,6 +1051,14 @@ void main() {
       tester.getSize(find.byKey(const Key('mother-chat-composer'))).height,
       53,
     );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-chat-input'))).height,
+      36,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-chat-send'))),
+      const Size(36, 36),
+    );
 
     await tester.enterText(
       find.byKey(const Key('mother-chat-input')),
