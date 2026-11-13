@@ -22,8 +22,6 @@ Kunci API (`GEMINI_API_KEY`) hanya ada di server (`backend/.env`). Aplikasi mobi
 
 ### Data dan privasi
 
-### Data dan privasi
-
 - **Jurnal tidak dikirim ke chatbot.** Untuk weekly summary, isi jurnal ibu diproses oleh AI khusus untuk mengekstrak tema. Konten mentah jurnal tidak diteruskan ke AI pembuat ringkasan.
 - Catatan teks pada mood (`description`) tidak dikirim ke AI.
 - Ringkasan mingguan hanya menggunakan data milik ibu yang terautentikasi.
@@ -104,3 +102,6 @@ Tim memakai AI coding assistant **(isi: nama alat, mis. Claude)** untuk membantu
 - Konten mentah jurnal tidak diteruskan ke AI pembuat ringkasan.
 - Ringkasan bersifat informatif dan bukan diagnosis klinis.
 - Evaluasi klinis EPDS belum diaktifkan.
+
+
+- **Edinburgh Postnatal Depression Scale (EPDS)**: Cox, J. L., Holden, J. M., & Sagovsky, R. (1987). Detection of postnatal depression: Development of the 10-item Edinburgh Postnatal Depression Scale. *British Journal of Psychiatry, 150*, 782–786. Terjemahan bahasa Indonesia di aplikasi dibuat tim untuk demo dan belum divalidasi.
