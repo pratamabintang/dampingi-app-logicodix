@@ -46,9 +46,9 @@ class AppSectionHeader extends StatelessWidget {
             child: Text(
               actionLabel!,
               style: TextStyle(
-                fontSize: 14 * scale,
+                fontSize: 16 * scale,
                 fontWeight: FontWeight.w600,
-                height: 24 / 14,
+                height: 24 / 16,
               ),
             ),
           ),

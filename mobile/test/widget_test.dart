@@ -400,6 +400,50 @@ void main() {
     expect(find.byType(DoctorPage), findsOneWidget);
   });
 
+  testWidgets('weekly EPDS follows the three provided dialog designs', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          motherStoriesProvider.overrideWith(
+            (ref) async => motherStoryTestData,
+          ),
+        ],
+        child: const MaterialApp(home: MotherPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mother-epds-start')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('mother-weekly-epds-intro-title')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('mother-weekly-epds-continue')));
+    await tester.pumpAndSettle();
+    expect(find.text('1. Saya merasa bahagia:'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-weekly-epds-option-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-weekly-epds-next')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('mother-weekly-epds-complete-message')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('mother-weekly-epds-finish')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mother-weekly-epds-dialog-0')), findsNothing);
+  });
+
   testWidgets(
     'mother notifications match the Figma screen and open from home',
     (tester) async {
