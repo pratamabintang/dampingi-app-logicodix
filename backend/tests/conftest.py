@@ -75,6 +75,21 @@ def supabase_env():
     return base_url
 
 
+@pytest.fixture(scope="session")
+def email_confirmation_on(supabase_env):
+    """Whether the project requires confirming an address before login."""
+    import httpx
+
+    resp = httpx.get(
+        f"{supabase_env}/auth/v1/settings",
+        headers={"apikey": os.environ["SUPABASE_PUBLISHABLE_KEY"]},
+        timeout=10,
+    )
+    if resp.status_code >= 400:
+        pytest.skip(f"auth settings not reachable: {resp.status_code}")
+    return not resp.json().get("mailer_autoconfirm", True)
+
+
 @pytest.fixture(autouse=True)
 def _no_throttle():
     from app import throttle
@@ -121,30 +136,58 @@ def pytest_sessionfinish(session, exitstatus):
         pass
 
 
+def _confirm_email(client, email: str) -> str:
+    """Finish the email-confirmation flow using an admin-minted code.
+
+    The live suite has no mailbox, so the code comes from the admin API
+    (`generate_link`) instead of from the email Supabase sent.
+    """
+    from app.auth import supabase
+
+    code = supabase.generate_signup_otp(email)
+    resp = client.post("/auth/verify-email", json={"email": email, "token": code})
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
 @pytest.fixture
 def register(client, unique_email, tracked_users):
+    """A confirmed account plus a session, created without sending email.
+
+    The admin API creates the account with `email_confirm: true`, so nothing
+    is mailed. The suite builds a few hundred accounts per run, and every
+    `POST /auth/register` would mail a confirmation code, spending the
+    project's whole send quota on tests. The route itself is still covered
+    live by `tests/auth/register/test_register.py` and offline by
+    `tests/auth/offline/`.
+    """
 
     def _register(
         name: str = "Test User",
         password: str = "Sup3rSecure!",
         role: str = "mother",
+        timezone: str = "Asia/Jakarta",
     ):
+        from app.auth import supabase
+
         email = unique_email()
-        resp = client.post(
-            "/auth/register",
-            json={"name": name, "email": email, "password": password, "role": role},
+        user = supabase.admin_create_user(
+            name=name,
+            email=email,
+            password=password,
+            role=role,
+            timezone=timezone,
         )
-        if resp.status_code == 400 and "rate limit" in resp.text.lower():
-            pytest.fail(
-                "Supabase rate limit hit (per-IP Auth throttle). The suite "
-                "makes ~110 auth calls per run, so back-to-back runs trip it. "
-                "Wait ~5 minutes and rerun (see docs/supabase-setup.md, "
-                "Troubleshooting)."
-            )
-        assert resp.status_code == 201, resp.text
-        body = resp.json()
-        tracked_users.append(body["user"]["id"])
-        return email, body["user"], body["access_token"]
+        tracked_users.append(user["id"])
+
+        login = client.post(
+            "/auth/login", json={"email": email, "password": password}
+        )
+        assert login.status_code == 200, login.text
+        token = login.json()["access_token"]
+        me = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+        assert me.status_code == 200, me.text
+        return email, me.json(), token
 
     return _register
 

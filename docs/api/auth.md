@@ -25,6 +25,18 @@ Bentuk data persisnya ada di `backend/app/auth/schemas.py`.
 Selama verifikasi belum selesai, `POST /auth/login` membalas `403`
 (lihat "Kode status"). Kode verifikasi kedaluwarsa setelah 1 jam.
 
+## Alur lupa sandi
+
+1. `POST /auth/forgot-password` → kode reset dikirim ke email (kalau alamat
+   terdaftar). Respons `202` selalu sama, untuk alamat apa pun.
+2. Pengguna memasukkan kode dari email.
+3. `POST /auth/reset-password` → password diganti dan semua sesi dicabut.
+   Pengguna lalu login lagi dengan password baru.
+
+Kode reset berlaku 1 jam. Sengaja tidak ada auto-login setelah reset: sesi
+yang dibuat saat menukar kode langsung dicabut, supaya kode dari email tidak
+berubah menjadi sesi permanen.
+
 ## Endpoint
 
 ### `POST /auth/register`
@@ -114,13 +126,49 @@ Response `202` (selalu sama, untuk email apa pun):
 - Kalau Supabase membatasi pengiriman ke alamat itu (cooldown ~60 detik),
   balasannya `429` + `Retry-After`.
 
+### `POST /auth/forgot-password`
+
+Minta kode reset password.
+
+Request:
+```json
+{ "email": "bunda@gmail.com" }
+```
+
+Response `202` (selalu sama, untuk email apa pun):
+```json
+{ "detail": "Jika email terdaftar, kode reset sudah dikirim." }
+```
+- Sengaja tidak membedakan email terdaftar / tidak.
+- Kalau Supabase membatasi pengiriman ke alamat itu (cooldown ~60 detik),
+  balasannya `429` + `Retry-After`.
+
+### `POST /auth/reset-password`
+
+Menukar kode reset dengan password baru.
+
+Request:
+```json
+{ "email": "bunda@gmail.com", "token": "12345678", "new_password": "rahasiaBaru123" }
+```
+- `token`: kode dari email (biasanya 8 digit).
+- `new_password`: 8–72 karakter.
+
+Response `204` tanpa body.
+- Semua sesi dicabut; pengguna harus login lagi dengan password baru.
+- Kode salah **atau** kedaluwarsa → `400` dengan pesan yang sama, supaya tidak
+  bisa dipakai menebak email mana yang terdaftar.
+- Kalau `new_password` sama dengan password lama → `400`
+  `"Sandi baru harus berbeda dari sandi lama."`
+
 ## Kode status
 
 | Kode | Kapan | Yang dilakukan aplikasi |
 |---|---|---|
 | 201 | register berhasil | kalau `access_token` `null`, buka layar masukkan kode |
 | 200 | login / verify-email berhasil | simpan `access_token`, masuk ke beranda |
-| 202 | resend diterima | tampilkan `detail`, tunggu pengguna memasukkan kode |
+| 202 | resend / forgot-password diterima | tampilkan `detail`, tunggu pengguna memasukkan kode |
+| 204 | reset-password / ganti sandi berhasil | arahkan ke halaman login |
 | 400 | kode verifikasi salah / kedaluwarsa | tampilkan `detail`, biarkan pengguna coba lagi / kirim ulang |
 | 401 | email atau password salah | tampilkan `detail` |
 | 403 | email **belum diverifikasi** (login), atau akun sudah dihapus | saat belum verifikasi: arahkan ke layar masukkan kode / kirim ulang |
@@ -132,6 +180,12 @@ Response `202` (selalu sama, untuk email apa pun):
 Pesan `403` saat belum verifikasi:
 `"Email belum diverifikasi. Cek email untuk kode verifikasi."`
 
+Pesan `400` saat kode reset salah atau kedaluwarsa:
+`"Kode reset salah atau sudah kedaluwarsa."`
+
+Pesan `400` saat sandi baru sama dengan yang lama:
+`"Sandi baru harus berbeda dari sandi lama."`
+
 ## Batas percobaan
 
 Dihitung per alamat IP dan per akun dalam jendela 15 menit:
@@ -142,6 +196,8 @@ Dihitung per alamat IP dan per akun dalam jendela 15 menit:
 | login | 30 | 10 |
 | verify-email | 30 | 10 |
 | resend-confirmation | 5 | 3 |
+| forgot-password | 5 | 3 |
+| reset-password | 30 | 10 |
 
 Supabase juga punya batas sendiri untuk pengiriman email
 (`rate_limit_email_sent`); batas itu berlaku per project, jadi batas lokal di
