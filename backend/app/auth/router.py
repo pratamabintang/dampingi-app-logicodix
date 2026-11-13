@@ -9,11 +9,13 @@ from jwt import PyJWKClient
 from app.auth import supabase, service
 from app.auth.schemas import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
     ResendConfirmationRequest,
+    ResetPasswordRequest,
     UpdateMeRequest,
     UserOut,
     VerifyEmailRequest,
@@ -220,6 +222,56 @@ def resend_confirmation(request: Request, payload: ResendConfirmationRequest) ->
         if exc.status >= 500:
             raise
     return {"detail": "Jika email terdaftar, kode verifikasi sudah dikirim ulang."}
+
+
+@router.post(
+    "/auth/forgot-password",
+    status_code=202,
+    summary="Ask for a password-reset code",
+    description=(
+        "Always answers `202` with the same body, whether or not the address "
+        "is registered, so it cannot be used to enumerate accounts. Upstream "
+        "outages (`503`) and upstream rate limits (`429`) are still surfaced."
+    ),
+)
+def forgot_password(request: Request, payload: ForgotPasswordRequest) -> dict:
+    throttle.record_forgot(request, payload.email)
+    try:
+        service.request_password_reset(payload.email)
+    except supabase.SupabaseError as exc:
+        if exc.status == 429:
+            raise _upstream_cooldown() from exc
+        if exc.status >= 500:
+            raise
+    return {"detail": "Jika email terdaftar, kode reset sudah dikirim."}
+
+
+@router.post(
+    "/auth/reset-password",
+    status_code=204,
+    summary="Set a new password with the code from the reset email",
+    description=(
+        "Exchanges the recovery code for a session, sets the new password "
+        "and revokes every session. Wrong or expired codes answer the same "
+        "`400`, so the endpoint does not reveal whether an address exists."
+    ),
+)
+def reset_password(request: Request, payload: ResetPasswordRequest) -> Response:
+    throttle.record_reset(request, payload.email)
+    try:
+        service.reset_password(payload.email, payload.token, payload.new_password)
+    except supabase.SupabaseError as exc:
+        if _is_banned(exc):
+            raise _deleted() from exc
+        if exc.status == 429:
+            raise _upstream_cooldown() from exc
+        if exc.status >= 500:
+            raise
+        raise HTTPException(
+            status_code=400,
+            detail="Kode reset salah atau sudah kedaluwarsa.",
+        ) from exc
+    return Response(status_code=204)
 
 
 @router.get(

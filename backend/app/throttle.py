@@ -22,6 +22,12 @@ VERIFY_PER_ACCOUNT = 10
 RESEND_PER_ADDRESS = 5
 RESEND_PER_ACCOUNT = 3
 
+FORGOT_PER_ADDRESS = 5
+FORGOT_PER_ACCOUNT = 3
+
+RESET_PER_ADDRESS = 30
+RESET_PER_ACCOUNT = 10
+
 REDEEM_PER_USER = 10
 
 
@@ -114,6 +120,14 @@ def record_verification(request: Request, email: str) -> None:
 
 def record_resend(request: Request, email: str) -> None:
     _record_pair("resend", request, email, RESEND_PER_ADDRESS, RESEND_PER_ACCOUNT)
+
+
+def record_forgot(request: Request, email: str) -> None:
+    _record_pair("forgot", request, email, FORGOT_PER_ADDRESS, FORGOT_PER_ACCOUNT)
+
+
+def record_reset(request: Request, email: str) -> None:
+    _record_pair("reset", request, email, RESET_PER_ADDRESS, RESET_PER_ACCOUNT)
 
 
 def _record_pair(

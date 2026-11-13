@@ -108,6 +108,26 @@ def resend_confirmation(email: str) -> None:
     supabase.resend_signup_confirmation(email)
 
 
+def request_password_reset(email: str) -> None:
+    """Ask Supabase to send the password-reset code."""
+    supabase.send_recovery(email)
+
+
+def reset_password(email: str, token: str, new_password: str) -> None:
+    """Exchange the recovery code for a session and set the new password.
+
+    The recovery answer carries a session, but it exists only to authorise
+    the change: it is revoked straight after, so the caller does not stay
+    logged in on a token minted from an email code.
+    """
+    body = supabase.verify_recovery_otp(email, token)
+    user_token = body.get("access_token") or ""
+    if not user_token:
+        raise supabase.SupabaseError(400, "recovery returned no session")
+    supabase.update_password(user_token, new_password)
+    supabase.revoke_sessions(user_token)
+
+
 def active_profile(user_id: str) -> dict:
     profile = supabase.fetch_profile(user_id)
     if profile and profile.get("deleted_at"):

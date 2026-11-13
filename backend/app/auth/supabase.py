@@ -53,12 +53,13 @@ def login(email: str, password: str) -> dict:
     return resp.json()
 
 
-# The GoTrue `type` that identifies the signup confirmation one-time password.
+# The GoTrue `type` values that identify one-time passwords.
 _SIGNUP_OTP_TYPE = "signup"
+_RECOVERY_OTP_TYPE = "recovery"
 
 
-def verify_signup_otp(email: str, token: str) -> dict:
-    """Exchange the signup confirmation OTP for a session.
+def _verify_otp(email: str, token: str, otp_type: str) -> dict:
+    """Exchange a one-time password for a session.
 
     `type` travels both as a query parameter and in the body: GoTrue
     versions differ on where they read it, unknown JSON fields are ignored,
@@ -67,14 +68,24 @@ def verify_signup_otp(email: str, token: str) -> dict:
     resp = _request(
         _client().post,
         f"{_base_url()}/auth/v1/verify",
-        params={"type": _SIGNUP_OTP_TYPE},
+        params={"type": otp_type},
         headers=supabase_auth_http(),
-        json={"email": email, "token": token, "type": _SIGNUP_OTP_TYPE},
+        json={"email": email, "token": token, "type": otp_type},
         timeout=TIMEOUT,
     )
     if resp.status_code >= 400:
         raise _error_from_response(resp)
     return resp.json()
+
+
+def verify_signup_otp(email: str, token: str) -> dict:
+    """Exchange the signup confirmation OTP for a session."""
+    return _verify_otp(email, token, _SIGNUP_OTP_TYPE)
+
+
+def verify_recovery_otp(email: str, token: str) -> dict:
+    """Exchange the password-reset OTP for a session."""
+    return _verify_otp(email, token, _RECOVERY_OTP_TYPE)
 
 
 def resend_signup_confirmation(email: str) -> None:
@@ -84,6 +95,23 @@ def resend_signup_confirmation(email: str) -> None:
         f"{_base_url()}/auth/v1/resend",
         headers=supabase_auth_http(),
         json={"type": _SIGNUP_OTP_TYPE, "email": email},
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+
+
+def send_recovery(email: str) -> None:
+    """Ask Supabase to send the password-reset code.
+
+    GoTrue answers `200` for an unknown address too, so this does not tell
+    the caller whether the account exists.
+    """
+    resp = _request(
+        _client().post,
+        f"{_base_url()}/auth/v1/recover",
+        headers=supabase_auth_http(),
+        json={"email": email},
         timeout=TIMEOUT,
     )
     if resp.status_code >= 400:
