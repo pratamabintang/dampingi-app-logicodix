@@ -8,12 +8,14 @@ import 'package:mobile/app.dart';
 import 'package:mobile/core/widgets/app_empty.dart';
 import 'package:mobile/core/widgets/app_error.dart';
 import 'package:mobile/core/widgets/app_loading.dart';
+import 'package:mobile/core/widgets/app_profile_avatar.dart';
 import 'package:mobile/features/auth/repositories/auth_repository.dart';
 import 'package:mobile/features/auth/repositories/mock_auth_repository.dart';
 import 'package:mobile/features/auth/controller/auth_controller.dart';
 import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
+import 'package:mobile/features/companion/view/companion_extra_pages.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
@@ -109,6 +111,59 @@ void main() {
     await tester.tap(submitButton);
   }
 
+  Future<void> expectPasswordVisibilityToggle(
+    WidgetTester tester,
+    String fieldKey,
+  ) async {
+    final editableField = find.descendant(
+      of: find.byKey(Key(fieldKey)),
+      matching: find.byType(EditableText),
+    );
+    await tester.ensureVisible(find.byKey(Key(fieldKey)));
+    expect(tester.widget<EditableText>(editableField).obscureText, isTrue);
+    final primaryColor = Theme.of(tester.element(find.byKey(Key(fieldKey))))
+        .colorScheme
+        .primary;
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(Key(fieldKey)),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color,
+      primaryColor,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(Key(fieldKey)),
+        matching: find.byTooltip('Tampilkan kata sandi'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<EditableText>(editableField).obscureText, isFalse);
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(Key(fieldKey)),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color,
+      primaryColor,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(Key(fieldKey)),
+        matching: find.byTooltip('Sembunyikan kata sandi'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<EditableText>(editableField).obscureText, isTrue);
+  }
+
   testWidgets('login matches Figma content and keeps its actions working', (
     tester,
   ) async {
@@ -179,7 +234,7 @@ void main() {
     expect(find.text('Lupa kata sandi?'), findsOneWidget);
     expect(find.text('Daftar sekarang'), findsOneWidget);
     expect(find.textContaining('demo1234'), findsNothing);
-    expect(find.byIcon(Icons.visibility_outlined), findsNothing);
+    await expectPasswordVisibilityToggle(tester, 'login-password');
 
     await tester.tap(find.byKey(const Key('login-remember-me')));
     await tester.pumpAndSettle();
@@ -199,6 +254,19 @@ void main() {
     await tester.tap(find.byKey(const Key('login-register')));
     await tester.pumpAndSettle();
     expect(find.byType(RegisterPage), findsOneWidget);
+  });
+
+  testWidgets('system back from sign in returns to the role picker', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RolePickerPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
   });
 
   testWidgets('login validates required and malformed input', (tester) async {
@@ -446,6 +514,16 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('companion-notification')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanionNotificationsPage), findsOneWidget);
+    expect(find.text('Notifikasi anda'), findsOneWidget);
+    expect(find.text('Ibu membagikan catatan baru'), findsOneWidget);
+    expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
+    await tester.tap(find.byKey(const Key('companion-notifications-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanionPage), findsOneWidget);
+
     await tester.tap(find.byKey(const Key('companion-observation-start')));
     await tester.pumpAndSettle();
     expect(
@@ -591,24 +669,77 @@ void main() {
       find.text('Tanyakan dengan lembut, lalu beri waktu untuk bercerita.'),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const Key('companion-support-prompt')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Tanyakan dengan lembut, lalu beri waktu untuk bercerita.'),
+      findsNothing,
+    );
 
     await tester.tap(find.byKey(const Key('mother-nav-profile')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
-    final weeklyToggle = find.byKey(
-      const Key('companion-profile-weekly-toggle'),
+    expect(find.byType(AppProfileAvatar), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('companion-profile-avatar'))),
+      const Size(85, 85),
     );
-    await tester.drag(
-      find.byKey(const Key('companion-profile-scroll')),
-      const Offset(0, -400),
+    final profileAvatar = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('companion-profile-card')),
+        matching: find.byType(Image),
+      ),
     );
+    expect(
+      (profileAvatar.image as AssetImage).assetName,
+      'assets/images/companion_profile/profile-avatar.png',
+    );
+    expect(find.text('Ibu yang anda dampingi'), findsOneWidget);
+    expect(find.text('Ny, Shopia Mudjahidah'), findsOneWidget);
+    expect(find.text('shopia***@gmail.com'), findsOneWidget);
+    expect(find.text('Ringkasan mingguan'), findsNothing);
+    expect(
+      find.byKey(const Key('companion-profile-permissions')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('companion-profile-edit')));
     await tester.pumpAndSettle();
-    expect(tester.widget<Switch>(weeklyToggle).value, isTrue);
-    await tester.tap(weeklyToggle);
+    expect(find.byType(CompanionProfileEditPage), findsOneWidget);
+    expect(find.text('Ubah Foto'), findsOneWidget);
+    expect(find.text('Simpan Perubahan'), findsOneWidget);
+    expect(find.text('Ubah kata sandi'), findsOneWidget);
+    expect(find.text('Pendamping Demo'), findsOneWidget);
+    expect(find.text('demo.companion@dampingi.test'), findsOneWidget);
+    await expectPasswordVisibilityToggle(
+      tester,
+      'companion-profile-edit-password',
+    );
+    await expectPasswordVisibilityToggle(
+      tester,
+      'companion-profile-edit-password-confirmation',
+    );
+    final editableProfileAvatar = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('companion-profile-edit-avatar')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (editableProfileAvatar.image as AssetImage).assetName,
+      'assets/images/companion_profile/profile-avatar.png',
+    );
+    await tester.tap(find.byKey(const Key('companion-profile-edit-back')));
     await tester.pumpAndSettle();
-    expect(tester.widget<Switch>(weeklyToggle).value, isFalse);
-    await tester.ensureVisible(
+    expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
+    await tester.scrollUntilVisible(
       find.byKey(const Key('companion-profile-logout')),
+      120,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const Key('companion-profile-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.tap(find.byKey(const Key('companion-profile-logout')));
     await tester.pumpAndSettle();
@@ -1113,6 +1244,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MotherProfilePage), findsOneWidget);
+    expect(find.byType(AppProfileAvatar), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-avatar'))),
+      const Size(85, 85),
+    );
     expect(find.text('Dampingi'), findsOneWidget);
     expect(find.text('Ibu Demo'), findsOneWidget);
     expect(find.text('demo.mother@dampingi.test'), findsOneWidget);
@@ -1183,6 +1319,14 @@ void main() {
     expect(find.text('Ubah kata sandi'), findsOneWidget);
     expect(find.text('Ibu Demo'), findsOneWidget);
     expect(find.text('demo.mother@dampingi.test'), findsOneWidget);
+    await expectPasswordVisibilityToggle(
+      tester,
+      'mother-profile-edit-password',
+    );
+    await expectPasswordVisibilityToggle(
+      tester,
+      'mother-profile-edit-password-confirmation',
+    );
     expect(
       tester.getSize(find.byKey(const Key('mother-profile-edit-avatar'))),
       const Size(85, 85),
@@ -1417,34 +1561,27 @@ void main() {
     );
   });
 
-  testWidgets('role mismatch is rejected and wrong role routes are guarded', (
-    tester,
-  ) async {
-    await startApp(tester);
-    await selectRoleAndOpenLogin(tester, role: 'mother');
-    await enterCredentials(
-      tester,
-      email: 'demo.companion@dampingi.test',
-      password: 'demo1234',
-    );
-    await tapLoginSubmit(tester);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Peran akun tidak sesuai'), findsOneWidget);
+  testWidgets(
+    'login follows the account role regardless of role selection and guards other roles',
+    (tester) async {
+      await startApp(tester);
+      await selectRoleAndOpenLogin(tester, role: 'mother');
+      await enterCredentials(
+        tester,
+        email: 'demo.companion@dampingi.test',
+        password: 'demo1234',
+      );
+      await tapLoginSubmit(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(CompanionPage), findsOneWidget);
+      expect(find.textContaining('Peran akun tidak sesuai'), findsNothing);
 
-    await enterCredentials(
-      tester,
-      email: 'demo.mother@dampingi.test',
-      password: 'demo1234',
-    );
-    await tester.tap(find.byKey(const Key('login-submit')));
-    await tester.pumpAndSettle();
-    expect(find.byType(MotherPage), findsOneWidget);
-
-    GoRouter.of(tester.element(find.byType(MotherPage))).go('/doctor');
-    await tester.pumpAndSettle();
-    expect(find.byType(RouteErrorPage), findsOneWidget);
-    expect(find.text('Akses tidak tersedia'), findsOneWidget);
-  });
+      GoRouter.of(tester.element(find.byType(CompanionPage))).go('/doctor');
+      await tester.pumpAndSettle();
+      expect(find.byType(RouteErrorPage), findsOneWidget);
+      expect(find.text('Akses tidak tersedia'), findsOneWidget);
+    },
+  );
 
   testWidgets('unauthenticated role route redirects to login', (tester) async {
     await startApp(tester);
@@ -1498,6 +1635,8 @@ void main() {
     await tester.tap(find.byKey(const Key('role-create-account')));
     await tester.pumpAndSettle();
     expect(find.byType(RegisterPage), findsOneWidget);
+    await expectPasswordVisibilityToggle(tester, 'register-password');
+    await expectPasswordVisibilityToggle(tester, 'register-confirm-password');
 
     await tester.tap(find.byKey(const Key('register-submit')));
     await tester.pumpAndSettle();
@@ -1596,6 +1735,7 @@ void main() {
       await tester.tap(find.byKey(const Key('reset-submit-code')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('reset-newPassword-page')), findsOneWidget);
+      await expectPasswordVisibilityToggle(tester, 'reset-new-password');
 
       await tester.tap(find.byKey(const Key('reset-submit-newPassword')));
       await tester.pumpAndSettle();

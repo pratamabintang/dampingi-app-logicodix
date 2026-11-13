@@ -6,17 +6,37 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_password_field.dart';
+import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../auth/validation/auth_form_validators.dart';
 
 class MotherProfileEditPage extends ConsumerStatefulWidget {
-  const MotherProfileEditPage({super.key});
+  const MotherProfileEditPage({
+    this.avatarAsset = 'assets/images/mother_home/avatar-a.png',
+    this.keyPrefix = 'mother-profile-edit',
+    this.backLocation = '/mother/profile',
+    super.key,
+  });
+
+  final String avatarAsset;
+  final String keyPrefix;
+  final String backLocation;
 
   @override
   ConsumerState<MotherProfileEditPage> createState() =>
       _MotherProfileEditPageState();
+}
+
+class CompanionProfileEditPage extends MotherProfileEditPage {
+  const CompanionProfileEditPage({super.key})
+    : super(
+        avatarAsset: 'assets/images/companion_profile/profile-avatar.png',
+        keyPrefix: 'companion-profile-edit',
+        backLocation: '/companion',
+      );
 }
 
 class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
@@ -27,6 +47,8 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
   bool _profileInitialized = false;
+
+  Key _key(String suffix) => Key('${widget.keyPrefix}-$suffix');
 
   @override
   void dispose() {
@@ -64,7 +86,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                 child: Form(
                   key: _profileFormKey,
                   child: ListView(
-                    key: const Key('mother-profile-edit-scroll'),
+                    key: _key('scroll'),
                     padding: EdgeInsets.fromLTRB(
                       scaled(24),
                       scaled(20),
@@ -77,12 +99,12 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: IconButton(
-                            key: const Key('mother-profile-edit-back'),
+                            key: _key('back'),
                             onPressed: () {
                               if (context.canPop()) {
                                 context.pop();
                               } else {
-                                context.go('/mother/profile');
+                                context.go(widget.backLocation);
                               }
                             },
                             padding: EdgeInsets.zero,
@@ -102,22 +124,17 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          SizedBox(
-                            key: const Key('mother-profile-edit-avatar'),
-                            width: scaled(85),
-                            height: scaled(85),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/images/mother_home/avatar-a.png',
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                          AppProfileAvatar(
+                            key: _key('avatar'),
+                            assetPath: widget.avatarAsset,
+                            size: scaled(85),
+                            semanticLabel: 'Foto profil',
                           ),
                           SizedBox(
                             width: scaled(121),
                             height: scaled(48),
                             child: FilledButton(
-                              key: const Key('mother-profile-edit-photo'),
+                              key: _key('photo'),
                               onPressed: () => _showUnavailableNotice(
                                 'Fitur ubah foto belum tersedia.',
                               ),
@@ -150,7 +167,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                       ),
                       SizedBox(height: scaled(36)),
                       AppTextField(
-                        key: const Key('mother-profile-edit-name'),
+                        key: _key('name'),
                         controller: _nameController,
                         label: 'Nama',
                         hintText: 'Masukan nama anda',
@@ -160,7 +177,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                       ),
                       SizedBox(height: scaled(24)),
                       AppTextField(
-                        key: const Key('mother-profile-edit-email'),
+                        key: _key('email'),
                         controller: _emailController,
                         label: 'Email',
                         hintText: 'Masukan email anda',
@@ -173,7 +190,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                       SizedBox(
                         height: scaled(48),
                         child: AppSubmitButton(
-                          key: const Key('mother-profile-edit-save'),
+                          key: _key('save'),
                           label: 'Simpan Perubahan',
                           onPressed: _saveProfile,
                           textStyle: TextStyle(
@@ -203,21 +220,18 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            AppTextField(
-                              key: const Key('mother-profile-edit-password'),
+                            AppPasswordField(
+                              key: _key('password'),
                               controller: _passwordController,
                               label: 'Kata sandi',
                               hintText: '••••••••',
                               validator: validatePassword,
-                              obscureText: true,
                               inputHeight: scaled(44),
                               textInputAction: TextInputAction.next,
                             ),
                             SizedBox(height: scaled(24)),
-                            AppTextField(
-                              key: const Key(
-                                'mother-profile-edit-password-confirmation',
-                              ),
+                            AppPasswordField(
+                              key: _key('password-confirmation'),
                               controller: _confirmationController,
                               label: 'Konfirmasi kata sandi',
                               hintText: '••••••••',
@@ -226,7 +240,6 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                                     value,
                                     _passwordController.text,
                                   ),
-                              obscureText: true,
                               inputHeight: scaled(44),
                               textInputAction: TextInputAction.done,
                             ),
@@ -234,9 +247,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                             SizedBox(
                               height: scaled(48),
                               child: AppSubmitButton(
-                                key: const Key(
-                                  'mother-profile-edit-change-password',
-                                ),
+                                key: _key('change-password'),
                                 label: 'Ubah kata sandi',
                                 onPressed: _changePassword,
                                 textStyle: TextStyle(

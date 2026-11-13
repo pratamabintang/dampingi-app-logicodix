@@ -92,6 +92,7 @@ flutter:
     - assets/images/mother_home/notification.svg
     - assets/images/mother_calendar/
     - assets/images/mother_profile/
+    - assets/images/companion_profile/
     - assets/images/chat/
     - assets/images/navigation/
     - assets/images/meditation/

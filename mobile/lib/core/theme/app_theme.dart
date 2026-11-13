@@ -21,7 +21,6 @@ abstract final class AppTheme {
   ];
 
   static final light = ThemeData(
-    fontFamily: fontFamily,
     colorScheme: ColorScheme.fromSeed(
       seedColor: coral,
       primary: coral,

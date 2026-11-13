@@ -14,7 +14,6 @@ class AppPasswordField extends StatefulWidget {
     this.inputHeight,
     this.labelStyle,
     this.textStyle,
-    this.showVisibilityToggle = true,
     this.enabled = true,
     this.autofillHints,
     super.key,
@@ -30,7 +29,6 @@ class AppPasswordField extends StatefulWidget {
   final double? inputHeight;
   final TextStyle? labelStyle;
   final TextStyle? textStyle;
-  final bool showVisibilityToggle;
   final bool enabled;
   final Iterable<String>? autofillHints;
 
@@ -76,21 +74,20 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
               enableSuggestions: false,
               decoration: InputDecoration(
                 hintText: widget.hintText,
-                suffixIcon: widget.showVisibilityToggle
-                    ? IconButton(
-                        tooltip: _obscureText
-                            ? 'Tampilkan kata sandi'
-                            : 'Sembunyikan kata sandi',
-                        onPressed: widget.enabled
-                            ? () => setState(() => _obscureText = !_obscureText)
-                            : null,
-                        icon: Icon(
-                          _obscureText
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                      )
-                    : null,
+                suffixIcon: IconButton(
+                  tooltip: _obscureText
+                      ? 'Tampilkan kata sandi'
+                      : 'Sembunyikan kata sandi',
+                  onPressed: widget.enabled
+                      ? () => setState(() => _obscureText = !_obscureText)
+                      : null,
+                  icon: Icon(
+                    _obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
               ),
             ),
           ),

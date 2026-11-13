@@ -36,14 +36,6 @@ class AuthController extends AsyncNotifier<AuthState> {
     required String password,
   }) async {
     final current = state.requireValue;
-    final selectedRole = current.selectedRole;
-    if (selectedRole == null) {
-      state = AsyncData(
-        current.copyWith(errorMessage: 'Pilih peran sebelum masuk.'),
-      );
-      return null;
-    }
-
     state = AsyncData(
       current.copyWith(
         isSubmitting: true,
@@ -57,7 +49,6 @@ class AuthController extends AsyncNotifier<AuthState> {
           .read(authRepositoryProvider)
           .login(
             request: LoginRequest(email: email.trim(), password: password),
-            selectedRole: selectedRole,
           );
       if (response.user.role == null) {
         throw const FormatException('Login response role is missing.');
@@ -74,11 +65,6 @@ class AuthController extends AsyncNotifier<AuthState> {
       return response;
     } on InvalidCredentialsException {
       return _setFailure(current, 'Email atau kata sandi tidak benar.');
-    } on RoleMismatchException {
-      return _setFailure(
-        current,
-        'Peran akun tidak sesuai dengan pilihan. Pilih peran yang benar.',
-      );
     } on MockNetworkException {
       return _setFailure(
         current,

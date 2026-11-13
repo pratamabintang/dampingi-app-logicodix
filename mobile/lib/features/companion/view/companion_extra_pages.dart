@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_profile_avatar.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../mother/controller/chat_controller.dart';
 import '../../mother/models/chat_models.dart';
@@ -89,6 +91,212 @@ class _CompanionChatPageState extends ConsumerState<CompanionChatPage> {
   }
 }
 
+class CompanionNotificationsPage extends StatefulWidget {
+  const CompanionNotificationsPage({super.key});
+
+  @override
+  State<CompanionNotificationsPage> createState() =>
+      _CompanionNotificationsPageState();
+}
+
+class _CompanionNotificationsPageState
+    extends State<CompanionNotificationsPage> {
+  final Set<String> _openedNotifications = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final scale = (constraints.maxWidth / 390)
+                .clamp(0.7, 1.15)
+                .toDouble();
+            final width = constraints.maxWidth < 390 * scale
+                ? constraints.maxWidth
+                : 390 * scale;
+            double scaled(double value) => value * scale;
+
+            return Center(
+              child: SizedBox(
+                width: width,
+                child: ListView(
+                  key: const Key('companion-notifications-scroll'),
+                  padding: EdgeInsets.fromLTRB(
+                    scaled(24),
+                    scaled(20),
+                    scaled(24),
+                    scaled(34),
+                  ),
+                  children: [
+                    SizedBox(
+                      height: scaled(24),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          key: const Key('companion-notifications-back'),
+                          onPressed: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/companion');
+                            }
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints.tightFor(
+                            width: scaled(24),
+                            height: scaled(24),
+                          ),
+                          icon: SvgPicture.asset(
+                            'assets/images/mother_profile/notification-back.svg',
+                            width: 24,
+                            height: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: scaled(36)),
+                    Text(
+                      'Notifikasi anda',
+                      key: const Key('companion-notifications-title'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontFamily,
+                        color: AppTheme.ink,
+                        fontSize: scaled(24),
+                        fontWeight: FontWeight.w600,
+                        height: 32 / 24,
+                      ),
+                    ),
+                    SizedBox(height: scaled(36)),
+                    _CompanionNotificationCard(
+                      id: 'journal',
+                      title: 'Ibu membagikan catatan baru',
+                      message: 'Catatan harian terbaru sudah tersedia',
+                      scale: scale,
+                      isUnread: !_openedNotifications.contains('journal'),
+                      onTap: () => _markNotificationOpened('journal'),
+                    ),
+                    SizedBox(height: scaled(10)),
+                    _CompanionNotificationCard(
+                      id: 'observation',
+                      title: 'Observasi harian telah diperbarui',
+                      message: 'Lihat hasil observasi terbaru dari Ibu',
+                      scale: scale,
+                      isUnread: !_openedNotifications.contains('observation'),
+                      onTap: () => _markNotificationOpened('observation'),
+                    ),
+                    SizedBox(height: scaled(10)),
+                    _CompanionNotificationCard(
+                      id: 'support',
+                      title: 'Tips dukungan baru tersedia',
+                      message: 'Temukan cara sederhana untuk membantu Ibu',
+                      scale: scale,
+                      isUnread: !_openedNotifications.contains('support'),
+                      onTap: () => _markNotificationOpened('support'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _markNotificationOpened(String id) {
+    setState(() => _openedNotifications.add(id));
+  }
+}
+
+class _CompanionNotificationCard extends StatelessWidget {
+  const _CompanionNotificationCard({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.scale,
+    required this.isUnread,
+    required this.onTap,
+  });
+
+  final String id;
+  final String title;
+  final String message;
+  final double scale;
+  final bool isUnread;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final titleColor = isUnread ? AppTheme.coralText : const Color(0xFF252B37);
+    final messageColor = isUnread ? AppTheme.coralText : AppTheme.muted;
+
+    return Container(
+      key: Key('companion-notification-$id'),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32 * scale),
+      ),
+      child: Material(
+        color: isUnread ? AppTheme.selectedSurface : const Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.circular(32 * scale),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(32 * scale),
+          child: Padding(
+            padding: EdgeInsets.all(20 * scale),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontFamily,
+                          color: titleColor,
+                          fontSize: 14 * scale,
+                          fontWeight: FontWeight.w600,
+                          height: 20 / 14,
+                        ),
+                      ),
+                      SizedBox(height: 10 * scale),
+                      Text(
+                        message,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontFamily,
+                          color: messageColor,
+                          fontSize: 16 * scale,
+                          height: 24 / 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isUnread) ...[
+                  SizedBox(width: 16 * scale),
+                  SvgPicture.asset(
+                    'assets/images/mother_profile/notification-unread.svg',
+                    width: 16,
+                    height: 16,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CompanionSupportPage extends StatefulWidget {
   const CompanionSupportPage({
     required this.scale,
@@ -156,17 +364,27 @@ class _CompanionSupportPageState extends State<CompanionSupportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        'Mulai dari pertanyaan sederhana',
+                        style: TextStyle(
+                          color: AppTheme.ink,
+                          fontFamily: AppTheme.fontFamily,
+                          fontSize: scale * 16,
+                          fontWeight: FontWeight.w600,
+                          height: 24 / 16,
+                        ),
+                      ),
+                      SizedBox(height: scale * 12),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
-                              'Mulai dari pertanyaan sederhana',
+                              '“Apa yang paling kamu butuhkan hari ini?”',
                               style: TextStyle(
-                                color: AppTheme.ink,
+                                color: AppTheme.muted,
                                 fontFamily: AppTheme.fontFamily,
                                 fontSize: scale * 16,
-                                fontWeight: FontWeight.w600,
                                 height: 24 / 16,
                               ),
                             ),
@@ -180,16 +398,6 @@ class _CompanionSupportPageState extends State<CompanionSupportPage> {
                             size: scale * 24,
                           ),
                         ],
-                      ),
-                      SizedBox(height: scale * 12),
-                      Text(
-                        '“Apa yang paling kamu butuhkan hari ini?”',
-                        style: TextStyle(
-                          color: AppTheme.muted,
-                          fontFamily: AppTheme.fontFamily,
-                          fontSize: scale * 16,
-                          height: 24 / 16,
-                        ),
                       ),
                       if (_showPrompt) ...[
                         SizedBox(height: scale * 12),
@@ -300,11 +508,12 @@ class _CompanionSupportSuggestion extends StatelessWidget {
   }
 }
 
-class CompanionProfilePage extends StatefulWidget {
+class CompanionProfilePage extends StatelessWidget {
   const CompanionProfilePage({
     required this.scale,
     required this.userName,
     required this.email,
+    required this.hasMother,
     required this.onEdit,
     required this.onEnterCode,
     required this.onLogout,
@@ -314,20 +523,14 @@ class CompanionProfilePage extends StatefulWidget {
   final double scale;
   final String userName;
   final String email;
+  final bool hasMother;
   final VoidCallback onEdit;
   final VoidCallback onEnterCode;
   final VoidCallback onLogout;
 
   @override
-  State<CompanionProfilePage> createState() => _CompanionProfilePageState();
-}
-
-class _CompanionProfilePageState extends State<CompanionProfilePage> {
-  bool _weeklySummary = true;
-
-  @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
+    final scale = this.scale;
     return ListView(
       key: const Key('companion-profile-scroll'),
       padding: EdgeInsets.fromLTRB(
@@ -354,15 +557,15 @@ class _CompanionProfilePageState extends State<CompanionProfilePage> {
           padding: EdgeInsets.all(scale * 24),
           child: Column(
             children: [
-              SvgPicture.asset(
-                'assets/images/role_picker/companion.svg',
-                width: scale * 96,
-                height: scale * 96,
-                semanticsLabel: 'Foto profil ${widget.userName}',
+              AppProfileAvatar(
+                key: const Key('companion-profile-avatar'),
+                assetPath: 'assets/images/companion_profile/profile-avatar.png',
+                size: scale * 85,
+                semanticLabel: 'Foto profil $userName',
               ),
-              SizedBox(height: scale * 24),
+              SizedBox(height: scale * 16),
               Text(
-                widget.userName,
+                userName,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppTheme.ink,
@@ -374,7 +577,7 @@ class _CompanionProfilePageState extends State<CompanionProfilePage> {
               ),
               SizedBox(height: scale * 4),
               Text(
-                widget.email,
+                email,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppTheme.muted,
@@ -399,117 +602,100 @@ class _CompanionProfilePageState extends State<CompanionProfilePage> {
                 key: const Key('companion-profile-edit'),
                 label: 'Ubah Profil',
                 scale: scale,
-                onPressed: widget.onEdit,
+                onPressed: onEdit,
               ),
               SizedBox(height: scale * 10),
               _CompanionProfileButton(
                 key: const Key('companion-profile-enter-code'),
                 label: 'Masukan Kode Pendampingan',
                 scale: scale,
-                onPressed: widget.onEnterCode,
+                onPressed: onEnterCode,
                 secondary: true,
               ),
             ],
           ),
         ),
-        SizedBox(height: scale * 24),
-        AppCard(
-          key: const Key('companion-profile-permissions'),
-          padding: EdgeInsets.all(scale * 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Pilih data yang boleh dilihat orang yang terhubung',
-                style: TextStyle(
-                  color: AppTheme.ink,
-                  fontFamily: AppTheme.fontFamily,
-                  fontSize: scale * 16,
-                  fontWeight: FontWeight.w600,
-                  height: 24 / 16,
+        if (hasMother) ...[
+          SizedBox(height: scale * 24),
+          AppCard(
+            key: const Key('companion-profile-mother-card'),
+            padding: EdgeInsets.all(scale * 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ibu yang anda dampingi',
+                  style: TextStyle(
+                    color: AppTheme.ink,
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: scale * 16,
+                    fontWeight: FontWeight.w600,
+                    height: 24 / 16,
+                  ),
                 ),
-              ),
-              SizedBox(height: scale * 24),
-              Container(
-                padding: EdgeInsets.all(scale * 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFAF9),
-                  borderRadius: BorderRadius.circular(scale * 32),
-                ),
-                child: Row(
-                  children: [
-                    ClipOval(
-                      child: Image.asset(
-                        'assets/images/mother_profile/man-1.png',
-                        width: scale * 56,
-                        height: scale * 56,
-                        fit: BoxFit.cover,
-                        semanticLabel: 'Foto Tn. Enzokulin',
-                      ),
+                SizedBox(height: scale * 24),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: scale * 12),
+                  child: Container(
+                    padding: EdgeInsets.all(scale * 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFAF9),
+                      borderRadius: BorderRadius.circular(scale * 32),
                     ),
-                    SizedBox(width: scale * 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tn. Enzokulin',
-                            style: TextStyle(
-                              color: AppTheme.coralText,
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: scale * 16,
-                              fontWeight: FontWeight.w600,
-                              height: 24 / 16,
-                            ),
+                    child: Row(
+                      children: [
+                        ClipOval(
+                          child: Image.asset(
+                            'assets/images/mother_home/avatar-a.png',
+                            width: scale * 56,
+                            height: scale * 56,
+                            fit: BoxFit.cover,
+                            semanticLabel: 'Foto Ny. Shopia Mudjahidah',
                           ),
-                          Text(
-                            'enzo***@gmail.com',
-                            style: TextStyle(
-                              color: AppTheme.muted,
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: scale * 16,
-                              height: 24 / 16,
-                            ),
+                        ),
+                        SizedBox(width: scale * 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ny, Shopia Mudjahidah',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppTheme.coralText,
+                                  fontFamily: AppTheme.fontFamily,
+                                  fontSize: scale * 16,
+                                  fontWeight: FontWeight.w600,
+                                  height: 24 / 16,
+                                ),
+                              ),
+                              Text(
+                                'shopia***@gmail.com',
+                                style: TextStyle(
+                                  color: AppTheme.muted,
+                                  fontFamily: AppTheme.fontFamily,
+                                  fontSize: scale * 16,
+                                  height: 24 / 16,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: scale * 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Ringkasan mingguan',
-                      style: TextStyle(
-                        color: AppTheme.ink,
-                        fontFamily: AppTheme.fontFamily,
-                        fontSize: scale * 14,
-                        height: 20 / 14,
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  Switch(
-                    key: const Key('companion-profile-weekly-toggle'),
-                    value: _weeklySummary,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: const Color(0xFF039855),
-                    onChanged: (value) =>
-                        setState(() => _weeklySummary = value),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
         SizedBox(height: scale * 32),
         _CompanionProfileButton(
           key: const Key('companion-profile-logout'),
           label: 'Keluar',
           scale: scale,
-          onPressed: widget.onLogout,
+          onPressed: onLogout,
         ),
       ],
     );

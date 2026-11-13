@@ -85,7 +85,9 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             scale: scale,
                             userName: greetingName,
                             email: user?.email ?? '',
-                            onEdit: () => _showNotice(context, 'Ubah profil'),
+                            hasMother: _hasMother,
+                            onEdit: () =>
+                                context.push('/companion/profile/edit'),
                             onEnterCode: () {
                               if (_hasMother) {
                                 _showNotice(context, 'Ibu sudah terhubung.');
@@ -165,7 +167,10 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
         scale * 24,
       ),
       children: [
-        _CompanionHeader(scale: scale),
+        _CompanionHeader(
+          scale: scale,
+          onNotificationsTap: () => context.push('/companion/notifications'),
+        ),
         SizedBox(height: scale * 36),
         Text(
           'Selamat Pagi, $greetingName 👋',
@@ -313,9 +318,13 @@ extension on BuildContext {
 }
 
 class _CompanionHeader extends StatelessWidget {
-  const _CompanionHeader({required this.scale});
+  const _CompanionHeader({
+    required this.scale,
+    required this.onNotificationsTap,
+  });
 
   final double scale;
+  final VoidCallback onNotificationsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -334,7 +343,7 @@ class _CompanionHeader extends StatelessWidget {
         IconButton(
           key: const Key('companion-notification'),
           tooltip: 'Notifikasi',
-          onPressed: () => _showNotice(context, 'Notifikasi'),
+          onPressed: onNotificationsTap,
           padding: EdgeInsets.all(8 * scale),
           constraints: BoxConstraints(
             minWidth: 48 * scale,
