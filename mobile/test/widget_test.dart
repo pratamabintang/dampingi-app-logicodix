@@ -14,6 +14,7 @@ import 'package:mobile/features/auth/controller/auth_controller.dart';
 import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
+import 'package:mobile/features/companion/view/companion_extra_pages.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
@@ -446,6 +447,16 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('companion-notification')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanionNotificationsPage), findsOneWidget);
+    expect(find.text('Notifikasi anda'), findsOneWidget);
+    expect(find.text('Ibu membagikan catatan baru'), findsOneWidget);
+    expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
+    await tester.tap(find.byKey(const Key('companion-notifications-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanionPage), findsOneWidget);
+
     await tester.tap(find.byKey(const Key('companion-observation-start')));
     await tester.pumpAndSettle();
     expect(
@@ -591,10 +602,26 @@ void main() {
       find.text('Tanyakan dengan lembut, lalu beri waktu untuk bercerita.'),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const Key('companion-support-prompt')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Tanyakan dengan lembut, lalu beri waktu untuk bercerita.'),
+      findsNothing,
+    );
 
     await tester.tap(find.byKey(const Key('mother-nav-profile')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
+    final profileAvatar = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('companion-profile-card')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (profileAvatar.image as AssetImage).assetName,
+      'assets/images/companion_profile/profile-avatar.png',
+    );
     expect(find.text('Ibu yang anda dampingi'), findsOneWidget);
     expect(find.text('Ny, Shopia Mudjahidah'), findsOneWidget);
     expect(find.text('shopia***@gmail.com'), findsOneWidget);
@@ -603,6 +630,27 @@ void main() {
       find.byKey(const Key('companion-profile-permissions')),
       findsNothing,
     );
+    await tester.tap(find.byKey(const Key('companion-profile-edit')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanionProfileEditPage), findsOneWidget);
+    expect(find.text('Ubah Foto'), findsOneWidget);
+    expect(find.text('Simpan Perubahan'), findsOneWidget);
+    expect(find.text('Ubah kata sandi'), findsOneWidget);
+    expect(find.text('Pendamping Demo'), findsOneWidget);
+    expect(find.text('demo.companion@dampingi.test'), findsOneWidget);
+    final editableProfileAvatar = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('companion-profile-edit-avatar')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (editableProfileAvatar.image as AssetImage).assetName,
+      'assets/images/companion_profile/profile-avatar.png',
+    );
+    await tester.tap(find.byKey(const Key('companion-profile-edit-back')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const Key('companion-profile-logout')),
       120,

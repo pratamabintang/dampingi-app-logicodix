@@ -7,6 +7,7 @@ import '../features/auth/models/password_reset_flow.dart';
 import '../features/auth/view/password_reset_page.dart';
 import '../features/auth/view/register_page.dart';
 import '../features/companion/view/companion_page.dart';
+import '../features/companion/view/companion_extra_pages.dart';
 import '../features/doctor/view/doctor_page.dart';
 import '../features/mother/view/mother_page.dart';
 import '../features/mother/view/mother_chat_page.dart';
@@ -156,6 +157,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/companion',
         builder: (context, state) => const CompanionPage(),
+      ),
+      GoRoute(
+        path: '/companion/profile/edit',
+        builder: (context, state) => const CompanionProfileEditPage(),
+      ),
+      GoRoute(
+        path: '/companion/notifications',
+        builder: (context, state) => const CompanionNotificationsPage(),
       ),
       GoRoute(path: '/doctor', builder: (context, state) => const DoctorPage()),
     ],
