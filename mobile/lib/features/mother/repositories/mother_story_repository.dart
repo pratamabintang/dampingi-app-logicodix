@@ -92,6 +92,79 @@ String isoDate(DateTime day) =>
     '${day.month.toString().padLeft(2, '0')}-'
     '${day.day.toString().padLeft(2, '0')}';
 
+/// Mood beberapa hari terakhir untuk kartu "Mood hari ini".
+final recentMoodsProvider = FutureProvider<List<MoodEntry>?>((ref) async {
+  final token = ref
+      .watch(authControllerProvider)
+      .asData
+      ?.value
+      .session
+      ?.accessToken;
+  if (token == null || token.startsWith('mock-')) return null;
+
+  final today = DateTime.now();
+  return ref.watch(dailyEntryRepositoryProvider).listMoods(
+    accessToken: token,
+    startDate: isoDate(today.subtract(const Duration(days: 6))),
+    endDate: isoDate(today),
+  );
+});
+
+/// Satu kotak di kartu mood. `mood` null = hari itu belum dicatat.
+class MoodDay {
+  const MoodDay({
+    required this.date,
+    required this.label,
+    required this.isToday,
+    this.mood,
+  });
+
+  final DateTime date;
+  final String label;
+  final bool isToday;
+  final MotherMood? mood;
+}
+
+/// Hari-hari di sekitar `today`: `before` hari sebelumnya, hari ini di tengah,
+/// lalu `after` hari sesudahnya (belum dicatat, karena belum terjadi).
+List<MoodDay> recentMoodDays(
+  List<MoodEntry> moods,
+  DateTime today, {
+  int before = 2,
+  int after = 2,
+}) {
+  final byDate = {for (final mood in moods) mood.date: mood.mood};
+  return [
+    for (var offset = -before; offset <= after; offset++)
+      _moodDay(
+        DateTime(today.year, today.month, today.day + offset),
+        byDate,
+        isToday: offset == 0,
+      ),
+  ];
+}
+
+MoodDay _moodDay(
+  DateTime day,
+  Map<String, int> byDate, {
+  required bool isToday,
+}) {
+  final value = byDate[isoDate(day)];
+  return MoodDay(
+    date: day,
+    label: isToday ? 'Hari ini' : _dayShortNames[day.weekday - 1],
+    isToday: isToday,
+    mood: value == null ? null : MotherMood.values[value - 1],
+  );
+}
+
+const _dayShortNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+const _moodTitles = ['Sangat Sedih', 'Sedih', 'Biasa Saja', 'Senang', 'Sangat Bahagia'];
+
+/// Nama mood, sama dengan pilihan di dialog "Catat mood".
+String moodTitle(MotherMood mood) => _moodTitles[mood.index];
+
 class MotherStoryRepository {
   MotherStoryRepository({
     AssetBundle? assetBundle,
