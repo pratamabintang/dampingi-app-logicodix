@@ -148,9 +148,15 @@ def seed_one(
     if existing is None:
         existing = find_existing_seed_users()
     if email in existing:
+        user_id = existing[email]
+        if not delete:
+            # With email confirmation on, an account created before the
+            # setting was flipped (or by a plain signup) may still be
+            # pending. Seeded accounts must always be usable.
+            auth_supabase.admin_confirm_user(user_id)
         return {
             "email": email,
-            "user_id": existing[email],
+            "user_id": user_id,
             "created": False,
             "message": "already exists",
         }
@@ -163,11 +169,16 @@ def seed_one(
             role=role,
             timezone=DEFAULT_ZONE,
         )
-        user_id = resp.get("user", {}).get("id")
+        # With confirmation on the answer is the bare User object; with it
+        # off Supabase wraps it in `{"user": ..., "session": ...}`.
+        user = resp.get("user") or resp
+        user_id = user.get("id")
         if not user_id:
             raise auth_supabase.SupabaseError(
                 400, f"Signup returned no user ID for {email}"
             )
+        if not delete:
+            auth_supabase.admin_confirm_user(user_id)
 
         if delete:
             try:
@@ -499,14 +510,44 @@ def _resolve_ids(rows: Dict[str, List[dict]], ids: Dict[str, str]) -> Dict[str, 
     return resolved
 
 
+def clear_seeded(table: str, column: str, values: List[str]) -> None:
+    """Drop the fixture content a seed run is about to rewrite.
+
+    `moods` and `journals` are unique per `(user_id, created_at)`, and
+    `observations` per `(connection_id, day)`. The seed dates move with
+    "today", so an upsert would collide with a *different* row that already
+    sits on the day the seed now wants. The seed accounts exist only as
+    fixtures, so their content is rewritten wholesale: delete by owner,
+    then insert. Stable ids still make the inserted rows deterministic.
+    """
+    distinct = sorted({value for value in values if value})
+    if not distinct:
+        return
+    resp = _request(
+        _client().delete,
+        f"{_base_url()}/rest/v1/{table}",
+        params={column: f"in.({','.join(distinct)})"},
+        headers=supabase_service_http(),
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+
+
 def seed_domain(ids: Dict[str, str]) -> Dict[str, int]:
     """Upsert every non-Profile row, in foreign-key order.
 
     Returns {table: row count}.
     """
     rows = _resolve_ids(_rows(), ids)
+    profile_ids = list(ids.values())
+    connection_ids = [row["id"] for row in rows["connections"]]
     counts: Dict[str, int] = {}
     for table, table_rows in rows.items():
+        if table in ("moods", "journals"):
+            clear_seeded(table, "user_id", profile_ids)
+        elif table == "observations":
+            clear_seeded(table, "connection_id", connection_ids)
         upsert(table, table_rows)
         counts[table] = len(table_rows)
     return counts

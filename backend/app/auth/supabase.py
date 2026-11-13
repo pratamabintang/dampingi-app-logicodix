@@ -167,6 +167,25 @@ def ban_user(user_id: str) -> dict:
     return resp.json()
 
 
+def admin_confirm_user(user_id: str) -> dict:
+    """Mark an address confirmed without the user entering anything.
+
+    Used by the seeder: with email confirmation on, a fresh signup stays
+    pending and the deterministic seed accounts could not log in. The admin
+    update is idempotent, so re-running the seeder is safe.
+    """
+    resp = _request(
+        _client().put,
+        f"{_base_url()}/auth/v1/admin/users/{user_id}",
+        headers=supabase_service_http(),
+        json={"email_confirm": True},
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    return resp.json()
+
+
 def revoke_sessions(user_token: str, scope: str = "global") -> None:
     resp = _request(
         _client().post,
