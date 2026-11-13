@@ -95,19 +95,28 @@ class BackendApi {
           .join()
           .timeout(_timeout);
       // 204 No Content (mis. ubah kata sandi) tidak punya isi: anggap objek kosong.
-      final decoded = responseBody.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(responseBody);
-
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('API returned a non-object response.');
+      Object? decoded;
+      try {
+        decoded = responseBody.isEmpty
+            ? <String, dynamic>{}
+            : jsonDecode(responseBody);
+      } on FormatException {
+        // Mis. halaman error HTML dari tunnel/proxy, atau 500 berupa teks biasa.
+        decoded = null;
       }
+
+      // Cek status dulu, supaya error yang bukan JSON tetap terbaca kodenya.
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        final detail = decoded['detail'];
+        final detail = decoded is Map<String, dynamic> ? decoded['detail'] : null;
         throw BackendApiException(
           statusCode: response.statusCode,
-          message: detail is String ? detail : 'Permintaan gagal.',
+          message: detail is String
+              ? detail
+              : 'Server sedang bermasalah (${response.statusCode}). Coba lagi.',
         );
+      }
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('API returned a non-object response.');
       }
       return decoded;
     } on TimeoutException {
