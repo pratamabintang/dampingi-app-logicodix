@@ -115,12 +115,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           message: 'Akun ini tidak memiliki akses ke halaman tersebut.',
         ),
       ),
-      GoRoute(
-        path: '/mother',
-        builder: (context, state) => MotherPage(
-          showWeeklyEpds: state.uri.queryParameters['epds'] == 'due',
-        ),
-      ),
+      GoRoute(path: '/mother', builder: (context, state) => const MotherPage()),
       GoRoute(
         path: '/mother/meditation',
         builder: (context, state) => const MotherMeditationListPage(),

@@ -15,10 +15,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../models/mother_story.dart';
 import '../repositories/mother_story_repository.dart';
+import '../widgets/mother_mood_face.dart';
 import 'mother_navigation.dart';
 
 class MotherPage extends ConsumerWidget {
-  const MotherPage({this.showWeeklyEpds = false, super.key});
+  const MotherPage({this.showWeeklyEpds = true, super.key});
 
   final bool showWeeklyEpds;
 
@@ -289,37 +290,27 @@ class _MoodCard extends StatelessWidget {
               _MoodItem(
                 faceKey: const Key('mother-mood-face-sen'),
                 label: 'Sen',
-                color: Color(0xFFB093C4),
-                asset: 'mood-very-sad.svg',
-                faceHeight: 19.85,
+                mood: MotherMood.verySad,
               ),
               _MoodItem(
                 faceKey: const Key('mother-mood-face-sel'),
                 label: 'Sel',
-                color: Color(0xFFA2B1EA),
-                asset: 'mood-sad.svg',
-                faceHeight: 17.85,
+                mood: MotherMood.sad,
               ),
               _MoodItem(
                 faceKey: const Key('mother-mood-face-rab'),
                 label: 'Rab',
-                color: Color(0xFFDDD6CA),
-                asset: 'mood-neutral.svg',
-                faceHeight: 10.85,
+                mood: MotherMood.neutral,
               ),
               _MoodItem(
                 faceKey: const Key('mother-mood-face-kam'),
                 label: 'Kam',
-                color: Color(0xFFAFEAAB),
-                asset: 'mood-very-happy.svg',
-                faceHeight: 17.85,
+                mood: MotherMood.happy,
               ),
               _MoodItem(
                 faceKey: const Key('mother-mood-face-jum'),
                 label: 'Jum',
-                color: Color(0xFFFBE567),
-                asset: 'mood-happy.svg',
-                faceHeight: 23,
+                mood: MotherMood.veryHappy,
               ),
             ],
           ),
@@ -347,16 +338,12 @@ class _MoodItem extends StatelessWidget {
   const _MoodItem({
     required this.faceKey,
     required this.label,
-    required this.color,
-    required this.asset,
-    required this.faceHeight,
+    required this.mood,
   });
 
   final Key faceKey;
   final String label;
-  final Color color;
-  final String asset;
-  final double faceHeight;
+  final MotherMood? mood;
 
   @override
   Widget build(BuildContext context) {
@@ -364,11 +351,11 @@ class _MoodItem extends StatelessWidget {
       width: context.scaled(54),
       child: Column(
         children: [
-          _MoodExpression(
-            faceKey: faceKey,
-            background: color,
-            asset: asset,
-            faceHeight: faceHeight,
+          MotherMoodFace(
+            key: mood == null ? faceKey : null,
+            mood: mood,
+            scale: context.scaled(1),
+            expressionKey: mood == null ? null : faceKey,
           ),
           Text(
             label,
@@ -379,50 +366,6 @@ class _MoodItem extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MoodExpression extends StatelessWidget {
-  const _MoodExpression({
-    required this.faceKey,
-    required this.background,
-    required this.asset,
-    required this.faceHeight,
-  });
-
-  final Key faceKey;
-  final Color background;
-  final String asset;
-  final double faceHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = context.scaled(1);
-    return SizedBox(
-      width: context.scaled(54),
-      height: context.scaled(53),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(context.scaled(12)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: context.scaled(8),
-            top: context.scaled(18),
-          ),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: SvgPicture.asset(
-              key: faceKey,
-              'assets/images/mother_home/$asset',
-              width: context.scaled(38),
-              height: faceHeight * scale,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1041,31 +984,14 @@ class _MoodEntryDialogState extends State<_MoodEntryDialog> {
 
   Widget _selectedMoodFace(double scale, {bool large = false}) {
     final mood = _moodLevels[_selectedLevel];
-    final dimension = large ? 100.0 : 54.0;
-    final expression = SvgPicture.asset(
-      'assets/images/mother_home/${mood.asset}',
-      key: large ? const Key('mother-mood-summary-expression') : null,
-      width: (large ? 70.3 : 38) * scale,
-      height: (large ? 42.5 : mood.faceHeight) * scale,
-    );
-    return SizedBox(
+    return MotherMoodFace(
       key: Key(
         large ? 'mother-mood-summary-face' : 'mother-mood-selected-face',
       ),
-      width: dimension * scale,
-      height: (large ? 98.0 : 53.0) * scale,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: mood.color,
-          borderRadius: BorderRadius.circular((large ? 22.2 : 12) * scale),
-        ),
-        child: large
-            ? Center(child: expression)
-            : Padding(
-                padding: EdgeInsets.only(left: 8 * scale, top: 18 * scale),
-                child: Align(alignment: Alignment.topLeft, child: expression),
-              ),
-      ),
+      mood: mood.mood,
+      scale: scale,
+      large: large,
+      expressionKey: large ? const Key('mother-mood-summary-expression') : null,
     );
   }
 
@@ -1122,37 +1048,27 @@ class _MoodEntryDialogState extends State<_MoodEntryDialog> {
 const _moodLevels = <_MoodLevel>[
   _MoodLevel(
     title: 'Sangat Sedih',
-    asset: 'mood-very-sad.svg',
-    color: Color(0xFFB093C4),
-    faceHeight: 19.85,
+    mood: MotherMood.verySad,
     feelings: ['Kesepian', 'Kecewa', 'Lelah', 'Cemas'],
   ),
   _MoodLevel(
     title: 'Sedih',
-    asset: 'mood-sad.svg',
-    color: Color(0xFFA2B1EA),
-    faceHeight: 17.85,
+    mood: MotherMood.sad,
     feelings: ['Sedih', 'Cemas', 'Lelah', 'Bingung'],
   ),
   _MoodLevel(
     title: 'Biasa Saja',
-    asset: 'mood-neutral.svg',
-    color: Color(0xFFDDD6CA),
-    faceHeight: 10.85,
+    mood: MotherMood.neutral,
     feelings: ['Tenang', 'Biasa saja', 'Lega', 'Bersyukur'],
   ),
   _MoodLevel(
     title: 'Senang',
-    asset: 'mood-very-happy.svg',
-    color: Color(0xFFAFEAAB),
-    faceHeight: 17.85,
+    mood: MotherMood.happy,
     feelings: ['Senang', 'Bersyukur', 'Tenang', 'Bersemangat'],
   ),
   _MoodLevel(
     title: 'Sangat Bahagia',
-    asset: 'mood-happy.svg',
-    color: Color(0xFFFBE567),
-    faceHeight: 23,
+    mood: MotherMood.veryHappy,
     feelings: ['Bersemangat', 'Terkejoed', 'Lega', 'Bangga'],
   ),
 ];
@@ -1160,16 +1076,12 @@ const _moodLevels = <_MoodLevel>[
 class _MoodLevel {
   const _MoodLevel({
     required this.title,
-    required this.asset,
-    required this.color,
-    required this.faceHeight,
+    required this.mood,
     required this.feelings,
   });
 
   final String title;
-  final String asset;
-  final Color color;
-  final double faceHeight;
+  final MotherMood mood;
   final List<String> feelings;
 }
 
@@ -1197,27 +1109,7 @@ class _MoodLevelOption extends StatelessWidget {
       child: GestureDetector(
         key: Key('mother-mood-level-$index'),
         onTap: onTap,
-        child: SizedBox(
-          width: 54 * scale,
-          height: 53 * scale,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: level.color,
-              borderRadius: BorderRadius.circular(12 * scale),
-            ),
-            child: Padding(
-              padding: EdgeInsets.only(left: 8 * scale, top: 18 * scale),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SvgPicture.asset(
-                  'assets/images/mother_home/${level.asset}',
-                  width: 38 * scale,
-                  height: level.faceHeight * scale,
-                ),
-              ),
-            ),
-          ),
-        ),
+        child: MotherMoodFace(mood: level.mood, scale: scale),
       ),
     );
   }

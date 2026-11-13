@@ -259,6 +259,16 @@ void main() {
       find.byKey(const Key('mother-calendar-empty-stories')),
       findsOneWidget,
     );
+    final unsetMoodDay = tester.widget<Container>(
+      find.byKey(const Key('mother-calendar-day-Sen')),
+    );
+    final unsetMoodDecoration = unsetMoodDay.decoration! as BoxDecoration;
+    expect(unsetMoodDecoration.color, AppTheme.unselectedSurface);
+    expect(unsetMoodDecoration.borderRadius, BorderRadius.circular(12));
+    expect(
+      find.byKey(const Key('mother-calendar-expression-Sen')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 }

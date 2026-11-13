@@ -6,22 +6,22 @@ extension MotherMoodPresentation on MotherMood {
   Color get color => switch (this) {
     MotherMood.verySad => const Color(0xFFB093C4),
     MotherMood.sad => const Color(0xFFA2B1EA),
-    MotherMood.neutral => const Color(0xFFF5F5F5),
+    MotherMood.neutral => const Color(0xFFDDD6CA),
     MotherMood.happy => const Color(0xFFAFEAAB),
     MotherMood.veryHappy => const Color(0xFFFBE567),
   };
 
   String get asset => switch (this) {
-    MotherMood.verySad => 'mood-very-sad.svg',
+    MotherMood.verySad => 'mood-daily-very-sad.svg',
     MotherMood.sad => 'mood-sad.svg',
     MotherMood.neutral => 'mood-neutral.svg',
-    MotherMood.happy => 'mood-happy.svg',
-    MotherMood.veryHappy => 'mood-very-happy.svg',
+    MotherMood.happy => 'mood-daily-happy.svg',
+    MotherMood.veryHappy => 'mood-daily-very-happy.svg',
   };
 
   double get faceHeight => switch (this) {
     MotherMood.verySad => 19.85,
-    MotherMood.sad => 15.02,
+    MotherMood.sad => 17.85,
     MotherMood.neutral => 10.85,
     MotherMood.happy => 17.85,
     MotherMood.veryHappy => 23,

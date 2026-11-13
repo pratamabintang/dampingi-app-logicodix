@@ -229,7 +229,17 @@ void main() {
     expect(find.byType(MotherPage), findsOneWidget);
     expect(find.text('Selamat Pagi, Ibu Demo 👋'), findsOneWidget);
     expect(find.byKey(const Key('mother-mood-card')), findsOneWidget);
-    expect(find.byKey(const Key('mother-epds-card')), findsNothing);
+    expect(find.byKey(const Key('mother-epds-card')), findsOneWidget);
+    expect(find.text('EPDS mingguan'), findsOneWidget);
+    expect(find.text('Isi Sekarang'), findsOneWidget);
+    expect(
+      tester.widget<MotherPage>(find.byType(MotherPage)).showWeeklyEpds,
+      isTrue,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('mother-epds-card'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const Key('mother-mood-card'))).dy),
+    );
     expect(find.byKey(const Key('mother-bottom-navigation')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('mother-nav-profile'))).width,
@@ -350,26 +360,6 @@ void main() {
     expect(happyFaceSize.height, closeTo(17.85, 0.01));
     expect(veryHappyFaceSize.width, closeTo(38, 0.01));
     expect(veryHappyFaceSize.height, closeTo(23, 0.01));
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    expect(find.text('Lakukan'), findsNWidgets(2));
-
-    GoRouter.of(tester.element(find.byType(MotherPage))).go('/mother?epds=due');
-    await tester.pumpAndSettle();
-    expect(
-      GoRouter.of(tester.element(find.byType(MotherPage)))
-          .routeInformationProvider
-          .value
-          .uri
-          .queryParameters['epds'],
-      'due',
-    );
-    expect(
-      tester.widget<MotherPage>(find.byType(MotherPage)).showWeeklyEpds,
-      isTrue,
-    );
-    expect(find.byKey(const Key('mother-epds-card')), findsOneWidget);
-    expect(find.text('Isi Sekarang'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Lakukan'), findsNothing);
@@ -1053,11 +1043,25 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const Key('mother-chat-input'))).height,
-      36,
+      24,
     );
     expect(
       tester.getSize(find.byKey(const Key('mother-chat-send'))),
       const Size(36, 36),
+    );
+    final editable = tester
+        .state<EditableTextState>(find.byType(EditableText))
+        .renderEditable;
+    final caretRect = editable.getLocalRectForCaret(
+      const TextPosition(offset: 0),
+    );
+    final caretCenter = editable.localToGlobal(caretRect.center);
+    final sendButtonRect = tester.getRect(
+      find.byKey(const Key('mother-chat-send')),
+    );
+    expect(
+      (caretCenter.dy - sendButtonRect.center.dy).abs(),
+      lessThanOrEqualTo(2),
     );
 
     await tester.enterText(
