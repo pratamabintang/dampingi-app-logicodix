@@ -162,7 +162,7 @@ class _HomeHeader extends StatelessWidget {
         IconButton(
           key: const Key('mother-notifications'),
           tooltip: 'Notifikasi',
-          onPressed: () => _showFeatureNotice(context, 'Notifikasi'),
+          onPressed: () => context.go('/mother/notifications'),
           padding: EdgeInsets.all(context.scaled(8)),
           constraints: BoxConstraints(
             minWidth: context.scaled(48),
@@ -458,6 +458,8 @@ class _StoriesCard extends StatelessWidget {
                 story: stories[index],
                 scale: _HomeScale.of(context),
                 keyPrefix: 'mother-story-${stories[index].id}',
+                arrowAsset:
+                    'assets/images/mother_calendar/story-arrow-right.svg',
                 snippetFontSize: 16,
                 onTap: () => context.push(
                   '/mother/calendar/story',
