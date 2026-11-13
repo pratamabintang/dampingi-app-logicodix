@@ -75,11 +75,29 @@ const _moodLabels = [
   'Anda merasa sangat bahagia',
 ];
 
-const _dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+const _dayNames = [
+  'Senin',
+  'Selasa',
+  'Rabu',
+  'Kamis',
+  'Jumat',
+  'Sabtu',
+  'Minggu',
+];
 
 const _monthNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
 /// "Jumat, 13 November 2026"
@@ -103,11 +121,13 @@ final recentMoodsProvider = FutureProvider<List<MoodEntry>?>((ref) async {
   if (token == null || token.startsWith('mock-')) return null;
 
   final today = DateTime.now();
-  return ref.watch(dailyEntryRepositoryProvider).listMoods(
-    accessToken: token,
-    startDate: isoDate(today.subtract(const Duration(days: 6))),
-    endDate: isoDate(today),
-  );
+  return ref
+      .watch(dailyEntryRepositoryProvider)
+      .listMoods(
+        accessToken: token,
+        startDate: isoDate(today.subtract(const Duration(days: 6))),
+        endDate: isoDate(today),
+      );
 });
 
 /// Satu kotak di kartu mood. `mood` null = hari itu belum dicatat.
@@ -160,10 +180,64 @@ MoodDay _moodDay(
 
 const _dayShortNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
-const _moodTitles = ['Sangat Sedih', 'Sedih', 'Biasa Saja', 'Senang', 'Sangat Bahagia'];
+const _moodTitles = [
+  'Sangat Sedih',
+  'Sedih',
+  'Biasa Saja',
+  'Senang',
+  'Sangat Bahagia',
+];
 
 /// Nama mood, sama dengan pilihan di dialog "Catat mood".
 String moodTitle(MotherMood mood) => _moodTitles[mood.index];
+
+/// Token login sungguhan, atau null untuk mode preview (belum login / token `mock-`).
+final backendTokenProvider = Provider<String?>((ref) {
+  final token = ref
+      .watch(authControllerProvider)
+      .asData
+      ?.value
+      .session
+      ?.accessToken;
+  if (token == null || token.startsWith('mock-')) return null;
+  return token;
+});
+
+/// Satu minggu di kalender: 7 kotak mood dan cerita (jurnal) minggu itu.
+class CalendarWeek {
+  const CalendarWeek({required this.days, required this.stories});
+
+  final List<MoodDay> days;
+  final List<MotherStory> stories;
+}
+
+/// Minggu kalender yang berakhir di `endDate` (YYYY-MM-DD), 7 hari ke belakang.
+final calendarWeekProvider = FutureProvider.family<CalendarWeek, String>((
+  ref,
+  endDate,
+) async {
+  final token = ref.watch(backendTokenProvider);
+  if (token == null) {
+    throw StateError('Kalender dari backend hanya untuk login sungguhan.');
+  }
+  final end = DateTime.parse(endDate);
+  final startDate = isoDate(DateTime(end.year, end.month, end.day - 6));
+  final repository = ref.watch(dailyEntryRepositoryProvider);
+  final moods = await repository.listMoods(
+    accessToken: token,
+    startDate: startDate,
+    endDate: endDate,
+  );
+  final journals = await repository.listJournals(
+    accessToken: token,
+    startDate: startDate,
+    endDate: endDate,
+  );
+  return CalendarWeek(
+    days: recentMoodDays(moods, end, before: 6, after: 0),
+    stories: storiesFromEntries(journals: journals, moods: moods),
+  );
+});
 
 class MotherStoryRepository {
   MotherStoryRepository({

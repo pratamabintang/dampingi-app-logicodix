@@ -24,6 +24,8 @@ class MotherCalendarPage extends ConsumerStatefulWidget {
 
 class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
   static final _sampleWeek = DateTime(2026, 8, 1);
+
+  /// 0 = minggu awal. Negatif = minggu-minggu sebelumnya.
   int _weekOffset = 0;
   int? _selectedDay;
 
@@ -33,8 +35,64 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    final storiesAsync = ref.watch(motherStoriesProvider);
-    final loadedStories = storiesAsync.asData?.value;
+    final live = ref.watch(backendTokenProvider) != null;
+    final today = DateTime.now();
+    // Login sungguhan: minggu = 7 hari yang berakhir hari ini, mundur per minggu.
+    final liveEnd = DateTime(
+      today.year,
+      today.month,
+      today.day + 7 * _weekOffset,
+    );
+    final weekAsync = live
+        ? ref.watch(calendarWeekProvider(isoDate(liveEnd)))
+        : null;
+    final previewStories = live ? null : ref.watch(motherStoriesProvider);
+
+    final List<String> dayLabels;
+    final List<_MoodPreview?> dayMoods;
+    final DateTime weekStart;
+    final List<MotherStory> stories;
+    final bool isLoading;
+    final bool hasError;
+
+    if (weekAsync != null) {
+      final days =
+          weekAsync.asData?.value.days ??
+          recentMoodDays(const [], liveEnd, before: 6, after: 0);
+      dayLabels = [for (final day in days) _weekDays[day.date.weekday - 1]];
+      dayMoods = [
+        for (final day in days)
+          day.mood == null ? null : _calendarMood(day.mood!),
+      ];
+      weekStart = days.first.date;
+      final weekStories =
+          weekAsync.asData?.value.stories ?? const <MotherStory>[];
+      final selected = _selectedDay;
+      stories = selected == null
+          ? weekStories
+          : weekStories
+                .where(
+                  (story) =>
+                      story.weekdayIndex == days[selected].date.weekday - 1,
+                )
+                .toList(growable: false);
+      isLoading = weekAsync.isLoading;
+      hasError = weekAsync.hasError;
+    } else {
+      final preview = previewStories!;
+      final loadedStories = preview.asData?.value;
+      dayLabels = _weekDays;
+      dayMoods = _isSampleWeek
+          ? _weekMoods
+          : List<_MoodPreview?>.filled(_weekDays.length, null);
+      weekStart = _weekStart;
+      stories = loadedStories == null
+          ? const []
+          : _storiesForSelection(loadedStories);
+      isLoading = preview.isLoading;
+      hasError = preview.hasError;
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -70,14 +128,15 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                               const AppBrandHeader(),
                               SizedBox(height: context.calendarScale(36)),
                               _WeekSelector(
-                                label: _weekLabel(_weekStart),
-                                onPrevious: () => _changeWeek(-1),
-                                onNext: () => _changeWeek(1),
+                                label: _weekLabel(weekStart),
+                                onPrevious: () => _changeWeek(-1, live: live),
+                                onNext: () => _changeWeek(1, live: live),
                               ),
                               SizedBox(height: context.calendarScale(36)),
                               _MoodWeek(
+                                labels: dayLabels,
+                                moods: dayMoods,
                                 selectedDay: _selectedDay,
-                                showSampleMoods: _isSampleWeek,
                                 onSelectDay: (day) {
                                   setState(() {
                                     _selectedDay = _selectedDay == day
@@ -87,18 +146,21 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                                 },
                               ),
                               SizedBox(height: context.calendarScale(36)),
-                              if (_selectedDay == null && _isSampleWeek) ...[
+                              // Ringkasan EPDS masih teks contoh: hanya di mode preview.
+                              if (!live &&
+                                  _selectedDay == null &&
+                                  _isSampleWeek) ...[
                                 const _EpdsSummaryCard(),
                                 SizedBox(height: context.calendarScale(36)),
                               ],
                               _StoriesCard(
-                                stories: loadedStories == null
-                                    ? const []
-                                    : _storiesForSelection(loadedStories),
+                                stories: stories,
                                 showEmptyMessage:
-                                    !_isSampleWeek || _selectedDay != null,
-                                isLoading: storiesAsync.isLoading,
-                                hasError: storiesAsync.hasError,
+                                    live ||
+                                    !_isSampleWeek ||
+                                    _selectedDay != null,
+                                isLoading: isLoading,
+                                hasError: hasError,
                                 onStoryTap: (story) => context.push(
                                   '/mother/calendar/story',
                                   extra: story,
@@ -128,7 +190,9 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
     );
   }
 
-  void _changeWeek(int amount) {
+  void _changeWeek(int amount, {required bool live}) {
+    // Login sungguhan: minggu terakhir berakhir hari ini, jadi tidak bisa maju lagi.
+    if (live && _weekOffset + amount > 0) return;
     setState(() {
       _weekOffset += amount;
       _selectedDay = null;
@@ -252,13 +316,15 @@ class _WeekButton extends StatelessWidget {
 
 class _MoodWeek extends StatelessWidget {
   const _MoodWeek({
+    required this.labels,
+    required this.moods,
     required this.selectedDay,
-    required this.showSampleMoods,
     required this.onSelectDay,
   });
 
+  final List<String> labels;
+  final List<_MoodPreview?> moods;
   final int? selectedDay;
-  final bool showSampleMoods;
   final ValueChanged<int> onSelectDay;
 
   @override
@@ -268,13 +334,13 @@ class _MoodWeek extends StatelessWidget {
       height: scale(144),
       child: Row(
         children: [
-          for (var index = 0; index < _weekDays.length; index++) ...[
+          for (var index = 0; index < labels.length; index++) ...[
             if (index > 0) SizedBox(width: scale(4)),
             Expanded(
               child: _MoodDay(
-                day: _weekDays[index],
+                day: labels[index],
                 selected: selectedDay == index,
-                mood: showSampleMoods ? _weekMoods[index] : null,
+                mood: moods[index],
                 onTap: () => onSelectDay(index),
               ),
             ),
@@ -565,6 +631,15 @@ const _weekMoods = <_MoodPreview>[
   _MoodPreview(color: Color(0xFFAFEAAB), asset: 'sab.svg', top: 15.14),
   _MoodPreview(color: Color(0xFFFBE567), asset: 'min.svg', top: 15.14),
 ];
+
+/// Gambar kalender untuk tiap mood, memakai desain A di `_weekMoods`.
+_MoodPreview _calendarMood(MotherMood mood) => switch (mood) {
+  MotherMood.verySad => _weekMoods[0],
+  MotherMood.sad => _weekMoods[1],
+  MotherMood.neutral => _weekMoods[3],
+  MotherMood.happy => _weekMoods[4],
+  MotherMood.veryHappy => _weekMoods[6],
+};
 
 class _MoodPreview {
   const _MoodPreview({

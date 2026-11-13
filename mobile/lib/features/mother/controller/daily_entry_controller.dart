@@ -43,7 +43,9 @@ class DailyEntryController {
     }
 
     final repository = _ref.read(dailyEntryRepositoryProvider);
-    final description = feelings.isEmpty ? null : _limit(feelings.join(', '), 500);
+    final description = feelings.isEmpty
+        ? null
+        : _limit(feelings.join(', '), 500);
     try {
       await repository.saveMoodToday(
         accessToken: token,
@@ -81,6 +83,7 @@ class DailyEntryController {
   void _refreshHome() {
     _ref.invalidate(motherStoriesProvider);
     _ref.invalidate(recentMoodsProvider);
+    _ref.invalidate(calendarWeekProvider);
   }
 
   static String _limit(String text, int max) =>
