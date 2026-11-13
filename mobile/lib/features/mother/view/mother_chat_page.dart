@@ -223,7 +223,10 @@ class _ConversationList extends StatelessWidget {
         _ChatSummaryCard(summary: summary!, keyPrefix: keyPrefix),
       if (urgent)
         const _ChatNotice(
-          text: 'Percakapan ini menandai kondisi darurat. Hubungi layanan darurat setempat atau orang tepercaya sekarang.',
+          text:
+              'Kamu tidak sendirian. Jika ada pikiran menyakiti diri sendiri '
+              'atau bayi, segera hubungi 119 atau datang ke IGD terdekat, dan '
+              'minta orang terdekat menemanimu.',
           urgent: true,
         ),
       if (contextUsed.contains('mood_7d'))
