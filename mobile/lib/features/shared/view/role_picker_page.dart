@@ -207,11 +207,21 @@ class _RoleCard extends StatelessWidget {
               CircleAvatar(
                 radius: 47,
                 backgroundColor: selected ? AppTheme.pink2 : AppTheme.gray200,
-                child: SvgPicture.asset(
-                  'assets/images/role_picker/${_roleAsset(role)}',
+                child: SizedBox(
                   key: Key('role-emoji-${role.value}'),
                   width: 36,
                   height: 36,
+                  child: Center(
+                    child: Text(
+                      _roleEmoji(role),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        inherit: false,
+                        fontSize: 32,
+                        height: 1,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 24),
@@ -285,8 +295,8 @@ String _roleDescription(AppRole role) => switch (role) {
   AppRole.professional => 'Lihat ringkasan tren perkembangan ibu',
 };
 
-String _roleAsset(AppRole role) => switch (role) {
-  AppRole.mother => 'mother.svg',
-  AppRole.companion => 'companion.svg',
-  AppRole.professional => 'professional.svg',
+String _roleEmoji(AppRole role) => switch (role) {
+  AppRole.mother => '🤱',
+  AppRole.companion => '👨‍💼',
+  AppRole.professional => '🩺',
 };

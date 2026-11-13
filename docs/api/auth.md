@@ -7,7 +7,10 @@ Bentuk data persisnya ada di `backend/app/auth/schemas.py`.
 ## Aturan umum
 
 - Register hanya menerima alamat **Gmail** (`@gmail.com`). Alamat lain `422`.
-- Password minimal 8 karakter, maksimal 72.
+- Password 8–72 karakter dan harus memuat huruf kecil, huruf besar, angka,
+  dan simbol. Aturan karakter ini disalin dari `password_required_characters`
+  milik project Supabase; backend menolak lebih dulu sebagai `422` supaya
+  password lemah tidak berakhir sebagai `503`.
 - Error selalu berbentuk `{"detail": "..."}` (pesan siap ditampilkan ke pengguna),
   kecuali `422` yang `detail`-nya berupa daftar kesalahan validasi.
 - Setelah verifikasi email diaktifkan di Supabase, akun **belum bisa login**
@@ -43,10 +46,11 @@ berubah menjadi sesi permanen.
 
 Request:
 ```json
-{ "name": "Bunda", "email": "bunda@gmail.com", "password": "rahasia123", "role": "mother", "timezone": "Asia/Jakarta" }
+{ "name": "Bunda", "email": "bunda@gmail.com", "password": "Rahasia123!", "role": "mother", "timezone": "Asia/Jakarta" }
 ```
 - `name`: 1–100 karakter.
 - `email`: wajib `@gmail.com`.
+- `password`: 8–72 karakter, memuat huruf kecil, huruf besar, angka, dan simbol.
 - `role`: `mother` | `companion` | `professional`.
 - `timezone`: nama zona IANA (mis. `Asia/Jakarta`, `Asia/Makassar`, `Asia/Jayapura`). Opsional; kalau tidak dikirim, default `Asia/Jakarta`. Zona yang tidak dikenal → `422`. Klien mobile mengirim zona perangkat secara otomatis.
 
@@ -75,7 +79,7 @@ Response `201`:
 
 Request:
 ```json
-{ "email": "bunda@gmail.com", "password": "rahasia123" }
+{ "email": "bunda@gmail.com", "password": "Rahasia123!" }
 ```
 
 Response `200`:
@@ -149,10 +153,11 @@ Menukar kode reset dengan password baru.
 
 Request:
 ```json
-{ "email": "bunda@gmail.com", "token": "12345678", "new_password": "rahasiaBaru123" }
+{ "email": "bunda@gmail.com", "token": "12345678", "new_password": "RahasiaBaru123!" }
 ```
 - `token`: kode dari email (biasanya 8 digit).
-- `new_password`: 8–72 karakter.
+- `new_password`: 8–72 karakter, memuat huruf kecil, huruf besar, angka, dan
+  simbol.
 
 Response `204` tanpa body.
 - Semua sesi dicabut; pengguna harus login lagi dengan password baru.
@@ -160,6 +165,8 @@ Response `204` tanpa body.
   bisa dipakai menebak email mana yang terdaftar.
 - Kalau `new_password` sama dengan password lama → `400`
   `"Sandi baru harus berbeda dari sandi lama."`
+- Kalau `new_password` tidak memenuhi aturan password → `422`
+  (lihat pesan di bawah).
 
 ## Kode status
 
@@ -173,7 +180,7 @@ Response `204` tanpa body.
 | 401 | email atau password salah | tampilkan `detail` |
 | 403 | email **belum diverifikasi** (login), atau akun sudah dihapus | saat belum verifikasi: arahkan ke layar masukkan kode / kirim ulang |
 | 409 | email Gmail sudah terdaftar | arahkan ke login |
-| 422 | email bukan Gmail / field tidak valid | tampilkan pesan validasi |
+| 422 | email bukan Gmail / password lemah / field tidak valid | tampilkan pesan validasi |
 | 429 | terlalu banyak percobaan (register/login/verify/resend), atau Supabase membatasi pengiriman email ke alamat itu | tampilkan `detail`, hormati header `Retry-After` |
 | 503 | layanan auth/database sedang bermasalah | tampilkan `detail`, coba lagi nanti |
 
@@ -185,6 +192,10 @@ Pesan `400` saat kode reset salah atau kedaluwarsa:
 
 Pesan `400` saat sandi baru sama dengan yang lama:
 `"Sandi baru harus berbeda dari sandi lama."`
+
+Pesan `422` saat password tidak memenuhi aturan (berlaku untuk
+`register`, `reset-password`, dan ganti sandi `POST /auth/password`):
+`"Kata sandi minimal 8 karakter dan harus memuat huruf kecil, huruf besar, angka, dan simbol."`
 
 ## Batas percobaan
 

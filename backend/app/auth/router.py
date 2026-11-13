@@ -12,6 +12,7 @@ from app.auth.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
+    PASSWORD_RULE,
     RegisterRequest,
     RegisterResponse,
     ResendConfirmationRequest,
@@ -118,6 +119,14 @@ def _is_banned(exc: supabase.SupabaseError) -> bool:
     return exc.error_code == "user_banned"
 
 
+def _is_weak_password(exc: supabase.SupabaseError) -> bool:
+    return exc.error_code == "weak_password"
+
+
+def _weak_password() -> HTTPException:
+    return HTTPException(status_code=422, detail=PASSWORD_RULE)
+
+
 def _is_unverified(exc: supabase.SupabaseError) -> bool:
     return exc.error_code == "email_not_confirmed"
 
@@ -143,6 +152,8 @@ def register(request: Request, payload: RegisterRequest) -> RegisterResponse:
     except supabase.SupabaseError as exc:
         if exc.status == 429:
             raise _upstream_cooldown() from exc
+        if _is_weak_password(exc):
+            raise _weak_password() from exc
         if exc.error_code in ("user_already_exists", "email_exists") or (
             "already registered" in exc.message.lower()
             or "already been registered" in exc.message.lower()
@@ -263,6 +274,8 @@ def reset_password(request: Request, payload: ResetPasswordRequest) -> Response:
     except supabase.SupabaseError as exc:
         if _is_banned(exc):
             raise _deleted() from exc
+        if _is_weak_password(exc):
+            raise _weak_password() from exc
         if exc.error_code == "same_password" or "different from the old" in exc.message.lower():
             raise HTTPException(
                 status_code=400,
@@ -352,6 +365,8 @@ def change_password(
     except supabase.SupabaseError as exc:
         if _is_banned(exc):
             raise _deleted() from exc
+        if _is_weak_password(exc):
+            raise _weak_password() from exc
         raise
     return Response(status_code=204)
 

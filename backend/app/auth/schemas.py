@@ -1,8 +1,36 @@
+import string
 from enum import Enum
 from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+PASSWORD_RULE = (
+    "Kata sandi minimal 8 karakter dan harus memuat huruf kecil, huruf besar, "
+    "angka, dan simbol."
+)
+
+_PASSWORD_CLASSES = (
+    frozenset(string.ascii_lowercase),
+    frozenset(string.ascii_uppercase),
+    frozenset(string.digits),
+    frozenset("!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~"),
+)
+
+
+def enforce_password_policy(value: str) -> str:
+    """Reject a password Supabase would reject, before it reaches Supabase.
+
+    The project's `password_required_characters` requires one lowercase
+    letter, one uppercase letter, one digit, and one symbol. A password that
+    clears only the local length bound gets `422 weak_password` from
+    Supabase, which the error boundary reports as an outage (`503`).
+    Checking the classes here keeps the refusal a `422` the caller can act
+    on instead of an outage they cannot.
+    """
+    if not all(any(char in allowed for char in value) for allowed in _PASSWORD_CLASSES):
+        raise ValueError(PASSWORD_RULE)
+    return value
 
 
 class Role(str, Enum):
@@ -37,6 +65,11 @@ class RegisterRequest(BaseModel):
             ) from exc
         return value
 
+    @field_validator("password")
+    @classmethod
+    def password_must_meet_the_policy(cls, value: str) -> str:
+        return enforce_password_policy(value)
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -60,6 +93,11 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     token: str = Field(min_length=1, max_length=64)
     new_password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_must_meet_the_policy(cls, value: str) -> str:
+        return enforce_password_policy(value)
 
 
 class UserOut(BaseModel):
@@ -89,3 +127,8 @@ class UpdateMeRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=1)
     new_password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_must_meet_the_policy(cls, value: str) -> str:
+        return enforce_password_policy(value)
