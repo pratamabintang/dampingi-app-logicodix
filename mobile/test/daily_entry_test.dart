@@ -18,45 +18,67 @@ const _todayMood = {
 };
 
 void main() {
-  test('saves mood with feelings and skips the journal when story is empty', () async {
-    final api = _RecordingBackendApi();
-    final controller = await _loggedIn(api);
+  test(
+    'saves mood with feelings and skips the journal when story is empty',
+    () async {
+      final api = _RecordingBackendApi();
+      final controller = await _loggedIn(api);
 
-    final result = await controller.save(
-      mood: 2,
-      feelings: ['Lelah', 'Cemas'],
-      title: '',
-      story: '   ',
-    );
+      final result = await controller.save(
+        mood: 2,
+        feelings: ['Lelah', 'Cemas'],
+        title: '',
+        story: '   ',
+      );
 
-    expect(result.status, DailyEntryStatus.saved);
-    expect(api.calls, ['POST /moods']);
-    expect(api.bodies.single, {'mood': 2, 'description': 'Lelah, Cemas'});
-    expect(api.tokens.single, 'valid-access-token');
-  });
+      expect(result.status, DailyEntryStatus.saved);
+      expect(api.calls, ['POST /moods']);
+      expect(api.bodies.single, {'mood': 2, 'description': 'Lelah, Cemas'});
+      expect(api.tokens.single, 'valid-access-token');
+    },
+  );
 
-  test('saves the journal with a default title when only the story is filled', () async {
-    final api = _RecordingBackendApi();
-    final controller = await _loggedIn(api);
+  test(
+    'saves the journal with a default title when only the story is filled',
+    () async {
+      final api = _RecordingBackendApi();
+      final controller = await _loggedIn(api);
 
-    await controller.save(mood: 4, feelings: const [], title: ' ', story: 'Hari ini lumayan.');
+      await controller.save(
+        mood: 4,
+        feelings: const [],
+        title: ' ',
+        story: 'Hari ini lumayan.',
+      );
 
-    expect(api.calls, ['POST /moods', 'POST /journals']);
-    expect(api.bodies.first, {'mood': 4});
-    expect(api.bodies.last, {'title': 'Catatan harian', 'content': 'Hari ini lumayan.'});
-  });
+      expect(api.calls, ['POST /moods', 'POST /journals']);
+      expect(api.bodies.first, {'mood': 4});
+      expect(api.bodies.last, {
+        'title': 'Catatan harian',
+        'content': 'Hari ini lumayan.',
+      });
+    },
+  );
 
-  test('updates today\'s mood when the backend says it already exists (409)', () async {
-    final api = _RecordingBackendApi(moodAlreadyExists: true);
-    final controller = await _loggedIn(api);
+  test(
+    'updates today\'s mood when the backend says it already exists (409)',
+    () async {
+      final api = _RecordingBackendApi(moodAlreadyExists: true);
+      final controller = await _loggedIn(api);
 
-    final result = await controller.save(mood: 5, feelings: const [], title: '', story: '');
+      final result = await controller.save(
+        mood: 5,
+        feelings: const [],
+        title: '',
+        story: '',
+      );
 
-    expect(result.status, DailyEntryStatus.saved);
-    expect(api.calls, ['POST /moods', 'GET /moods', 'PATCH /moods/mood-1']);
-    expect(api.queries[1], {'limit': '1'});
-    expect(api.bodies.last, {'mood': 5});
-  });
+      expect(result.status, DailyEntryStatus.saved);
+      expect(api.calls, ['POST /moods', 'GET /moods', 'PATCH /moods/mood-1']);
+      expect(api.queries[1], {'limit': '1'});
+      expect(api.bodies.last, {'mood': 5});
+    },
+  );
 
   test('preview login never calls the backend', () async {
     final api = _RecordingBackendApi();
@@ -81,16 +103,29 @@ void main() {
     expect(api.calls, isEmpty);
   });
 
-  test('a failed mood save keeps the dialog open with a clear message', () async {
-    final api = _RecordingBackendApi(moodError: const BackendApiException(statusCode: 401, message: 'x'));
-    final controller = await _loggedIn(api);
+  test(
+    'a failed mood save keeps the dialog open with a clear message',
+    () async {
+      final api = _RecordingBackendApi(
+        moodError: const BackendApiException(statusCode: 401, message: 'x'),
+      );
+      final controller = await _loggedIn(api);
 
-    final result = await controller.save(mood: 3, feelings: const [], title: '', story: 'cerita');
+      final result = await controller.save(
+        mood: 3,
+        feelings: const [],
+        title: '',
+        story: 'cerita',
+      );
 
-    expect(result.canContinue, isFalse);
-    expect(result.message, 'Sesi login telah berakhir. Silakan masuk kembali.');
-    expect(api.calls, ['POST /moods']); // jurnal tidak dicoba
-  });
+      expect(result.canContinue, isFalse);
+      expect(
+        result.message,
+        'Sesi login telah berakhir. Silakan masuk kembali.',
+      );
+      expect(api.calls, ['POST /moods']); // jurnal tidak dicoba
+    },
+  );
 }
 
 Future<DailyEntryController> _loggedIn(_RecordingBackendApi api) async {
@@ -116,10 +151,7 @@ class _MotherRoleRepository extends RoleRepository {
 
 class _ValidAuthRepository implements AuthRepository {
   @override
-  Future<LoginResponse> login({
-    required LoginRequest request,
-    required AppRole selectedRole,
-  }) async {
+  Future<LoginResponse> login({required LoginRequest request}) async {
     return const LoginResponse(
       accessToken: 'valid-access-token',
       user: AuthUser(
@@ -147,7 +179,12 @@ class _RecordingBackendApi extends BackendApi {
   final queries = <Map<String, String>?>[];
   final tokens = <String?>[];
 
-  void _record(String call, {Map<String, Object?>? body, Map<String, String>? query, String? token}) {
+  void _record(
+    String call, {
+    Map<String, Object?>? body,
+    Map<String, String>? query,
+    String? token,
+  }) {
     calls.add(call);
     if (body != null) bodies.add(body);
     queries.add(query);
@@ -169,7 +206,12 @@ class _RecordingBackendApi extends BackendApi {
       }
       return {..._todayMood, 'mood': body['mood']};
     }
-    return {'id': 'journal-1', 'user_id': 'mother-1', 'created_at': '2026-11-13', ...body};
+    return {
+      'id': 'journal-1',
+      'user_id': 'mother-1',
+      'created_at': '2026-11-13',
+      ...body,
+    };
   }
 
   @override
