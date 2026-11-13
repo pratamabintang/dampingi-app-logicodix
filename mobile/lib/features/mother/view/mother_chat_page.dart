@@ -93,46 +93,14 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
                         child: Column(
                           children: [
                             Expanded(
-                              child: chat.when(
-                                loading: () => const SizedBox.shrink(),
-                                error: (error, stackTrace) => Center(
-                                  child: Text(
-                                    'Percakapan belum dapat dibuka.',
-                                    style: TextStyle(
-                                      color: AppTheme.gray500,
-                                      fontSize: scaled(16),
-                                    ),
-                                  ),
-                                ),
-                                data: (value) {
-                                  final showDesignPreview =
-                                      previewMode && value.messages.isEmpty;
-                                  return _ConversationList(
-                                    messages: showDesignPreview
-                                        ? _figmaPreviewMessages
-                                        : value.messages,
-                                    summary: showDesignPreview
-                                        ? _figmaPreviewSummary
-                                        : null,
-                                    contextUsed: value.contextUsed,
-                                    urgent: value.urgent,
-                                    isSending: value.isSending,
-                                    scale: scale,
-                                  );
-                                },
-                              ),
-                            ),
-                            if (chat.asData?.value.errorMessage
-                                case final error?)
-                              _ChatErrorBanner(message: error, scale: scale),
-                            SizedBox(
-                              key: const Key('mother-chat-composer'),
-                              height: scaled(53),
-                              child: _MessageComposer(
+                              child: ChatConversationPanel(
+                                chat: chat,
+                                previewMode: previewMode,
+                                previewMessages: _figmaPreviewMessages,
+                                previewSummary: _figmaPreviewSummary,
                                 controller: _messageController,
                                 scale: scale,
-                                isSending:
-                                    chat.asData?.value.isSending ?? false,
+                                keyPrefix: 'mother-chat',
                                 onSend: _send,
                               ),
                             ),
@@ -160,6 +128,74 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
   }
 }
 
+class ChatConversationPanel extends StatelessWidget {
+  const ChatConversationPanel({
+    required this.chat,
+    required this.previewMode,
+    required this.previewMessages,
+    required this.previewSummary,
+    required this.controller,
+    required this.scale,
+    required this.keyPrefix,
+    required this.onSend,
+    super.key,
+  });
+
+  final AsyncValue<ChatState> chat;
+  final bool previewMode;
+  final List<ChatMessage> previewMessages;
+  final String previewSummary;
+  final TextEditingController controller;
+  final double scale;
+  final String keyPrefix;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    double scaled(double value) => value * scale;
+    return Column(
+      children: [
+        Expanded(
+          child: chat.when(
+            loading: () => const SizedBox.shrink(),
+            error: (error, stackTrace) => Center(
+              child: Text(
+                'Percakapan belum dapat dibuka.',
+                style: TextStyle(color: AppTheme.gray500, fontSize: scaled(16)),
+              ),
+            ),
+            data: (value) {
+              final showDesignPreview = previewMode && value.messages.isEmpty;
+              return _ConversationList(
+                messages: showDesignPreview ? previewMessages : value.messages,
+                summary: showDesignPreview ? previewSummary : null,
+                contextUsed: value.contextUsed,
+                urgent: value.urgent,
+                isSending: value.isSending,
+                scale: scale,
+                keyPrefix: keyPrefix,
+              );
+            },
+          ),
+        ),
+        if (chat.asData?.value.errorMessage case final error?)
+          _ChatErrorBanner(message: error, scale: scale),
+        SizedBox(
+          key: Key('$keyPrefix-composer'),
+          height: scaled(53),
+          child: _MessageComposer(
+            controller: controller,
+            scale: scale,
+            isSending: chat.asData?.value.isSending ?? false,
+            keyPrefix: keyPrefix,
+            onSend: onSend,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ConversationList extends StatelessWidget {
   const _ConversationList({
     required this.messages,
@@ -168,6 +204,7 @@ class _ConversationList extends StatelessWidget {
     required this.urgent,
     required this.isSending,
     required this.scale,
+    required this.keyPrefix,
   });
 
   final List<ChatMessage> messages;
@@ -176,12 +213,14 @@ class _ConversationList extends StatelessWidget {
   final bool urgent;
   final bool isSending;
   final double scale;
+  final String keyPrefix;
 
   @override
   Widget build(BuildContext context) {
     double scaled(double value) => value * scale;
     final entries = [
-      if (summary != null) _ChatSummaryCard(summary: summary!),
+      if (summary != null)
+        _ChatSummaryCard(summary: summary!, keyPrefix: keyPrefix),
       if (urgent)
         const _ChatNotice(
           text: 'Percakapan ini menandai kondisi darurat. Hubungi layanan darurat setempat atau orang tepercaya sekarang.',
@@ -196,7 +235,7 @@ class _ConversationList extends StatelessWidget {
     ];
 
     return ListView.separated(
-      key: const Key('mother-chat-messages'),
+      key: Key('$keyPrefix-messages'),
       reverse: true,
       padding: EdgeInsets.only(bottom: scaled(10)),
       itemCount: entries.length,
@@ -207,9 +246,10 @@ class _ConversationList extends StatelessWidget {
 }
 
 class _ChatSummaryCard extends StatelessWidget {
-  const _ChatSummaryCard({required this.summary});
+  const _ChatSummaryCard({required this.summary, required this.keyPrefix});
 
   final String summary;
+  final String keyPrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +258,7 @@ class _ChatSummaryCard extends StatelessWidget {
       child: FractionallySizedBox(
         widthFactor: 0.85,
         child: Container(
-          key: const Key('mother-chat-summary'),
+          key: Key('$keyPrefix-summary'),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: const Color(0xFFFAFAFA),
@@ -375,12 +415,14 @@ class _MessageComposer extends StatelessWidget {
     required this.controller,
     required this.scale,
     required this.isSending,
+    required this.keyPrefix,
     required this.onSend,
   });
 
   final TextEditingController controller;
   final double scale;
   final bool isSending;
+  final String keyPrefix;
   final VoidCallback onSend;
 
   @override
@@ -404,7 +446,7 @@ class _MessageComposer extends StatelessWidget {
               height: scaled(36),
               child: Center(
                 child: TextField(
-                  key: const Key('mother-chat-input'),
+                  key: Key('$keyPrefix-input'),
                   controller: controller,
                   maxLength: 2000,
                   maxLines: 1,
@@ -437,7 +479,7 @@ class _MessageComposer extends StatelessWidget {
             color: isSending ? AppTheme.muted : AppTheme.coral,
             borderRadius: BorderRadius.circular(scaled(8)),
             child: InkWell(
-              key: const Key('mother-chat-send'),
+              key: Key('$keyPrefix-send'),
               onTap: isSending ? null : onSend,
               borderRadius: BorderRadius.circular(scaled(8)),
               child: SizedBox(
