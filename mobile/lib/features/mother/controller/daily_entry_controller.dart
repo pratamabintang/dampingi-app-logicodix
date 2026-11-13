@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/backend_api.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../repositories/daily_entry_repository.dart';
+import '../repositories/mother_story_repository.dart';
 
 final dailyEntryControllerProvider = Provider<DailyEntryController>(
   (ref) => DailyEntryController(ref),
@@ -55,6 +56,7 @@ class DailyEntryController {
 
     final content = story.trim();
     if (content.isEmpty) {
+      _ref.invalidate(motherStoriesProvider);
       return const DailyEntryResult(DailyEntryStatus.saved);
     }
     final heading = title.trim().isEmpty ? 'Catatan harian' : title.trim();
@@ -64,8 +66,10 @@ class DailyEntryController {
         title: _limit(heading, 255),
         content: _limit(content, 10000),
       );
+      _ref.invalidate(motherStoriesProvider);
       return const DailyEntryResult(DailyEntryStatus.saved);
     } catch (error) {
+      _ref.invalidate(motherStoriesProvider);
       return DailyEntryResult(
         DailyEntryStatus.savedWithoutJournal,
         'Mood tersimpan, tapi catatan belum tersimpan: ${_messageFor(error)}',
