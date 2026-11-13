@@ -733,6 +733,11 @@ void main() {
       (editableProfileAvatar.image as AssetImage).assetName,
       'assets/images/companion_profile/profile-avatar.png',
     );
+    await tester.drag(
+      find.byKey(const Key('companion-profile-edit-scroll')),
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('companion-profile-edit-back')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
@@ -1367,6 +1372,11 @@ void main() {
       (avatar.image as AssetImage).assetName,
       'assets/images/mother_home/avatar-a.png',
     );
+    await tester.drag(
+      find.byKey(const Key('mother-profile-edit-scroll')),
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
     final backIcon = tester.widget<SvgPicture>(find.byType(SvgPicture));
     expect(backIcon.width, 24);
     expect(backIcon.height, 24);

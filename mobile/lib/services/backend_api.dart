@@ -79,7 +79,10 @@ class BackendApi {
     try {
       final request = await _client.openUrl(method, uri).timeout(_timeout);
       if (accessToken != null) {
-        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $accessToken',
+        );
       }
       if (body != null) {
         request.headers.contentType = ContentType.json;
@@ -91,7 +94,10 @@ class BackendApi {
           .bind(response)
           .join()
           .timeout(_timeout);
-      final decoded = responseBody.isEmpty ? null : jsonDecode(responseBody);
+      // 204 No Content (mis. ubah kata sandi) tidak punya isi: anggap objek kosong.
+      final decoded = responseBody.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(responseBody);
 
       if (decoded is! Map<String, dynamic>) {
         throw const FormatException('API returned a non-object response.');
@@ -105,7 +111,9 @@ class BackendApi {
       }
       return decoded;
     } on TimeoutException {
-      throw const ApiNetworkException('Permintaan ke server melewati batas waktu.');
+      throw const ApiNetworkException(
+        'Permintaan ke server melewati batas waktu.',
+      );
     } on SocketException {
       throw const ApiNetworkException(
         'Tidak dapat terhubung ke server. Periksa jaringan dan alamat backend.',

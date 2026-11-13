@@ -12,6 +12,9 @@ import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../auth/validation/auth_form_validators.dart';
+import '../../../services/backend_api.dart';
+import '../../auth/repositories/profile_repository.dart';
+import '../repositories/mother_story_repository.dart';
 
 class MotherProfileEditPage extends ConsumerStatefulWidget {
   const MotherProfileEditPage({
@@ -44,9 +47,12 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
   final _passwordFormKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
   bool _profileInitialized = false;
+  bool _savingProfile = false;
+  bool _changingPassword = false;
 
   Key _key(String suffix) => Key('${widget.keyPrefix}-$suffix');
 
@@ -54,6 +60,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _currentPasswordController.dispose();
     _passwordController.dispose();
     _confirmationController.dispose();
     super.dispose();
@@ -135,9 +142,8 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                             height: scaled(48),
                             child: FilledButton(
                               key: _key('photo'),
-                              onPressed: () => _showUnavailableNotice(
-                                'Fitur ubah foto belum tersedia.',
-                              ),
+                              onPressed: () =>
+                                  _notify('Fitur ubah foto belum tersedia.'),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppTheme.coralLight,
                                 foregroundColor: AppTheme.coralText,
@@ -182,6 +188,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                         label: 'Email',
                         hintText: 'Masukan email anda',
                         validator: validateEmail,
+                        enabled: false,
                         keyboardType: TextInputType.emailAddress,
                         inputHeight: scaled(44),
                         textInputAction: TextInputAction.done,
@@ -193,6 +200,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                           key: _key('save'),
                           label: 'Simpan Perubahan',
                           onPressed: _saveProfile,
+                          isLoading: _savingProfile,
                           textStyle: TextStyle(
                             fontFamily: AppTheme.fontFamily,
                             fontSize: scaled(16),
@@ -221,14 +229,27 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             AppPasswordField(
-                              key: _key('password'),
-                              controller: _passwordController,
-                              label: 'Kata sandi',
+                              key: _key('current-password'),
+                              controller: _currentPasswordController,
+                              label: 'Kata sandi saat ini',
                               hintText: '••••••••',
                               validator: validatePassword,
                               inputHeight: scaled(44),
                               textInputAction: TextInputAction.next,
                             ),
+                            SizedBox(height: scaled(24)),
+                            AppPasswordField(
+                              key: _key('password'),
+                              controller: _passwordController,
+                              label: 'Kata sandi baru',
+                              hintText: '••••••••',
+                              validator: _validateNewPassword,
+                              onChanged: (_) => setState(() {}),
+                              inputHeight: scaled(44),
+                              textInputAction: TextInputAction.next,
+                            ),
+                            SizedBox(height: scaled(6)),
+                            _passwordHints(scale),
                             SizedBox(height: scaled(24)),
                             AppPasswordField(
                               key: _key('password-confirmation'),
@@ -250,6 +271,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                                 key: _key('change-password'),
                                 label: 'Ubah kata sandi',
                                 onPressed: _changePassword,
+                                isLoading: _changingPassword,
                                 textStyle: TextStyle(
                                   fontFamily: AppTheme.fontFamily,
                                   fontSize: scaled(16),
@@ -287,23 +309,132 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
     );
   }
 
-  void _saveProfile() {
-    if (!_profileFormKey.currentState!.validate()) return;
-    _showUnavailableNotice(
-      'Perubahan profil belum dapat disimpan dari aplikasi ini.',
+  String? _validateNewPassword(String? value) {
+    final required = validatePassword(value);
+    if (required != null) return required;
+    if (_passwordRules.any((rule) => !rule.isMet(value!))) {
+      return 'Kata sandi belum memenuhi semua aturan di bawah.';
+    }
+    return null;
+  }
+
+  Widget _passwordHints(double scale) {
+    final password = _passwordController.text;
+    return Column(
+      key: _key('password-rules'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final rule in _passwordRules)
+          Text(
+            '${rule.isMet(password) ? '✓' : '•'} ${rule.label}',
+            style: TextStyle(
+              color: rule.isMet(password) ? _ruleMetColor : AppTheme.secondary,
+              fontFamily: AppTheme.fontFamily,
+              fontSize: 14 * scale,
+              height: 20 / 14,
+            ),
+          ),
+      ],
     );
   }
 
-  void _changePassword() {
-    if (!_passwordFormKey.currentState!.validate()) return;
-    _showUnavailableNotice(
-      'Fitur ubah kata sandi belum tersedia dari aplikasi ini.',
-    );
+  Future<void> _saveProfile() async {
+    if (_savingProfile || !_profileFormKey.currentState!.validate()) return;
+    final token = ref.read(backendTokenProvider);
+    if (token == null) {
+      _notify('Mode pratinjau: perubahan profil tidak disimpan.');
+      return;
+    }
+
+    final name = _nameController.text.trim();
+    setState(() => _savingProfile = true);
+    try {
+      final user = await ref
+          .read(profileRepositoryProvider)
+          .updateName(accessToken: token, name: name);
+      ref
+          .read(authControllerProvider.notifier)
+          .updateUserName(user.name ?? name);
+      _notify('Profil berhasil disimpan.');
+    } on Exception catch (error) {
+      _notify(_messageFor(error));
+    } finally {
+      if (mounted) setState(() => _savingProfile = false);
+    }
   }
 
-  void _showUnavailableNotice(String message) {
+  Future<void> _changePassword() async {
+    if (_changingPassword || !_passwordFormKey.currentState!.validate()) {
+      return;
+    }
+    final token = ref.read(backendTokenProvider);
+    if (token == null) {
+      _notify('Mode pratinjau: kata sandi tidak diubah.');
+      return;
+    }
+
+    setState(() => _changingPassword = true);
+    try {
+      await ref
+          .read(profileRepositoryProvider)
+          .changePassword(
+            accessToken: token,
+            currentPassword: _currentPasswordController.text,
+            newPassword: _passwordController.text,
+          );
+      _notify(
+        'Kata sandi diubah. Silakan masuk kembali dengan kata sandi baru.',
+      );
+      // Backend mencabut semua sesi, jadi token ini sudah tidak berlaku.
+      ref.read(authControllerProvider.notifier).logout();
+    } on Exception catch (error) {
+      _notify(_messageFor(error));
+    } finally {
+      if (mounted) setState(() => _changingPassword = false);
+    }
+  }
+
+  static String _messageFor(Object error) => switch (error) {
+    BackendApiException(statusCode: 401) =>
+      'Sesi login telah berakhir. Silakan masuk kembali.',
+    BackendApiException(message: 'Current password is incorrect') =>
+      'Kata sandi saat ini salah.',
+    BackendApiException(
+      message: 'New password must differ from the current one',
+    ) =>
+      'Kata sandi baru harus berbeda dari kata sandi saat ini.',
+    BackendApiException(:final message) => message,
+    ApiNetworkException(:final message) => message,
+    ApiConfigurationException(:final message) => message,
+    _ => 'Respons server tidak dapat dibaca. Coba lagi.',
+  };
+
+  void _notify(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
+
+class _PasswordRule {
+  const _PasswordRule(this.label, this.isMet);
+
+  final String label;
+  final bool Function(String password) isMet;
+}
+
+/// Samakan dengan aturan kata sandi Supabase (Authentication → Email) dan backend.
+final _passwordRules = <_PasswordRule>[
+  _PasswordRule('8–72 karakter', (p) => p.length >= 8 && p.length <= 72),
+  _PasswordRule('Huruf kecil (a–z)', (p) => p.contains(RegExp('[a-z]'))),
+  _PasswordRule('Huruf besar (A–Z)', (p) => p.contains(RegExp('[A-Z]'))),
+  _PasswordRule('Angka (0–9)', (p) => p.contains(RegExp('[0-9]'))),
+  _PasswordRule(
+    'Simbol (mis. ! @ # ?)',
+    (p) => p.contains(RegExp(r'[^A-Za-z0-9]')),
+  ),
+];
+
+/// Hijau yang sama dengan pilihan terpilih di dialog EPDS.
+const _ruleMetColor = Color(0xFF12B76A);
