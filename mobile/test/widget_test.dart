@@ -441,6 +441,48 @@ void main() {
       );
       expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
 
+      await tester.tap(
+        find.byKey(const Key('mother-notification-companion-invitation')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('mother-notification-confirm-title')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSize(
+          find.byKey(const Key('mother-notification-confirm-dialog')),
+        ),
+        const Size(342, 364),
+      );
+      expect(
+        tester.getSize(
+          find.byKey(const Key('mother-notification-inviter-profile')),
+        ),
+        const Size(300, 72),
+      );
+      expect(find.text('Tn. Enzokulin Samsidan'), findsOneWidget);
+      expect(find.text('samsidan@gmail.com'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('mother-notification-confirm-cancel')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('mother-notification-confirm-dialog')),
+        findsNothing,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('mother-notification-companion-invitation')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('mother-notification-confirm-accept')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Persetujuan undangan belum tersedia.'), findsOneWidget);
+
       await tester.tap(find.byKey(const Key('mother-notifications-back')));
       await tester.pumpAndSettle();
       expect(find.byType(MotherPage), findsOneWidget);
