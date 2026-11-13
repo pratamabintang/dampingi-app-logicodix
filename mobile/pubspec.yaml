@@ -93,10 +93,10 @@ flutter:
     - assets/images/mother_calendar/
     - assets/images/mother_profile/
     - assets/images/companion_profile/
+    - assets/images/doctor/
     - assets/images/chat/
     - assets/images/navigation/
     - assets/images/meditation/
-    - assets/images/role_picker/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
