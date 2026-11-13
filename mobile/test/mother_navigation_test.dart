@@ -26,7 +26,7 @@ void main() {
                   onCalendarTap: () {},
                   onChatTap: () {},
                   onMeditationTap: () {},
-                  onLogout: () {},
+                  onProfileTap: () {},
                 ),
               ],
             ),

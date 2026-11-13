@@ -18,7 +18,7 @@ class MotherNavigationBar extends StatelessWidget {
     required this.onCalendarTap,
     required this.onChatTap,
     required this.onMeditationTap,
-    required this.onLogout,
+    required this.onProfileTap,
     super.key,
   });
 
@@ -27,7 +27,7 @@ class MotherNavigationBar extends StatelessWidget {
   final VoidCallback onCalendarTap;
   final VoidCallback onChatTap;
   final VoidCallback onMeditationTap;
-  final VoidCallback onLogout;
+  final VoidCallback onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -97,13 +97,13 @@ class MotherNavigationBar extends StatelessWidget {
                     scale: scale,
                   ),
                   _NavigationItem(
-                    itemKey: const Key('logout'),
+                    itemKey: const Key('mother-nav-profile'),
                     tab: MotherNavigationTab.profile,
                     label: 'Profil',
                     inactiveAsset: 'profile.svg',
                     activeAsset: 'profile-active.svg',
                     selectedTab: selectedTab,
-                    onTap: onLogout,
+                    onTap: onProfileTap,
                     scale: scale,
                   ),
                 ],

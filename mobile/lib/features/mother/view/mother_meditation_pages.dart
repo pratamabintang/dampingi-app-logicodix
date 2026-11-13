@@ -6,7 +6,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../auth/controller/auth_controller.dart';
 import 'mother_navigation.dart';
 
 class MotherMeditationListPage extends ConsumerWidget {
@@ -95,10 +94,7 @@ class MotherMeditationListPage extends ConsumerWidget {
                       onCalendarTap: () => context.go('/mother/calendar'),
                       onChatTap: () => context.go('/mother/chat'),
                       onMeditationTap: () => context.go('/mother/meditation'),
-                      onLogout: () {
-                        ref.read(authControllerProvider.notifier).logout();
-                        context.go('/roles');
-                      },
+                      onProfileTap: () => context.go('/mother/profile'),
                     ),
                   ],
                 ),

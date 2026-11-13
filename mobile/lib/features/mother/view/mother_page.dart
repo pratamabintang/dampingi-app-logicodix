@@ -5,8 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/mother_story_list_tile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../models/mother_story.dart';
+import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
 
 class MotherPage extends ConsumerWidget {
@@ -16,6 +24,7 @@ class MotherPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final storiesAsync = ref.watch(motherStoriesProvider);
     final userName = ref
         .watch(authControllerProvider)
         .asData
@@ -82,7 +91,16 @@ class MotherPage extends ConsumerWidget {
                             ],
                             const _MoodCard(),
                             SizedBox(height: context.scaled(24)),
-                            const _StoriesCard(),
+                            storiesAsync.when(
+                              data: (stories) => _StoriesCard(
+                                stories: stories.take(3).toList(),
+                              ),
+                              loading: () =>
+                                  const AppLoading(message: 'Memuat cerita...'),
+                              error: (error, stackTrace) => const AppError(
+                                message: 'Cerita belum dapat dimuat.',
+                              ),
+                            ),
                             SizedBox(height: context.scaled(24)),
                             _ActivitiesCard(showWeeklyEpds: showWeeklyEpds),
                           ],
@@ -94,10 +112,7 @@ class MotherPage extends ConsumerWidget {
                         onCalendarTap: () => context.go('/mother/calendar'),
                         onChatTap: () => context.go('/mother/chat'),
                         onMeditationTap: () => context.go('/mother/meditation'),
-                        onLogout: () {
-                          ref.read(authControllerProvider.notifier).logout();
-                          context.go('/roles');
-                        },
+                        onProfileTap: () => context.go('/mother/profile'),
                       ),
                     ],
                   ),
@@ -314,7 +329,7 @@ class _MoodCard extends StatelessWidget {
             height: context.scaled(48),
             child: FilledButton(
               key: const Key('mother-record-mood'),
-              onPressed: () => _showMoodEntry(context),
+              onPressed: () => showMotherMoodEntry(context),
               style: FilledButton.styleFrom(
                 minimumSize: Size.fromHeight(context.scaled(48)),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -414,147 +429,46 @@ class _MoodExpression extends StatelessWidget {
 }
 
 class _StoriesCard extends StatelessWidget {
-  const _StoriesCard();
+  const _StoriesCard({required this.stories});
+
+  final List<MotherStory> stories;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final scale = context.scaled;
+    return AppCard(
       key: const Key('mother-stories-card'),
-      padding: EdgeInsets.all(context.scaled(20)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
-        borderRadius: BorderRadius.circular(context.scaled(32)),
-      ),
+      padding: EdgeInsets.all(scale(20)),
+      borderRadius: scale(32),
       child: Column(
         children: [
-          _SectionHeading(
+          AppSectionHeader(
             title: 'Cerita terakhirmu',
-            action: 'Lihat Semua',
-            onTap: () => _showFeatureNotice(context, 'Semua cerita'),
+            actionLabel: 'Lihat Semua',
+            onAction: () => _showFeatureNotice(context, 'Semua cerita'),
+            scale: scale(1),
           ),
-          SizedBox(height: context.scaled(24)),
-          _StoryRow(
-            tileKey: const Key('mother-story-very-sad'),
-            arrowKey: const Key('mother-story-arrow-very-sad'),
-            faceKey: const Key('mother-story-face-very-sad'),
-            background: Color(0xFFB093C4),
-            faceAsset: 'mood-very-sad.svg',
-            faceHeight: 19.85,
-          ),
-          const _SectionDivider(key: Key('mother-story-divider-1')),
-          _StoryRow(
-            tileKey: const Key('mother-story-very-happy'),
-            arrowKey: const Key('mother-story-arrow-very-happy'),
-            faceKey: const Key('mother-story-face-very-happy'),
-            background: Color(0xFFFBE567),
-            faceAsset: 'mood-happy.svg',
-            faceHeight: 23,
-          ),
-          const _SectionDivider(key: Key('mother-story-divider-2')),
-          _StoryRow(
-            tileKey: const Key('mother-story-happy'),
-            arrowKey: const Key('mother-story-arrow-happy'),
-            faceKey: const Key('mother-story-face-happy'),
-            background: Color(0xFFAFEAAB),
-            faceAsset: 'mood-very-happy.svg',
-            faceHeight: 17.85,
-          ),
+          SizedBox(height: scale(24)),
+          if (stories.isEmpty)
+            const AppEmpty(message: 'Belum ada cerita yang tercatat.')
+          else
+            for (var index = 0; index < stories.length; index++) ...[
+              MotherStoryListTile(
+                key: Key('mother-story-${stories[index].id}'),
+                story: stories[index],
+                scale: _HomeScale.of(context),
+                keyPrefix: 'mother-story-${stories[index].id}',
+                snippetFontSize: 16,
+                onTap: () => context.push(
+                  '/mother/calendar/story',
+                  extra: stories[index],
+                ),
+              ),
+              if (index < stories.length - 1)
+                _SectionDivider(key: Key('mother-story-divider-${index + 1}')),
+            ],
         ],
       ),
-    );
-  }
-}
-
-class _StoryRow extends StatelessWidget {
-  const _StoryRow({
-    required this.tileKey,
-    required this.arrowKey,
-    required this.faceKey,
-    required this.background,
-    required this.faceAsset,
-    required this.faceHeight,
-  });
-
-  final Key tileKey;
-  final Key arrowKey;
-  final Key faceKey;
-  final Color background;
-  final String faceAsset;
-  final double faceHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          key: tileKey,
-          width: context.scaled(83),
-          height: context.scaled(83),
-          child: Stack(
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.pink2,
-                  borderRadius: BorderRadius.circular(context.scaled(32)),
-                ),
-                child: const SizedBox.expand(),
-              ),
-              Positioned(
-                left: context.scaled(15),
-                top: context.scaled(15),
-                child: _MoodExpression(
-                  faceKey: faceKey,
-                  background: background,
-                  asset: faceAsset,
-                  faceHeight: faceHeight,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: context.scaled(16)),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hal Kecil yang berarti',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Color(0xFF252B37),
-                  fontSize: context.scaled(14),
-                  fontWeight: FontWeight.w600,
-                  height: 20 / 14,
-                ),
-              ),
-              SizedBox(height: context.scaled(10)),
-              Text(
-                'Senang karena ada suami yang',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppTheme.muted,
-                  fontSize: context.scaled(14),
-                  height: 24 / 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: context.scaled(8)),
-        SizedBox(
-          key: arrowKey,
-          width: context.scaled(24).clamp(16, 24).toDouble(),
-          height: context.scaled(24).clamp(16, 24).toDouble(),
-          child: SvgPicture.asset(
-            'assets/images/mother_home/arrow-right.svg',
-            width: context.scaled(24).clamp(16, 24).toDouble(),
-            height: context.scaled(24).clamp(16, 24).toDouble(),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -572,41 +486,11 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Color(0xFF252B37),
-              fontSize: context.scaled(16),
-              fontWeight: FontWeight.w600,
-              height: 24 / 16,
-            ),
-          ),
-        ),
-        SizedBox(width: context.scaled(8)),
-        TextButton(
-          onPressed: onTap,
-          style: TextButton.styleFrom(
-            foregroundColor: AppTheme.coralText,
-            padding: EdgeInsets.zero,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            action,
-            style: TextStyle(
-              fontSize: context.scaled(14),
-              fontWeight: FontWeight.w600,
-              height: 24 / 14,
-            ),
-          ),
-        ),
-      ],
+    return AppSectionHeader(
+      title: title,
+      actionLabel: action,
+      onAction: onTap,
+      scale: context.scaled(1),
     );
   }
 }
@@ -620,7 +504,7 @@ class _SectionDivider extends StatelessWidget {
       builder: (context, constraints) {
         return SizedBox(
           width: constraints.maxWidth,
-          height: context.scaled(11),
+          height: context.scaled(20),
           child: Align(
             alignment: Alignment.center,
             child: SizedBox(
@@ -741,7 +625,7 @@ void _showFeatureNotice(BuildContext context, String feature) {
     ..showSnackBar(SnackBar(content: Text('$feature akan segera tersedia.')));
 }
 
-Future<void> _showMoodEntry(BuildContext context) {
+Future<void> showMotherMoodEntry(BuildContext context) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,
