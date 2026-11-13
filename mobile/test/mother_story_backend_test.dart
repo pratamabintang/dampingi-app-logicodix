@@ -9,8 +9,18 @@ void main() {
   test('joins each journal with the mood of the same day, newest first', () {
     final stories = storiesFromEntries(
       journals: const [
-        JournalEntry(id: 'j-old', date: '2026-11-10', title: 'Selasa', content: 'Cerita lama'),
-        JournalEntry(id: 'j-new', date: '2026-11-13', title: 'Jumat', content: 'Cerita baru'),
+        JournalEntry(
+          id: 'j-old',
+          date: '2026-11-10',
+          title: 'Selasa',
+          content: 'Cerita lama',
+        ),
+        JournalEntry(
+          id: 'j-new',
+          date: '2026-11-13',
+          title: 'Jumat',
+          content: 'Cerita baru',
+        ),
       ],
       moods: const [
         MoodEntry(id: 'm-1', date: '2026-11-13', mood: 5),
@@ -33,7 +43,12 @@ void main() {
   test('a journal without a mood that day is shown as neutral', () {
     final stories = storiesFromEntries(
       journals: const [
-        JournalEntry(id: 'j-1', date: '2026-11-12', title: 'Kamis', content: 'Isi'),
+        JournalEntry(
+          id: 'j-1',
+          date: '2026-11-12',
+          title: 'Kamis',
+          content: 'Isi',
+        ),
       ],
       moods: const [],
     );
@@ -51,7 +66,10 @@ void main() {
     );
 
     expect(api.calls, ['GET /journals']);
-    expect(api.queries.single, {'start_date': '2026-10-14', 'end_date': '2026-11-13'});
+    expect(api.queries.single, {
+      'start_date': '2026-10-14',
+      'end_date': '2026-11-13',
+    });
     expect(api.tokens.single, 'valid-access-token');
     expect(journals.single.title, 'Hari ini');
     expect(journals.single.date, '2026-11-13');
@@ -59,6 +77,48 @@ void main() {
 
   test('formats dates the way the backend expects', () {
     expect(isoDate(DateTime(2026, 3, 7)), '2026-03-07');
+  });
+
+  test('mood card puts today in the middle', () {
+    final days = recentMoodDays(const [
+      MoodEntry(id: 'm-1', date: '2026-11-13', mood: 4),
+      MoodEntry(id: 'm-2', date: '2026-11-12', mood: 2),
+    ], DateTime(2026, 11, 13, 21, 30));
+
+    expect(days.map((day) => day.label), [
+      'Rab',
+      'Kam',
+      'Hari ini',
+      'Sab',
+      'Min',
+    ]);
+    expect(days.map((day) => day.isToday), [false, false, true, false, false]);
+    expect(days.map((day) => day.mood), [
+      null,
+      MotherMood.sad,
+      MotherMood.happy,
+      null,
+      null,
+    ]);
+  });
+
+  test('mood card days cross a month boundary correctly', () {
+    final days = recentMoodDays(const [], DateTime(2026, 12, 1));
+
+    expect(isoDate(days.first.date), '2026-11-29');
+    expect(isoDate(days.last.date), '2026-12-03');
+    expect(days.map((day) => day.label), [
+      'Min',
+      'Sen',
+      'Hari ini',
+      'Rab',
+      'Kam',
+    ]);
+  });
+
+  test('mood titles match the mood entry dialog', () {
+    expect(moodTitle(MotherMood.verySad), 'Sangat Sedih');
+    expect(moodTitle(MotherMood.happy), 'Senang');
   });
 }
 
