@@ -273,8 +273,10 @@ class _StoryCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: scale(24)),
-          _AiSummary(scale: scale, summary: story.summary),
-          SizedBox(height: scale(24)),
+          if (story.summary.isNotEmpty) ...[
+            _AiSummary(scale: scale, summary: story.summary),
+            SizedBox(height: scale(24)),
+          ],
           _StoryText(
             scale: scale,
             title: story.title,
