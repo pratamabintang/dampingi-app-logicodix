@@ -41,6 +41,31 @@ class MoodEntry {
   }
 }
 
+class JournalEntry {
+  const JournalEntry({
+    required this.id,
+    required this.date,
+    required this.title,
+    required this.content,
+  });
+
+  final String id;
+  final String date;
+  final String title;
+  final String content;
+
+  factory JournalEntry.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final date = json['created_at'];
+    final title = json['title'];
+    final content = json['content'];
+    if (id is! String || date is! String || title is! String || content is! String) {
+      throw const FormatException('Journal entry has an invalid shape.');
+    }
+    return JournalEntry(id: id, date: date, title: title, content: content);
+  }
+}
+
 /// Mood dan jurnal harian ibu.
 ///
 /// Backend hanya menerima satu mood dan satu jurnal per hari. Kalau hari ini sudah
@@ -104,6 +129,30 @@ class DailyEntryRepository {
         throw const FormatException('Mood list has an invalid item.');
       }
       entries.add(MoodEntry.fromJson(item));
+    }
+    return entries;
+  }
+
+  Future<List<JournalEntry>> listJournals({
+    required String accessToken,
+    required String startDate,
+    required String endDate,
+  }) async {
+    final json = await _api.getJson(
+      '/journals',
+      accessToken: accessToken,
+      query: {'start_date': startDate, 'end_date': endDate},
+    );
+    final journals = json['journals'];
+    if (journals is! List) {
+      throw const FormatException('Journal list has an invalid shape.');
+    }
+    final entries = <JournalEntry>[];
+    for (final item in journals) {
+      if (item is! Map<String, dynamic>) {
+        throw const FormatException('Journal list has an invalid item.');
+      }
+      entries.add(JournalEntry.fromJson(item));
     }
     return entries;
   }
