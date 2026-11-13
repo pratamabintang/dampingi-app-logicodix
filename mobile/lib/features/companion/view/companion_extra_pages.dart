@@ -1,8 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../auth/controller/auth_controller.dart';
+import '../../mother/controller/chat_controller.dart';
+import '../../mother/models/chat_models.dart';
+import '../../mother/view/mother_chat_page.dart';
+
+class CompanionChatPage extends ConsumerStatefulWidget {
+  const CompanionChatPage({required this.scale, super.key});
+
+  final double scale;
+
+  @override
+  ConsumerState<CompanionChatPage> createState() => _CompanionChatPageState();
+}
+
+class _CompanionChatPageState extends ConsumerState<CompanionChatPage> {
+  final _messageController = TextEditingController();
+
+  static const _previewMessages = [
+    ChatMessage(role: 'user', content: 'Hai gpt, aku hamil'),
+    ChatMessage(
+      role: 'assistant',
+      content: 'Wow kamu hamil ya semoga lahiranya lancar nanti',
+    ),
+  ];
+
+  static const _previewSummary =
+      'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa '
+      'suami bantu aku ke belakang padahal suami lagi di luar kota.';
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final sent = await ref
+        .read(chatControllerProvider.notifier)
+        .send(_messageController.text);
+    if (sent && mounted) _messageController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = ref.watch(chatControllerProvider);
+    final previewMode =
+        ref
+            .watch(authControllerProvider)
+            .asData
+            ?.value
+            .session
+            ?.accessToken
+            .startsWith('mock-') ??
+        false;
+    final scale = widget.scale;
+
+    return Column(
+      key: const Key('companion-chat-page'),
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(scale * 24, scale * 20, scale * 24, 0),
+          child: const AppBrandHeader(),
+        ),
+        SizedBox(height: scale * 36),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: scale * 24),
+            child: ChatConversationPanel(
+              chat: chat,
+              previewMode: previewMode,
+              previewMessages: _previewMessages,
+              previewSummary: _previewSummary,
+              controller: _messageController,
+              scale: scale,
+              keyPrefix: 'companion-chat',
+              onSend: _send,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class CompanionSupportPage extends StatefulWidget {
   const CompanionSupportPage({

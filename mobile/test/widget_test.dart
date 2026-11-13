@@ -446,6 +446,48 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('companion-observation-start')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-question-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('companion-observation-answer-2')));
+    await tester.tap(
+      find.byKey(const Key('companion-observation-question-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-note-dialog')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('companion-observation-title')),
+      'Hari yang lebih tenang',
+    );
+    await tester.tap(find.byKey(const Key('companion-observation-note-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-question-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('companion-observation-question-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Hari yang lebih tenang'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('companion-observation-note-done')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-observation-success-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('companion-observation-success-done')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Observasi hari ini - Sudah diisi'), findsOneWidget);
+
     await tester.tap(find.byKey(const Key('companion-enter-mother-code')));
     await tester.pumpAndSettle();
     expect(
@@ -518,6 +560,26 @@ void main() {
     await tester.tap(find.byKey(const Key('companion-note-detail-back')));
     await tester.pumpAndSettle();
     expect(find.text('Catatan anda'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-nav-chat')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('companion-chat-page')), findsOneWidget);
+    expect(find.text('Hai gpt, aku hamil'), findsOneWidget);
+    expect(
+      find.text('Wow kamu hamil ya semoga lahiranya lancar nanti'),
+      findsOneWidget,
+    );
+    expect(find.text('Ringkasan Percakapan'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('companion-chat-input')),
+      'Pesan preview',
+    );
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Mode pratinjau aktif. Pesan belum dikirim ke layanan AI.'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key('mother-nav-meditation')));
     await tester.pumpAndSettle();
