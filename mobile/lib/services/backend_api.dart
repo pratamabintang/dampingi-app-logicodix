@@ -25,6 +25,32 @@ class BackendApi {
     String path, {
     required Map<String, Object?> body,
     String? accessToken,
+  }) {
+    return _send('POST', path, body: body, accessToken: accessToken);
+  }
+
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    Map<String, String>? query,
+    String? accessToken,
+  }) {
+    return _send('GET', path, query: query, accessToken: accessToken);
+  }
+
+  Future<Map<String, dynamic>> patchJson(
+    String path, {
+    required Map<String, Object?> body,
+    String? accessToken,
+  }) {
+    return _send('PATCH', path, body: body, accessToken: accessToken);
+  }
+
+  Future<Map<String, dynamic>> _send(
+    String method,
+    String path, {
+    Map<String, Object?>? body,
+    Map<String, String>? query,
+    String? accessToken,
   }) async {
     if (baseUrl.isEmpty) {
       throw const ApiConfigurationException(
@@ -33,7 +59,7 @@ class BackendApi {
       );
     }
 
-    final Uri uri;
+    Uri uri;
     try {
       uri = Uri.parse(baseUrl).resolve(path);
     } on FormatException {
@@ -46,16 +72,19 @@ class BackendApi {
         'API_BASE_URL harus menggunakan HTTP atau HTTPS.',
       );
     }
+    if (query != null && query.isNotEmpty) {
+      uri = uri.replace(queryParameters: query);
+    }
 
     try {
-      final request = await _client
-          .postUrl(uri)
-          .timeout(_timeout);
-      request.headers.contentType = ContentType.json;
+      final request = await _client.openUrl(method, uri).timeout(_timeout);
       if (accessToken != null) {
         request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
       }
-      request.write(jsonEncode(body));
+      if (body != null) {
+        request.headers.contentType = ContentType.json;
+        request.write(jsonEncode(body));
+      }
 
       final response = await request.close().timeout(_timeout);
       final responseBody = await utf8.decoder
