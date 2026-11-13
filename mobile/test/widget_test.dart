@@ -121,6 +121,20 @@ void main() {
     );
     await tester.ensureVisible(find.byKey(Key(fieldKey)));
     expect(tester.widget<EditableText>(editableField).obscureText, isTrue);
+    final primaryColor = Theme.of(tester.element(find.byKey(Key(fieldKey))))
+        .colorScheme
+        .primary;
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(Key(fieldKey)),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color,
+      primaryColor,
+    );
     await tester.tap(
       find.descendant(
         of: find.byKey(Key(fieldKey)),
@@ -129,6 +143,17 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.widget<EditableText>(editableField).obscureText, isFalse);
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(Key(fieldKey)),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color,
+      primaryColor,
+    );
     await tester.tap(
       find.descendant(
         of: find.byKey(Key(fieldKey)),
@@ -229,6 +254,19 @@ void main() {
     await tester.tap(find.byKey(const Key('login-register')));
     await tester.pumpAndSettle();
     expect(find.byType(RegisterPage), findsOneWidget);
+  });
+
+  testWidgets('system back from sign in returns to the role picker', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RolePickerPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
   });
 
   testWidgets('login validates required and malformed input', (tester) async {

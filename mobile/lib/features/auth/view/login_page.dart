@@ -21,19 +21,26 @@ class LoginPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    return Scaffold(
-      body: auth.when(
-        loading: () => const AppLoading(message: 'Menyiapkan halaman masuk...'),
-        error: (error, stackTrace) => AppError(
-          message: 'Halaman masuk tidak dapat dimuat.',
-          onRetry: () => ref.invalidate(authControllerProvider),
-        ),
-        data: (value) => _LoginContent(
-          state: value,
-          onClearError: ref.read(authControllerProvider.notifier).clearError,
-          onLogin: (email, password) => ref
-              .read(authControllerProvider.notifier)
-              .login(email: email, password: password),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) context.go('/roles');
+      },
+      child: Scaffold(
+        body: auth.when(
+          loading: () =>
+              const AppLoading(message: 'Menyiapkan halaman masuk...'),
+          error: (error, stackTrace) => AppError(
+            message: 'Halaman masuk tidak dapat dimuat.',
+            onRetry: () => ref.invalidate(authControllerProvider),
+          ),
+          data: (value) => _LoginContent(
+            state: value,
+            onClearError: ref.read(authControllerProvider.notifier).clearError,
+            onLogin: (email, password) => ref
+                .read(authControllerProvider.notifier)
+                .login(email: email, password: password),
+          ),
         ),
       ),
     );

@@ -85,6 +85,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
                     _obscureText
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
