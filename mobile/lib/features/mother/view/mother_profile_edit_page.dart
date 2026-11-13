@@ -261,9 +261,12 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                                     value,
                                     _passwordController.text,
                                   ),
+                              onChanged: (_) => setState(() {}),
                               inputHeight: scaled(44),
                               textInputAction: TextInputAction.done,
                             ),
+                            SizedBox(height: scaled(6)),
+                            _confirmationHint(scale),
                             SizedBox(height: scaled(24)),
                             SizedBox(
                               height: scaled(48),
@@ -335,6 +338,22 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _confirmationHint(double scale) {
+    final confirmation = _confirmationController.text;
+    final matches =
+        confirmation.isNotEmpty && confirmation == _passwordController.text;
+    return Text(
+      '${matches ? '✓' : '•'} Sama dengan kata sandi baru',
+      key: _key('password-confirmation-hint'),
+      style: TextStyle(
+        color: matches ? _ruleMetColor : AppTheme.secondary,
+        fontFamily: AppTheme.fontFamily,
+        fontSize: 14 * scale,
+        height: 20 / 14,
+      ),
     );
   }
 
