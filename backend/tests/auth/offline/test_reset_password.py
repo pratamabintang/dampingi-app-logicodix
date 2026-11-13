@@ -123,6 +123,26 @@ def test_an_expired_code_reads_the_same_as_a_wrong_one(mock_client, upstream):
     assert resp.json()["detail"] == "Kode reset salah atau sudah kedaluwarsa."
 
 
+def test_reusing_the_old_password_says_so(mock_client, upstream):
+    """GoTrue refuses an unchanged password; the local message says why."""
+    client, _ = mock_client
+    upstream(
+        {
+            VERIFY: supabase_json(200, RECOVERY_SESSION),
+            UPDATE_USER: supabase_error(
+                422,
+                "New password should be different from the old password.",
+                "same_password",
+            ),
+        }
+    )
+
+    resp = _reset(client, new_password="Seed!123")
+
+    assert resp.status_code == 400, resp.text
+    assert resp.json()["detail"] == "Sandi baru harus berbeda dari sandi lama."
+
+
 def test_a_short_new_password_is_422_without_an_upstream_call(mock_client, upstream):
     client, _ = mock_client
     recorded = upstream(ROUTES)

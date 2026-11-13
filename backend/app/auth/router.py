@@ -263,6 +263,11 @@ def reset_password(request: Request, payload: ResetPasswordRequest) -> Response:
     except supabase.SupabaseError as exc:
         if _is_banned(exc):
             raise _deleted() from exc
+        if exc.error_code == "same_password" or "different from the old" in exc.message.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Sandi baru harus berbeda dari sandi lama.",
+            ) from exc
         if exc.status == 429:
             raise _upstream_cooldown() from exc
         if exc.status >= 500:

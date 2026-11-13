@@ -158,6 +158,8 @@ Response `204` tanpa body.
 - Semua sesi dicabut; pengguna harus login lagi dengan password baru.
 - Kode salah **atau** kedaluwarsa → `400` dengan pesan yang sama, supaya tidak
   bisa dipakai menebak email mana yang terdaftar.
+- Kalau `new_password` sama dengan password lama → `400`
+  `"Sandi baru harus berbeda dari sandi lama."`
 
 ## Kode status
 
@@ -180,6 +182,9 @@ Pesan `403` saat belum verifikasi:
 
 Pesan `400` saat kode reset salah atau kedaluwarsa:
 `"Kode reset salah atau sudah kedaluwarsa."`
+
+Pesan `400` saat sandi baru sama dengan yang lama:
+`"Sandi baru harus berbeda dari sandi lama."`
 
 ## Batas percobaan
 
