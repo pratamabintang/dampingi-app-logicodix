@@ -63,6 +63,14 @@ void main() {
       find.byKey(const Key('mother-calendar-story-0-tile')),
       findsOneWidget,
     );
+    final happyFaceSize = tester.getSize(
+      find.byKey(const Key('mother-calendar-story-2-face')),
+    );
+    final secondHappyFaceSize = tester.getSize(
+      find.byKey(const Key('mother-calendar-story-3-face')),
+    );
+    expect(happyFaceSize, secondHappyFaceSize);
+    expect(happyFaceSize.height, MotherMood.happy.faceHeight);
     final mondayExpression = tester.getSize(
       find.byKey(const Key('mother-calendar-expression-Sen')),
     );

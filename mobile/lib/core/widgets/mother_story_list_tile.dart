@@ -128,7 +128,7 @@ class MotherStoryListTile extends StatelessWidget {
   }
 
   Widget _face(double scale, String prefix) => SvgPicture.asset(
-    'assets/images/mother_home/${story.faceAsset ?? story.mood.asset}',
+    'assets/images/mother_home/${story.mood.asset}',
     key: Key('$prefix-face'),
     width: 38 * scale,
     height: story.mood.faceHeight * scale,

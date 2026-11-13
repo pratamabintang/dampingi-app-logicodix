@@ -332,8 +332,11 @@ class MotherBreathingSessionPage extends StatefulWidget {
 
 class _MotherBreathingSessionPageState
     extends State<MotherBreathingSessionPage> {
+  static const _durationStepSeconds = 30;
+  static const _maxDurationSeconds = 60 * 60;
+
   Timer? _timer;
-  int _durationMinutes = 3;
+  int _durationSeconds = 3 * 60;
   int _remainingSeconds = 180;
   bool _isRunning = false;
 
@@ -350,7 +353,7 @@ class _MotherBreathingSessionPageState
       return;
     }
     if (_remainingSeconds == 0) {
-      setState(() => _remainingSeconds = _durationMinutes * 60);
+      setState(() => _remainingSeconds = _durationSeconds);
     }
     setState(() => _isRunning = true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -370,15 +373,15 @@ class _MotherBreathingSessionPageState
     _timer?.cancel();
     setState(() {
       _isRunning = false;
-      _remainingSeconds = _durationMinutes * 60;
+      _remainingSeconds = _durationSeconds;
     });
   }
 
-  void _setDuration(int minutes) {
+  void _setDuration(int seconds) {
     _timer?.cancel();
     setState(() {
-      _durationMinutes = minutes;
-      _remainingSeconds = minutes * 60;
+      _durationSeconds = seconds;
+      _remainingSeconds = seconds;
       _isRunning = false;
     });
   }
@@ -461,13 +464,13 @@ class _MotherBreathingSessionPageState
                       scale: scale,
                       remainingSeconds: _remainingSeconds,
                       onDecrement: () {
-                        if (_durationMinutes > 1) {
-                          _setDuration(_durationMinutes - 1);
+                        if (_durationSeconds > _durationStepSeconds) {
+                          _setDuration(_durationSeconds - _durationStepSeconds);
                         }
                       },
                       onIncrement: () {
-                        if (_durationMinutes < 60) {
-                          _setDuration(_durationMinutes + 1);
+                        if (_durationSeconds < _maxDurationSeconds) {
+                          _setDuration(_durationSeconds + _durationStepSeconds);
                         }
                       },
                     ),
@@ -551,7 +554,7 @@ class _DurationPicker extends StatelessWidget {
               _DurationAction(
                 key: const Key('mother-breathing-decrement'),
                 iconAsset: 'timer-minus.svg',
-                tooltip: 'Kurangi satu menit',
+                tooltip: 'Kurangi 30 detik',
                 onPressed: onDecrement,
                 scale: scale,
               ),
@@ -572,7 +575,7 @@ class _DurationPicker extends StatelessWidget {
               _DurationAction(
                 key: const Key('mother-breathing-increment'),
                 iconAsset: 'timer-plus.svg',
-                tooltip: 'Tambah satu menit',
+                tooltip: 'Tambah 30 detik',
                 onPressed: onIncrement,
                 scale: scale,
               ),
@@ -584,16 +587,16 @@ class _DurationPicker extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _DurationAdjustmentButton(
-              key: const Key('mother-breathing-subtract-minute'),
-              label: '1 Menit',
+              key: const Key('mother-breathing-subtract-30-seconds'),
+              label: '30 Detik',
               iconAsset: 'timer-minus.svg',
               scale: scale,
               onPressed: onDecrement,
             ),
             SizedBox(width: scaled(16)),
             _DurationAdjustmentButton(
-              key: const Key('mother-breathing-add-minute'),
-              label: '1 Menit',
+              key: const Key('mother-breathing-add-30-seconds'),
+              label: '30 Detik',
               iconAsset: 'timer-plus.svg',
               scale: scale,
               onPressed: onIncrement,

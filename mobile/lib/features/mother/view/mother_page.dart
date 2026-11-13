@@ -17,6 +17,7 @@ import '../controller/daily_entry_controller.dart';
 import '../models/mother_story.dart';
 import '../repositories/mother_story_repository.dart';
 import '../widgets/mother_mood_face.dart';
+import '../widgets/mother_weekly_epds_dialog.dart';
 import 'mother_navigation.dart';
 
 class MotherPage extends ConsumerWidget {
@@ -227,7 +228,7 @@ class _WeeklyEpdsCard extends StatelessWidget {
               height: context.scaled(48),
               child: FilledButton(
                 key: const Key('mother-epds-start'),
-                onPressed: () => _showFeatureNotice(context, 'Kuesioner EPDS'),
+                onPressed: () => showMotherWeeklyEpds(context),
                 style: FilledButton.styleFrom(
                   minimumSize: Size.fromHeight(context.scaled(48)),
                   padding: EdgeInsets.symmetric(horizontal: context.scaled(20)),
@@ -239,7 +240,7 @@ class _WeeklyEpdsCard extends StatelessWidget {
                 child: Text(
                   'Isi Sekarang',
                   maxLines: 1,
-                  style: TextStyle(fontSize: context.scaled(14)),
+                  style: TextStyle(fontSize: context.scaled(16)),
                 ),
               ),
             ),
@@ -324,7 +325,10 @@ class _MoodCard extends ConsumerWidget {
                 minimumSize: Size.fromHeight(context.scaled(48)),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Catat mood hari ini!'),
+              child: Text(
+                'Catat mood hari ini!',
+                style: TextStyle(fontSize: context.scaled(16)),
+              ),
             ),
           ),
         ],
@@ -902,7 +906,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
                   ),
                   child: Text(
                     'Tambahkan +',
-                    style: TextStyle(fontSize: 14 * scale),
+                    style: TextStyle(fontSize: 16 * scale),
                   ),
                 ),
               ),
@@ -1260,7 +1264,7 @@ class _FeelingChip extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: const StadiumBorder(),
         ),
-        child: Text(label, style: TextStyle(fontSize: 14 * scale)),
+        child: Text(label, style: TextStyle(fontSize: 16 * scale)),
       ),
     );
   }

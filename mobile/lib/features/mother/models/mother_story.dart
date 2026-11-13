@@ -34,7 +34,6 @@ class MotherStory {
     required this.weekdayIndex,
     required this.date,
     required this.mood,
-    this.faceAsset,
     required this.moodLabel,
     required this.title,
     required this.note,
@@ -45,7 +44,6 @@ class MotherStory {
   final int weekdayIndex;
   final String date;
   final MotherMood mood;
-  final String? faceAsset;
   final String moodLabel;
   final String title;
   final String note;
@@ -65,17 +63,11 @@ class MotherStory {
     if (mood == null) {
       throw FormatException('Invalid mood "$moodName" for story "$id".');
     }
-    final faceAsset = json['faceAsset'];
-    if (faceAsset != null && faceAsset is! String) {
-      throw FormatException('Invalid faceAsset for story "$id".');
-    }
-
     return MotherStory(
       id: id,
       weekdayIndex: weekdayIndex,
       date: _requiredString(json, 'date'),
       mood: mood,
-      faceAsset: faceAsset as String?,
       moodLabel: _requiredString(json, 'moodLabel'),
       title: _requiredString(json, 'title'),
       note: _requiredString(json, 'note'),
