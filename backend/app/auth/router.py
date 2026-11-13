@@ -367,6 +367,15 @@ def change_password(
             raise _deleted() from exc
         if _is_weak_password(exc):
             raise _weak_password() from exc
+        if exc.error_code == "current_password_invalid":
+            raise HTTPException(
+                status_code=400, detail="Current password is incorrect"
+            ) from exc
+        if exc.error_code == "current_password_required":
+            raise HTTPException(
+                status_code=400,
+                detail="Current password is required to set a new password.",
+            ) from exc
         raise
     return Response(status_code=204)
 

@@ -168,6 +168,25 @@ Response `204` tanpa body.
 - Kalau `new_password` tidak memenuhi aturan password → `422`
   (lihat pesan di bawah).
 
+### `POST /auth/password`
+
+Ganti sandi pengguna yang sudah login (Bearer). Perlu sandi saat ini.
+
+```json
+{ "current_password": "Rahasia123!", "new_password": "RahasiaBaru123!" }
+```
+
+- `new_password`: 8–72 karakter, memuat huruf kecil, huruf besar, angka, dan
+  simbol.
+- `current_password` salah → `400` `"Current password is incorrect"`.
+- `new_password` sama dengan sandi lama → `400`
+  `"New password must differ from the current one"`.
+- Response `204` tanpa body; semua sesi dicabut, pengguna login lagi.
+
+Supabase mewajibkan `current_password` dikirim saat menetapkan sandi baru
+(`security_update_password_require_current_password`). Nilai itu diteruskan ke
+Supabase, jadi perubahan sandi yang sah tidak berakhir sebagai `503`.
+
 ## Kode status
 
 | Kode | Kapan | Yang dilakukan aplikasi |
@@ -176,7 +195,7 @@ Response `204` tanpa body.
 | 200 | login / verify-email berhasil | simpan `access_token`, masuk ke beranda |
 | 202 | resend / forgot-password diterima | tampilkan `detail`, tunggu pengguna memasukkan kode |
 | 204 | reset-password / ganti sandi berhasil | arahkan ke halaman login |
-| 400 | kode verifikasi salah / kedaluwarsa | tampilkan `detail`, biarkan pengguna coba lagi / kirim ulang |
+| 400 | kode verifikasi salah / kedaluwarsa, atau sandi saat ini salah | tampilkan `detail`, biarkan pengguna coba lagi / kirim ulang |
 | 401 | email atau password salah | tampilkan `detail` |
 | 403 | email **belum diverifikasi** (login), atau akun sudah dihapus | saat belum verifikasi: arahkan ke layar masukkan kode / kirim ulang |
 | 409 | email Gmail sudah terdaftar | arahkan ke login |

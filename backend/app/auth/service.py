@@ -201,7 +201,7 @@ def change_password(session: Session, current_password: str, new_password: str) 
     if current_password == new_password:
         raise PasswordUnchanged()
 
-    supabase.update_password(session.token, new_password)
+    supabase.update_password(session.token, new_password, current_password)
     supabase.revoke_sessions(session.token)
 
 

@@ -135,7 +135,12 @@ def update_profile_name(user_id: str, name: str) -> dict:
     return rows[0]
 
 
-def update_password(user_token: str, new_password: str) -> None:
+def update_password(
+    user_token: str, new_password: str, current_password: Optional[str] = None
+) -> None:
+    payload: dict = {"password": new_password}
+    if current_password is not None:
+        payload["current_password"] = current_password
     resp = _request(
         _client().put,
         f"{_base_url()}/auth/v1/user",
@@ -144,7 +149,7 @@ def update_password(user_token: str, new_password: str) -> None:
             "Authorization": f"Bearer {user_token}",
             "Content-Type": "application/json",
         },
-        json={"password": new_password},
+        json=payload,
         timeout=TIMEOUT,
     )
     if resp.status_code >= 400:

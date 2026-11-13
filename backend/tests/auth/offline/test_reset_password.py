@@ -84,7 +84,8 @@ def test_it_writes_the_new_password_through_the_recovery_session(
     sent = _sent(recorded, "/auth/v1/user")
     assert sent.method == "PUT"
     assert sent.headers["Authorization"] == "Bearer RECOVERY-ACCESS-TOKEN"
-    assert json.loads(sent.content)["password"] == "An0therSecure!pass"
+    # The recovery session authorises the write; no current password is sent.
+    assert json.loads(sent.content) == {"password": "An0therSecure!pass"}
 
 
 def test_it_revokes_the_recovery_session(mock_client, upstream):
