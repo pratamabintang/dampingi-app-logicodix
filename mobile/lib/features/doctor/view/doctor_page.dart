@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../shared/view/app_bottom_navigation_bar.dart';
+import 'doctor_invitation_flow.dart';
 
 class DoctorPage extends ConsumerStatefulWidget {
   const DoctorPage({super.key});
@@ -115,10 +116,8 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                           SizedBox(height: 36 * scale),
                           _InvitationCard(
                             scale: scale,
-                            onInvite: () => _showNotice(
-                              context,
-                              'Fitur undang pasien belum tersedia.',
-                            ),
+                            onInvite: () =>
+                                showDoctorInvitationFlow(context, scale: scale),
                           ),
                           SizedBox(height: 36 * scale),
                           _PatientsCard(

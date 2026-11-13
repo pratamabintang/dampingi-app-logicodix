@@ -560,6 +560,94 @@ void main() {
     expect(find.text('Ringkasan Belum ditinjau'), findsNothing);
   });
 
+  testWidgets('doctor invites a patient through the three Figma dialogs', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'professional');
+    await enterCredentials(
+      tester,
+      email: 'demo.doctor@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('doctor-invite-patient')));
+    await tester.pumpAndSettle();
+    final codeDialog = find.byKey(
+      const Key('doctor-invitation-enterCode-dialog'),
+    );
+    expect(codeDialog, findsOneWidget);
+    expect(tester.getSize(codeDialog), const Size(342, 254));
+    expect(find.text('Masukan kode pendampingan Ibu'), findsOneWidget);
+
+    final codeField = find.descendant(
+      of: find.byKey(const Key('doctor-invitation-code-field')),
+      matching: find.byType(TextFormField),
+    );
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Masukan kode pendampingan Ibu.'), findsOneWidget);
+
+    await tester.enterText(codeField, 'wrong-code');
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kode pendampingan tidak dikenali.'), findsOneWidget);
+
+    await tester.enterText(codeField, 'K4DSTP');
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-invitation-confirm-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Apakah anda ingin mendampingi pengguna ini?'),
+      findsOneWidget,
+    );
+    final confirmDialog = find.byKey(
+      const Key('doctor-invitation-confirm-dialog'),
+    );
+    expect(tester.getSize(confirmDialog), const Size(342, 338));
+    expect(
+      find.descendant(
+        of: confirmDialog,
+        matching: find.text('Ny. Shopia Mudj.'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: confirmDialog,
+        matching: find.text('shopiamu@gmail.com'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('doctor-invitation-confirm-back')));
+    await tester.pumpAndSettle();
+    expect(codeDialog, findsOneWidget);
+    expect(tester.widget<TextFormField>(codeField).controller?.text, 'K4DSTP');
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('doctor-invitation-confirm-yes')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-invitation-success-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('doctor-invitation-success-dialog'))),
+      const Size(342, 160),
+    );
+    expect(find.text('Pengguna berhasil anda dampingi!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-invitation-success-done')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DoctorPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('companion links a mother and browses its dashboard tabs', (
     tester,
   ) async {
