@@ -6,6 +6,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../shared/view/app_bottom_navigation_bar.dart';
+import 'doctor_guide_page.dart';
+import 'doctor_invitation_flow.dart';
+import 'doctor_profile_page.dart';
+import 'doctor_patient_summary_page.dart';
 
 class DoctorPage extends ConsumerStatefulWidget {
   const DoctorPage({super.key});
@@ -18,6 +22,7 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   String _searchQuery = '';
+  DoctorNavigationTab _selectedTab = DoctorNavigationTab.home;
 
   @override
   void dispose() {
@@ -50,6 +55,51 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
               patient.status.toLowerCase().contains(query),
         )
         .toList();
+
+    if (_selectedTab == DoctorNavigationTab.patients) {
+      return DoctorPatientSummaryPage(
+        bottomNavigation: DoctorNavigationBar(
+          selectedTab: DoctorNavigationTab.patients,
+          onHomeTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.home),
+          onPatientsTap: () {},
+          onGuideTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.guide),
+          onProfileTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.profile),
+        ),
+      );
+    }
+
+    if (_selectedTab == DoctorNavigationTab.guide) {
+      return DoctorGuidePage(
+        bottomNavigation: DoctorNavigationBar(
+          selectedTab: DoctorNavigationTab.guide,
+          onHomeTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.home),
+          onPatientsTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.patients),
+          onGuideTap: () {},
+          onProfileTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.profile),
+        ),
+      );
+    }
+
+    if (_selectedTab == DoctorNavigationTab.profile) {
+      return DoctorProfilePage(
+        bottomNavigation: DoctorNavigationBar(
+          selectedTab: DoctorNavigationTab.profile,
+          onHomeTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.home),
+          onPatientsTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.patients),
+          onGuideTap: () =>
+              setState(() => _selectedTab = DoctorNavigationTab.guide),
+          onProfileTap: () {},
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -115,10 +165,8 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                           SizedBox(height: 36 * scale),
                           _InvitationCard(
                             scale: scale,
-                            onInvite: () => _showNotice(
-                              context,
-                              'Fitur undang pasien belum tersedia.',
-                            ),
+                            onInvite: () =>
+                                showDoctorInvitationFlow(context, scale: scale),
                           ),
                           SizedBox(height: 36 * scale),
                           _PatientsCard(
@@ -126,6 +174,7 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                             searchController: _searchController,
                             searchFocusNode: _searchFocusNode,
                             patients: patients,
+                            onSearch: _searchPatients,
                             onSearchChanged: (value) {
                               setState(() => _searchQuery = value);
                             },
@@ -134,13 +183,19 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                       ),
                     ),
                     DoctorNavigationBar(
-                      selectedTab: DoctorNavigationTab.home,
-                      onPatientsTap: () =>
-                          _showNotice(context, 'Menu pasien belum tersedia.'),
-                      onGuideTap: () =>
-                          _showNotice(context, 'Menu panduan belum tersedia.'),
-                      onProfileTap: () =>
-                          _showNotice(context, 'Menu profil belum tersedia.'),
+                      selectedTab: _selectedTab,
+                      onHomeTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.home,
+                      ),
+                      onPatientsTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.patients,
+                      ),
+                      onGuideTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.guide,
+                      ),
+                      onProfileTap: () => setState(
+                        () => _selectedTab = DoctorNavigationTab.profile,
+                      ),
                     ),
                   ],
                 ),
@@ -156,6 +211,11 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _searchPatients() {
+    _searchFocusNode.unfocus();
+    setState(() => _searchQuery = _searchController.text);
   }
 }
 
@@ -196,8 +256,8 @@ class _DoctorHeader extends StatelessWidget {
           ),
           icon: SvgPicture.asset(
             'assets/images/mother_home/notification.svg',
-            width: 24 * scale,
-            height: 24 * scale,
+            width: 19.478 * scale,
+            height: 22 * scale,
           ),
         ),
       ],
@@ -278,6 +338,7 @@ class _PatientsCard extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.patients,
+    required this.onSearch,
     required this.onSearchChanged,
   });
 
@@ -285,6 +346,7 @@ class _PatientsCard extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final List<_DoctorPatient> patients;
+  final VoidCallback onSearch;
   final ValueChanged<String> onSearchChanged;
 
   @override
@@ -308,7 +370,8 @@ class _PatientsCard extends StatelessWidget {
           ),
           SizedBox(height: 16 * scale),
           SizedBox(
-            height: 54 * scale,
+            key: const Key('doctor-patient-search-composer'),
+            height: 53 * scale,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -316,53 +379,72 @@ class _PatientsCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8 * scale),
                 boxShadow: AppTheme.inputShadow,
               ),
+              padding: EdgeInsets.symmetric(
+                horizontal: 14 * scale,
+                vertical: 7.5 * scale,
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      key: const Key('doctor-patient-search'),
-                      controller: searchController,
-                      focusNode: searchFocusNode,
-                      onChanged: onSearchChanged,
-                      textInputAction: TextInputAction.search,
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontFamily,
-                        color: AppTheme.body,
-                        fontSize: 16 * scale,
-                        height: 24 / 16,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Masukan nama pasien',
-                        hintStyle: TextStyle(
-                          fontFamily: AppTheme.fontFamily,
-                          color: AppTheme.secondary,
-                          fontSize: 16 * scale,
-                          height: 24 / 16,
-                        ),
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14 * scale,
+                    child: SizedBox(
+                      height: 36 * scale,
+                      child: Center(
+                        child: TextField(
+                          key: const Key('doctor-patient-search'),
+                          controller: searchController,
+                          focusNode: searchFocusNode,
+                          onChanged: onSearchChanged,
+                          onSubmitted: (_) => onSearch(),
+                          maxLines: 1,
+                          textAlignVertical: TextAlignVertical.center,
+                          textInputAction: TextInputAction.search,
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontFamily,
+                            color: AppTheme.body,
+                            fontSize: 16 * scale,
+                            height: 24 / 16,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama pasien',
+                            hintStyle: TextStyle(
+                              fontFamily: AppTheme.fontFamily,
+                              color: AppTheme.secondary,
+                              fontSize: 16 * scale,
+                              height: 24 / 16,
+                            ),
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(right: 8 * scale),
+                  SizedBox(width: 8 * scale),
+                  Semantics(
+                    button: true,
+                    label: 'Cari pasien',
                     child: Material(
                       color: AppTheme.coral,
                       borderRadius: BorderRadius.circular(8 * scale),
                       child: InkWell(
                         key: const Key('doctor-patient-search-button'),
-                        onTap: searchFocusNode.requestFocus,
+                        onTap: onSearch,
                         borderRadius: BorderRadius.circular(8 * scale),
                         child: SizedBox(
                           width: 36 * scale,
                           height: 36 * scale,
-                          child: Icon(
-                            Icons.search,
-                            color: Colors.white,
-                            size: 24 * scale,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/images/doctor/search.svg',
+                              key: const Key('doctor-patient-search-icon'),
+                              width: 20 * scale,
+                              height: 20 * scale,
+                            ),
                           ),
                         ),
                       ),
@@ -416,7 +498,6 @@ class _DoctorPatientRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: key,
       padding: EdgeInsets.all(8 * scale),
       decoration: BoxDecoration(
         color: AppTheme.selectedSurface,

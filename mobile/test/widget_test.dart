@@ -500,10 +500,384 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
     expect(find.text('Halo, dr. Maya Estiyanti'), findsOneWidget);
+    expect(find.text('Senin, 28 Oktober 2026'), findsOneWidget);
+    expect(find.byKey(const Key('doctor-home-avatar')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-invitation-card')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-invite-patient')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-patients-card')), findsOneWidget);
     expect(find.byKey(const Key('doctor-bottom-navigation')), findsOneWidget);
+    final notificationIcon = tester.widget<SvgPicture>(
+      find.descendant(
+        of: find.byKey(const Key('doctor-home-notifications')),
+        matching: find.byType(SvgPicture),
+      ),
+    );
+    expect(notificationIcon.width, 19.478);
+    expect(notificationIcon.height, 22);
     for (final tab in DoctorNavigationTab.values) {
       expect(find.byKey(Key('doctor-nav-item-${tab.name}')), findsOneWidget);
     }
+    expect(find.text('Cari nama pasien'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('doctor-patient-search')));
+    await tester.enterText(
+      find.byKey(const Key('doctor-patient-search')),
+      'Menunggu persetujuan',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .getSize(find.byKey(const Key('doctor-patient-search-composer')))
+          .height,
+      53,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('doctor-patient-search-button'))),
+      const Size(36, 36),
+    );
+    expect(find.byKey(const Key('doctor-patient-search-icon')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-patient-search-button')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(const Key('doctor-patient-search')),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .focusNode
+          .hasFocus,
+      isFalse,
+    );
+    expect(find.byKey(const Key('doctor-patient-row-0')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('doctor-patient-row-0')),
+        matching: find.text('Menunggu persetujuan'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Ringkasan Belum ditinjau'), findsNothing);
+  });
+
+  testWidgets('doctor invites a patient through the three Figma dialogs', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'professional');
+    await enterCredentials(
+      tester,
+      email: 'demo.doctor@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('doctor-invite-patient')));
+    await tester.pumpAndSettle();
+    final codeDialog = find.byKey(
+      const Key('doctor-invitation-enterCode-dialog'),
+    );
+    expect(codeDialog, findsOneWidget);
+    expect(tester.getSize(codeDialog), const Size(342, 254));
+    expect(find.text('Masukan kode pendampingan Ibu'), findsOneWidget);
+
+    final codeField = find.descendant(
+      of: find.byKey(const Key('doctor-invitation-code-field')),
+      matching: find.byType(TextFormField),
+    );
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Masukan kode pendampingan Ibu.'), findsOneWidget);
+
+    await tester.enterText(codeField, 'wrong-code');
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kode pendampingan tidak dikenali.'), findsOneWidget);
+
+    await tester.enterText(codeField, 'K4DSTP');
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-invitation-confirm-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Apakah anda ingin mendampingi pengguna ini?'),
+      findsOneWidget,
+    );
+    final confirmDialog = find.byKey(
+      const Key('doctor-invitation-confirm-dialog'),
+    );
+    expect(tester.getSize(confirmDialog), const Size(342, 338));
+    expect(
+      find.descendant(
+        of: confirmDialog,
+        matching: find.text('Ny. Shopia Mudj.'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: confirmDialog,
+        matching: find.text('shopiamu@gmail.com'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('doctor-invitation-confirm-back')));
+    await tester.pumpAndSettle();
+    expect(codeDialog, findsOneWidget);
+    expect(tester.widget<TextFormField>(codeField).controller?.text, 'K4DSTP');
+    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('doctor-invitation-confirm-yes')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-invitation-success-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('doctor-invitation-success-dialog'))),
+      const Size(342, 160),
+    );
+    expect(find.text('Pengguna berhasil anda dampingi!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-invitation-success-done')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DoctorPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('doctor creates, edits, and deletes a patient guide', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'professional');
+    await enterCredentials(
+      tester,
+      email: 'demo.doctor@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('doctor-nav-guide')));
+    await tester.pumpAndSettle();
+    expect(find.text('Arahkan pasien anda'), findsOneWidget);
+    expect(find.text('Arahan anda'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('doctor-guide-create')));
+    await tester.tap(find.byKey(const Key('doctor-guide-create')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('doctor-guide-form-input')),
+      'Beristirahat cukup dan minum air.',
+    );
+    await tester.tap(find.byKey(const Key('doctor-guide-form-done')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-guide-success-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('Arahan berhasil diberikan ke pasien!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-guide-success-done')));
+    await tester.pumpAndSettle();
+    expect(find.text('Beristirahat cukup dan minum air.'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('doctor-guide-edit')));
+    await tester.tap(find.byKey(const Key('doctor-guide-edit')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('doctor-guide-form-input')))
+          .controller
+          ?.text,
+      'Beristirahat cukup dan minum air.',
+    );
+    await tester.enterText(
+      find.byKey(const Key('doctor-guide-form-input')),
+      'Periksa kembali sesuai jadwal.',
+    );
+    await tester.tap(find.byKey(const Key('doctor-guide-form-done')));
+    await tester.pumpAndSettle();
+    expect(find.text('Arahan berhasil diperbarui!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-guide-success-done')));
+    await tester.pumpAndSettle();
+    expect(find.text('Periksa kembali sesuai jadwal.'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('doctor-guide-delete')));
+    await tester.tap(find.byKey(const Key('doctor-guide-delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Hapus'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Arahan berhasil dihapus!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-guide-success-done')));
+    await tester.pumpAndSettle();
+    expect(find.text('Belum ada arahan untuk pasien ini.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('doctor profile matches the shared profile layout', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'professional');
+    await enterCredentials(
+      tester,
+      email: 'demo.doctor@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('doctor-nav-profile')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-profile-information-card')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('doctor-profile-avatar')), findsOneWidget);
+    expect(find.text('Maya Estiyanti'), findsOneWidget);
+    expect(find.text('demo.doctor@dampingi.test'), findsOneWidget);
+    expect(find.text('Kode pendampingan : AIS128'), findsOneWidget);
+    expect(find.text('Ubah Profil'), findsOneWidget);
+    expect(find.text('Tambah Pasien'), findsOneWidget);
+    expect(find.byKey(const Key('doctor-profile-logout')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-bottom-navigation')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('doctor patients tab shows the Figma patient summary', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'professional');
+    await enterCredentials(
+      tester,
+      email: 'demo.doctor@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('doctor-nav-patients')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ringkasan pasien'), findsOneWidget);
+    expect(find.text('Pilih pasien'), findsOneWidget);
+    expect(find.text('Ny. Shopia Mudj.'), findsOneWidget);
+    expect(
+      tester.getSize(
+        find.byKey(const Key('doctor-patient-summary-picker-value')),
+      ),
+      const Size(300, 76),
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('doctor-patient-picker-name')))
+          .style
+          ?.color,
+      const Color(0xFFF97066),
+    );
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(const Key('doctor-patient-summary-dropdown')),
+              matching: find.byIcon(Icons.keyboard_arrow_down_rounded),
+            ),
+          )
+          .color,
+      const Color(0xFFF97066),
+    );
+    expect(
+      (tester
+                  .widget<Container>(
+                    find.byKey(
+                      const Key('doctor-patient-summary-week-background'),
+                    ),
+                  )
+                  .decoration!
+              as BoxDecoration)
+          .color,
+      const Color(0xFFFAFAFA),
+    );
+    expect(find.text('1-7 Agu 2026'), findsOneWidget);
+    expect(
+      find.byKey(const Key('doctor-patient-summary-epds')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('doctor-patient-summary-next-week')));
+    await tester.pumpAndSettle();
+    expect(find.text('8-14 Agu 2026'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('doctor-patient-summary-previous-week')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1-7 Agu 2026'), findsOneWidget);
+
+    final summaryScroll = find
+        .descendant(
+          of: find.byKey(const Key('doctor-patient-summary-scroll')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('doctor-patient-summary-stories')),
+      120,
+      scrollable: summaryScroll,
+    );
+    expect(
+      find.byKey(const Key('doctor-patient-summary-stories')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('doctor-patient-summary-story-5-row')),
+      120,
+      scrollable: summaryScroll,
+    );
+    expect(
+      find.byKey(const Key('doctor-patient-summary-story-5-row')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('doctor-nav-item-patients')), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('doctor-patient-summary-story-0-row')),
+      120,
+      scrollable: summaryScroll,
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('doctor-patient-summary-story-0-row')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('doctor-patient-summary-story-0-row')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Senin, 12 Agustus 2026'), findsOneWidget);
+    expect(find.text('Ringkasan AI'), findsOneWidget);
+    expect(find.text('Hal Kecil yang berarti'), findsOneWidget);
+    expect(find.text('Lihat lebih banyak'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-patient-story-expand')));
+    await tester.pumpAndSettle();
+    expect(find.text('Lihat lebih sedikit'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-patient-story-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('doctor-patient-summary-scroll')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('doctor-nav-home')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('doctor-home-avatar')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-patients-card')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('companion links a mother and browses its dashboard tabs', (
