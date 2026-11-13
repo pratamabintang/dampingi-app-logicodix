@@ -10,6 +10,7 @@ import json
 
 import pytest
 
+from app.auth.schemas import PASSWORD_RULE
 from conftest import supabase_error, supabase_json
 
 pytestmark = pytest.mark.local
@@ -141,6 +142,27 @@ def test_reusing_the_old_password_says_so(mock_client, upstream):
 
     assert resp.status_code == 400, resp.text
     assert resp.json()["detail"] == "Sandi baru harus berbeda dari sandi lama."
+
+
+def test_an_upstream_weak_password_is_422_not_503(mock_client, upstream):
+    client, _ = mock_client
+    upstream(
+        {
+            VERIFY: supabase_json(200, RECOVERY_SESSION),
+            UPDATE_USER: supabase_error(
+                422,
+                "Password should contain at least one character of each: "
+                "abcdefghijklmnopqrstuvwxyz, ABCDEFGHIJKLMNOPQRSTUVWXYZ.",
+                "weak_password",
+            ),
+        }
+    )
+
+    resp = _reset(client, new_password="N3wSecure!pass")
+
+    assert resp.status_code == 422, resp.text
+    assert resp.status_code != 503
+    assert resp.json()["detail"] == PASSWORD_RULE
 
 
 def test_a_short_new_password_is_422_without_an_upstream_call(mock_client, upstream):
