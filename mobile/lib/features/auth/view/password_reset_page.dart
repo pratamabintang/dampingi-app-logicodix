@@ -303,7 +303,6 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     label: 'Kata sandi baru',
     hintText: '••••••••',
     validator: validatePassword,
-    showVisibilityToggle: false,
     textInputAction: TextInputAction.done,
     autofillHints: const [AutofillHints.newPassword],
     onFieldSubmitted: (_) => _submit(),

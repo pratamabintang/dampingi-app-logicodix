@@ -6,6 +6,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_password_field.dart';
+import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
@@ -122,16 +124,11 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          SizedBox(
+                          AppProfileAvatar(
                             key: _key('avatar'),
-                            width: scaled(85),
-                            height: scaled(85),
-                            child: ClipOval(
-                              child: Image.asset(
-                                widget.avatarAsset,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                            assetPath: widget.avatarAsset,
+                            size: scaled(85),
+                            semanticLabel: 'Foto profil',
                           ),
                           SizedBox(
                             width: scaled(121),
@@ -223,18 +220,17 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            AppTextField(
+                            AppPasswordField(
                               key: _key('password'),
                               controller: _passwordController,
                               label: 'Kata sandi',
                               hintText: '••••••••',
                               validator: validatePassword,
-                              obscureText: true,
                               inputHeight: scaled(44),
                               textInputAction: TextInputAction.next,
                             ),
                             SizedBox(height: scaled(24)),
-                            AppTextField(
+                            AppPasswordField(
                               key: _key('password-confirmation'),
                               controller: _confirmationController,
                               label: 'Konfirmasi kata sandi',
@@ -244,7 +240,6 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                                     value,
                                     _passwordController.text,
                                   ),
-                              obscureText: true,
                               inputHeight: scaled(44),
                               textInputAction: TextInputAction.done,
                             ),

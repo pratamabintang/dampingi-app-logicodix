@@ -239,7 +239,6 @@ class _LoginContentState extends State<_LoginContent> {
                 label: 'Kata sandi',
                 hintText: '••••••••',
                 inputHeight: 44,
-                showVisibilityToggle: false,
                 textInputAction: TextInputAction.done,
                 enabled: !widget.state.isSubmitting,
                 autofillHints: const [AutofillHints.password],

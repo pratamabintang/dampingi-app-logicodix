@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
@@ -250,16 +251,11 @@ class _ProfileInformationCard extends StatelessWidget {
         children: [
           Column(
             children: [
-              SizedBox(
+              AppProfileAvatar(
                 key: const Key('mother-profile-avatar'),
-                width: scale(85),
-                height: scale(85),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/mother_home/avatar-a.png',
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                assetPath: 'assets/images/mother_home/avatar-a.png',
+                size: scale(85),
+                semanticLabel: 'Foto profil $name',
               ),
               SizedBox(height: scale(16)),
               Text(

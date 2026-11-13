@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_profile_avatar.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../mother/controller/chat_controller.dart';
 import '../../mother/models/chat_models.dart';
@@ -556,14 +557,13 @@ class CompanionProfilePage extends StatelessWidget {
           padding: EdgeInsets.all(scale * 24),
           child: Column(
             children: [
-              Image.asset(
-                'assets/images/companion_profile/profile-avatar.png',
-                width: scale * 88,
-                height: scale * 88,
-                fit: BoxFit.cover,
+              AppProfileAvatar(
+                key: const Key('companion-profile-avatar'),
+                assetPath: 'assets/images/companion_profile/profile-avatar.png',
+                size: scale * 85,
                 semanticLabel: 'Foto profil $userName',
               ),
-              SizedBox(height: scale * 24),
+              SizedBox(height: scale * 16),
               Text(
                 userName,
                 textAlign: TextAlign.center,
