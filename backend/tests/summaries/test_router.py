@@ -150,3 +150,78 @@ def test_create_weekly_summary_rejects_companion_role(
         app.dependency_overrides.clear()
 
     assert response.status_code == 403
+
+
+def test_get_weekly_summary_success(summary_client, monkeypatch):
+    client, session = summary_client
+
+    from app.summaries.schemas import (
+        Audience,
+        SummarySourceRef,
+        WeeklySummaryResponse,
+    )
+
+    expected = WeeklySummaryResponse(
+        period_start=date(2026, 11, 9),
+        period_end=date(2026, 11, 15),
+        audience=Audience.MOTHER,
+        status="completed",
+        overview="Ringkasan tersimpan.",
+        limitations=[],
+        source_refs=[
+            SummarySourceRef(
+                source_type="mother_mood",
+                source_id="mood-1",
+            )
+        ],
+        prompt_version="weekly-summary-v2",
+    )
+
+    def mock_get_summary(user_id, period_start):
+        assert user_id == session.user_id
+        assert period_start == date(2026, 11, 9)
+        return expected
+
+    monkeypatch.setattr(
+        "app.summaries.router.service.get_weekly_summary",
+        mock_get_summary,
+    )
+
+    response = client.get(
+        "/summaries/weekly",
+        params={"period_start": "2026-11-09"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["overview"] == "Ringkasan tersimpan."
+    assert response.json()["status"] == "completed"
+
+
+def test_get_weekly_summary_not_found(summary_client, monkeypatch):
+    client, _ = summary_client
+
+    monkeypatch.setattr(
+        "app.summaries.router.service.get_weekly_summary",
+        lambda user_id, period_start: None,
+    )
+
+    response = client.get(
+        "/summaries/weekly",
+        params={"period_start": "2026-11-09"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_get_weekly_summary_rejects_non_monday(
+    summary_client,
+    monkeypatch,
+):
+    client, _ = summary_client
+
+    response = client.get(
+        "/summaries/weekly",
+        params={"period_start": "2026-11-10"},
+    )
+
+    assert response.status_code == 422
