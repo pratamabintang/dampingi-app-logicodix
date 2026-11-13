@@ -42,7 +42,7 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                     ? constraints.maxWidth
                     : 390 * scale,
                 child: DefaultTextStyle(
-                  style: const TextStyle(fontFamily: 'Mona Sans'),
+                  style: const TextStyle(fontFamily: AppTheme.fontFamily),
                   child: ListView(
                     key: const Key('mother-story-detail-scroll'),
                     padding: EdgeInsets.fromLTRB(

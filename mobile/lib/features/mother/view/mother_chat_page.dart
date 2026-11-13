@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_header.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../controller/chat_controller.dart';
 import '../models/chat_models.dart';
@@ -83,21 +84,7 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
                         scaled(24),
                         0,
                       ),
-                      child: SizedBox(
-                        height: scaled(56),
-                        child: Center(
-                          child: Text(
-                            'Dampingi',
-                            style: TextStyle(
-                              color: AppTheme.coral,
-                              fontSize: scaled(24),
-                              fontWeight: FontWeight.w600,
-                              height: 32 / 24,
-                              fontFamily: 'Mona Sans',
-                            ),
-                          ),
-                        ),
-                      ),
+                      child: const AppBrandHeader(),
                     ),
                     SizedBox(height: scaled(36)),
                     Expanded(
@@ -248,7 +235,7 @@ class _ChatSummaryCard extends StatelessWidget {
                   fontSize: 16,
                   height: 24 / 16,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'Mona Sans',
+                  fontFamily: AppTheme.fontFamily,
                 ),
               ),
               const SizedBox(height: 10),
@@ -259,7 +246,7 @@ class _ChatSummaryCard extends StatelessWidget {
                   fontSize: 16,
                   height: 24 / 16,
                   fontWeight: FontWeight.w400,
-                  fontFamily: 'Mona Sans',
+                  fontFamily: AppTheme.fontFamily,
                 ),
               ),
             ],
@@ -298,7 +285,7 @@ class _MessageBubble extends StatelessWidget {
               fontSize: 16,
               height: 24 / 16,
               fontWeight: FontWeight.w400,
-              fontFamily: 'Mona Sans',
+              fontFamily: AppTheme.fontFamily,
             ),
           ),
         ),
@@ -434,7 +421,7 @@ class _MessageComposer extends StatelessWidget {
                 color: AppTheme.body,
                 fontSize: scaled(16),
                 height: 24 / 16,
-                fontFamily: 'Mona Sans',
+                fontFamily: AppTheme.fontFamily,
               ),
             ),
           ),

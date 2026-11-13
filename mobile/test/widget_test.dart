@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mobile/app.dart';
 import 'package:mobile/core/widgets/app_empty.dart';
@@ -17,6 +16,7 @@ import 'package:mobile/features/companion/view/companion_page.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
+import 'package:mobile/features/mother/view/mother_profile_edit_page.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/shared/view/role_picker_page.dart';
 import 'package:mobile/features/shared/view/route_error_page.dart';
@@ -119,7 +119,7 @@ void main() {
           .textTheme
           .bodyLarge
           ?.fontFamily,
-      GoogleFonts.dmSans().fontFamily,
+      'Mona Sans',
     );
     expect(
       tester.getTopLeft(find.byKey(const Key('login-image-frame'))),
@@ -795,6 +795,154 @@ void main() {
     expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
   });
 
+  testWidgets('mother can open and return from profile edit design', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-profile-edit')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MotherProfileEditPage), findsOneWidget);
+    expect(find.text('Ubah Foto'), findsOneWidget);
+    expect(find.text('Simpan Perubahan'), findsOneWidget);
+    expect(find.text('Ubah kata sandi'), findsOneWidget);
+    expect(find.text('Ibu Demo'), findsOneWidget);
+    expect(find.text('demo.mother@dampingi.test'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-edit-avatar'))),
+      const Size(85, 85),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-edit-photo'))),
+      const Size(121, 48),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mother-profile-edit-save'))),
+      const Size(342, 48),
+    );
+    expect(
+      tester.getSize(
+        find.byKey(const Key('mother-profile-edit-change-password')),
+      ),
+      const Size(342, 48),
+    );
+    final avatar = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('mother-profile-edit-avatar')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (avatar.image as AssetImage).assetName,
+      'assets/images/mother_home/avatar-a.png',
+    );
+    final backIcon = tester.widget<SvgPicture>(find.byType(SvgPicture));
+    expect(backIcon.width, 24);
+    expect(backIcon.height, 24);
+
+    await tester.tap(find.byKey(const Key('mother-profile-edit-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(MotherProfilePage), findsOneWidget);
+  });
+
+  testWidgets('mother profile follows the three Figma add-companion dialogs', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-profile-add-companion')));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byKey(const Key('mother-profile-companion-dialog'));
+    expect(tester.getSize(dialog), const Size(342, 338));
+    final codeField = find.descendant(
+      of: find.byKey(const Key('mother-profile-companion-code-field')),
+      matching: find.byType(TextFormField),
+    );
+    await tester.tap(codeField);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('mother-profile-companion-close')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('mother-profile-add-companion')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tambahkan Pendamping Anda'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('mother-profile-companion-code-next')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Masukkan kode pendampingan.'), findsOneWidget);
+
+    await tester.enterText(codeField, 'unknown-code');
+    await tester.tap(
+      find.byKey(const Key('mother-profile-companion-code-next')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Kode tidak dikenali dalam mode pratinjau.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(codeField, 'enzokulin');
+    await tester.tap(
+      find.byKey(const Key('mother-profile-companion-code-next')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Apakah ini pengguna yang ingin mendampingi anda?'),
+      findsOneWidget,
+    );
+    expect(tester.getSize(dialog), const Size(342, 364));
+    expect(find.text('Tn. Enzokulin Samsidan'), findsOneWidget);
+    expect(find.text('samsidan@gmail.com'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-profile-companion-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tambahkan Pendamping Anda'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('mother-profile-companion-code-next')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-profile-companion-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Pengguna berhasil menjadi pendamping anda!'),
+      findsOneWidget,
+    );
+    expect(tester.getSize(dialog), const Size(342, 210));
+    await tester.tap(
+      find.byKey(const Key('mother-profile-companion-success-done')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const Key('mother-profile-companion-preview-enzokulin-samsidan'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('mother can open the Figma chat screen without a mock API call', (
     tester,
   ) async {
@@ -921,6 +1069,13 @@ void main() {
   testWidgets('role picker uses the Figma role copy and emoji', (tester) async {
     await startApp(tester);
 
+    expect(
+      Theme.of(tester.element(find.byType(RolePickerPage)))
+          .textTheme
+          .bodyMedium
+          ?.fontFamily,
+      'Mona Sans',
+    );
     expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
     expect(find.text('Saya Pendamping Ibu'), findsOneWidget);
     expect(find.byKey(const Key('role-emoji-mother')), findsOneWidget);

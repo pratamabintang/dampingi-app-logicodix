@@ -15,11 +15,14 @@ class AppTextField extends StatelessWidget {
     this.inputHeight,
     this.labelStyle,
     this.textStyle,
+    this.hintStyle,
+    this.fitLabelToWidth = false,
     this.enabled = true,
     this.autofillHints,
     this.focusNode,
     this.autocorrect = true,
     this.textCapitalization = TextCapitalization.none,
+    this.obscureText = false,
     super.key,
   });
 
@@ -34,24 +37,42 @@ class AppTextField extends StatelessWidget {
   final double? inputHeight;
   final TextStyle? labelStyle;
   final TextStyle? textStyle;
+  final TextStyle? hintStyle;
+  final bool fitLabelToWidth;
   final bool enabled;
   final Iterable<String>? autofillHints;
   final FocusNode? focusNode;
   final bool autocorrect;
   final TextCapitalization textCapitalization;
+  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
+    final label = Text(
+      this.label,
+      maxLines: fitLabelToWidth ? 1 : null,
+      softWrap: !fitLabelToWidth,
+      style:
+          labelStyle ??
+          Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppTheme.body),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        if (fitLabelToWidth)
+          SizedBox(
+            height: (labelStyle?.fontSize ?? 14) * (labelStyle?.height ?? 1),
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: label,
+            ),
+          )
+        else
           label,
-          style:
-              labelStyle ??
-              Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: AppTheme.body),
-        ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
@@ -66,6 +87,7 @@ class AppTextField extends StatelessWidget {
               style: textStyle,
               focusNode: focusNode,
               validator: validator,
+              obscureText: obscureText,
               keyboardType: keyboardType,
               textInputAction: textInputAction,
               onFieldSubmitted: onFieldSubmitted,
@@ -74,7 +96,10 @@ class AppTextField extends StatelessWidget {
               autofillHints: autofillHints,
               autocorrect: autocorrect,
               textCapitalization: textCapitalization,
-              decoration: InputDecoration(hintText: hintText),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: hintStyle,
+              ),
             ),
           ),
         ),

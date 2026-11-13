@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_error.dart';
@@ -50,7 +51,7 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
             return _CalendarScale(
               factor: scale,
               child: DefaultTextStyle(
-                style: const TextStyle(fontFamily: 'Mona Sans'),
+                style: const TextStyle(fontFamily: AppTheme.fontFamily),
                 child: Center(
                   child: SizedBox(
                     width: width,
@@ -66,7 +67,7 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                               context.calendarScale(24),
                             ),
                             children: [
-                              const _CalendarHeader(),
+                              const AppBrandHeader(),
                               SizedBox(height: context.calendarScale(36)),
                               _WeekSelector(
                                 label: _weekLabel(_weekStart),
@@ -157,29 +158,6 @@ extension on BuildContext {
   double calendarScale(double value) =>
       (dependOnInheritedWidgetOfExactType<_CalendarScale>()?.factor ?? 1) *
       value;
-}
-
-class _CalendarHeader extends StatelessWidget {
-  const _CalendarHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = context.calendarScale;
-    return SizedBox(
-      height: scale(56),
-      child: Center(
-        child: Text(
-          'Dampingi',
-          style: TextStyle(
-            color: AppTheme.coral,
-            fontSize: scale(24),
-            fontWeight: FontWeight.w600,
-            height: 32 / 24,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _WeekSelector extends StatelessWidget {

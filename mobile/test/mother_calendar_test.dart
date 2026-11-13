@@ -127,6 +127,22 @@ void main() {
     expect((unselectedDay.decoration! as BoxDecoration).border, isNull);
   });
 
+  testWidgets('calendar brand keeps the standard logo size on narrow screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _withStoryFixture(const MaterialApp(home: MotherCalendarPage())),
+    );
+
+    final brand = tester.widget<Text>(find.text('Dampingi'));
+    expect(brand.style?.fontSize, 24);
+  });
+
   testWidgets('story detail matches the Figma content and expands the note', (
     tester,
   ) async {
