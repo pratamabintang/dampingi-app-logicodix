@@ -42,42 +42,52 @@ def summary_client(offline_env):
 def test_create_weekly_summary_success(summary_client, monkeypatch):
     client, session = summary_client
 
-    async def mock_create_summary(user_id, request):
+    async def mock_create_summary(user_id, period_start):
         assert user_id == session.user_id
-        assert request.period_start == date(2026, 11, 4)
-        assert request.period_end == date(2026, 11, 10)
+        assert period_start == date(2026, 11, 9)
 
-        return MoodSummaryOut(
-            status="complete",
-            period_start=request.period_start,
-            period_end=request.period_end,
-            mood_count=3,
+        from app.summaries.schemas import (
+            Audience,
+            SummarySourceRef,
+            WeeklySummaryResponse,
+        )
+
+        return WeeklySummaryResponse(
+            period_start=date(2026, 11, 9),
+            period_end=date(2026, 11, 15),
+            audience=Audience.MOTHER,
+            status="completed",
             overview="Ringkasan mood mingguan.",
+            limitations=["Catatan mood tersedia pada 3 dari 7 hari."],
+            source_refs=[
+                SummarySourceRef(
+                    source_type="mother_mood",
+                    source_id="mood-1",
+                )
+            ],
+            prompt_version="weekly-summary-v2",
         )
 
     monkeypatch.setattr(
-        "app.summaries.router.service.create_weekly_summary",
+        "app.summaries.router.service.create_weekly_summary_v2",
         mock_create_summary,
     )
 
     response = client.post(
         "/summaries/weekly",
-        json={
-            "period_start": "2026-11-04",
-            "period_end": "2026-11-10",
-        },
+        json={"period_start": "2026-11-09"},
     )
 
     assert response.status_code == 200
 
     body = response.json()
 
-    assert body["status"] == "complete"
-    assert body["period_start"] == "2026-11-04"
-    assert body["period_end"] == "2026-11-10"
-    assert body["mood_count"] == 3
+    assert body["status"] == "completed"
+    assert body["period_start"] == "2026-11-09"
+    assert body["period_end"] == "2026-11-15"
     assert body["overview"] == "Ringkasan mood mingguan."
-
+    assert body["source_refs"][0]["source_id"] == "mood-1"
+    assert body["limitations"]
 
 def test_create_weekly_summary_rejects_invalid_period(summary_client):
     client, _ = summary_client

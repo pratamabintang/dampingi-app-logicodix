@@ -1,5 +1,4 @@
 from datetime import date, datetime
-
 import pytest
 
 from app.summaries.aggregation import (
@@ -231,3 +230,35 @@ def test_build_weekly_summary_input_builds_coverage_and_sources():
     assert result.mother_mood_entries[0].date == date(2026, 11, 9)
     assert len(result.permitted_journal_items) == 1
     assert len(result.permitted_companion_observations) == 1
+
+def test_aggregate_weekly_data_rejects_null_mood():
+    with pytest.raises(ValueError, match="Mood must be an integer"):
+        aggregate_weekly_data(
+            date(2026, 11, 9),
+            [{"id": "m1", "created_at": "2026-11-09", "mood": None}],
+        )
+
+
+def test_aggregate_weekly_data_empty_moods_have_zero_coverage():
+    result = aggregate_weekly_data(date(2026, 11, 9), [])
+
+    assert result["mood_entries"] == []
+    assert result["mood_days"] == 0
+
+
+def test_aggregate_weekly_data_keeps_mother_and_companion_sources_separate():
+    result = aggregate_weekly_data(
+        date(2026, 11, 9),
+        [{"id": "m1", "created_at": "2026-11-09", "mood": 4}],
+        companion_observations=[
+            {
+                "id": "o1",
+                "status": "completed",
+                "day": "2026-11-10",
+                "answers": {"condition": "good"},
+            }
+        ],
+    )
+
+    assert [item["id"] for item in result["mood_entries"]] == ["m1"]
+    assert [item["id"] for item in result["companion_observations"]] == ["o1"]

@@ -161,3 +161,25 @@ def test_mood_summary_out_rejects_unavailable_without_moods():
             mood_count=0,
             overview=None,
         )
+
+
+def test_weekly_summary_request_accepts_monday():
+    from datetime import date
+    from app.summaries.schemas import WeeklySummaryRequest
+
+    request = WeeklySummaryRequest(
+        period_start=date(2026, 11, 9),
+    )
+
+    assert request.period_end == date(2026, 11, 15)
+
+
+def test_weekly_summary_request_rejects_non_monday():
+    from datetime import date
+    from pydantic import ValidationError
+    from app.summaries.schemas import WeeklySummaryRequest
+
+    with pytest.raises(ValidationError, match="Monday"):
+        WeeklySummaryRequest(
+            period_start=date(2026, 11, 10),
+        )

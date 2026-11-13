@@ -10,6 +10,7 @@ from pydantic import (
     model_validator,
 )
 
+
 class JournalExtractionInput(BaseModel):
     """One permitted journal supplied for theme extraction."""
 
@@ -65,11 +66,7 @@ class JournalExtractionOut(BaseModel):
     @model_validator(mode="after")
     def failed_result_has_no_themes(self):
         if self.processing_status == "failed" and self.themes:
-            raise ValueError("Failed extraction must not contain themes")
+            raise ValueError(
+                "Failed extraction must not contain themes"
+            )
         return self
-    """Validated result of journal theme extraction."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    themes: list[JournalTheme] = Field(default_factory=list)
-    processing_status: Literal["completed", "failed"]
