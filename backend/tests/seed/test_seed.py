@@ -39,6 +39,10 @@ def _routes(existing_users=None):
     }
     for table in CHILD_TABLES:
         routes[("POST", f"/rest/v1/{table}")] = httpx.Response(201, json=[])
+
+    routes[("DELETE", "/rest/v1/moods")] = httpx.Response(204)
+    routes[("DELETE", "/rest/v1/journals")] = httpx.Response(204)
+    routes[("DELETE", "/rest/v1/observations")] = httpx.Response(204)
     return routes
 
 

@@ -10,6 +10,7 @@ from app.journals import service as journal_service
 from app.journals.extraction import extract_journal_themes
 from app.journals.extraction_schemas import JournalExtractionInput
 from app.moods import service as mood_service
+from app.summaries import supabase as summary_supabase
 from app.summaries.aggregation import build_weekly_summary_input
 from app.summaries.prompts import SYSTEM_PROMPT, WEEKLY_SUMMARY_PROMPT
 from app.summaries.schemas import (
@@ -32,7 +33,7 @@ async def create_weekly_summary(
     user_id: str,
     request: MoodSummaryRequest,
 ) -> MoodSummaryOut:
-    """Create a weekly mood summary from the authenticated mother's mood records."""
+    """Create a weekly mood summary from the mother's mood records."""
 
     period_start = request.period_start.isoformat()
     period_end = request.period_end.isoformat()
@@ -43,6 +44,7 @@ async def create_weekly_summary(
         start_date=period_start,
         end_date=period_end,
     )
+
     moods = mood_result.moods
     mood_count = mood_result.count
 
@@ -70,7 +72,10 @@ async def create_weekly_summary(
             turns=[
                 Turn(
                     role="user",
-                    content=json.dumps(mood_payload, ensure_ascii=False),
+                    content=json.dumps(
+                        mood_payload,
+                        ensure_ascii=False,
+                    ),
                 )
             ],
             output=MoodSummaryAIOut,
@@ -93,11 +98,44 @@ async def create_weekly_summary(
     )
 
 
+def _persist_weekly_summary(
+    user_id: str,
+    summary: WeeklySummaryResponse,
+) -> dict:
+    """Persist a weekly summary for the authenticated mother."""
+
+    payload = summary.model_dump(mode="json")
+    payload["mother_id"] = user_id
+
+    return summary_supabase.save_summary(payload)
+
+
+def get_weekly_summary(
+    user_id: str,
+    period_start: date,
+) -> WeeklySummaryResponse | None:
+    """Retrieve a persisted weekly summary for the authenticated mother."""
+
+    if period_start.weekday() != 0:
+        raise ValueError("period_start must be a Monday")
+
+    row = summary_supabase.get_summary(
+        mother_id=user_id,
+        period_start=period_start.isoformat(),
+        audience=Audience.MOTHER.value,
+    )
+
+    if row is None:
+        return None
+
+    return WeeklySummaryResponse.model_validate(row)
+
+
 async def create_weekly_summary_v2(
     user_id: str,
     period_start: date,
 ) -> WeeklySummaryResponse:
-    """Create a source-aware weekly summary for the mother."""
+    """Create and persist a source-aware weekly summary."""
 
     if period_start.weekday() != 0:
         raise ValueError("period_start must be a Monday")
@@ -106,7 +144,7 @@ async def create_weekly_summary_v2(
     start_date = period_start.isoformat()
     end_date = period_end.isoformat()
 
-    # Retrieve only the authenticated mother's own records.
+    # Retrieve the authenticated mother's own records.
     mood_result = await asyncio.to_thread(
         mood_service.list_moods,
         user_id=user_id,
@@ -141,7 +179,9 @@ async def create_weekly_summary_v2(
                 id=journal.id,
                 title=journal.title,
                 content=journal.content,
-                date=date.fromisoformat(journal.created_at[:10]),
+                date=date.fromisoformat(
+                    journal.created_at[:10]
+                ),
             )
             for journal in journal_result.journals
         ]
@@ -214,16 +254,16 @@ async def create_weekly_summary_v2(
             f"{summary_input.coverage.mood_days} dari 7 hari."
         )
 
-    # Do not call weekly-summary AI when there is no usable source.
+    # Do not call AI when there is no usable source.
     if not mood_entries and not summary_journal_items:
-        if not mood_result.moods:
-            limitations.append(
-                "Tidak ada catatan mood pada periode ini."
-            )
+        limitations.append(
+            "Tidak ada catatan mood atau tema jurnal "
+            "yang dapat digunakan pada periode ini."
+        )
 
-        return WeeklySummaryResponse(
+        summary = WeeklySummaryResponse(
             period_start=period_start,
-            period_end=period_end,
+            period_end=end_date,
             audience=Audience.MOTHER,
             status="partial",
             overview=None,
@@ -232,6 +272,10 @@ async def create_weekly_summary_v2(
             prompt_version="weekly-summary-v2",
         )
 
+        _persist_weekly_summary(user_id, summary)
+        return summary
+
+    # Generate the weekly summary.
     try:
         result = await get_summary_gateway().generate(
             system=WEEKLY_SUMMARY_PROMPT,
@@ -245,9 +289,9 @@ async def create_weekly_summary_v2(
         )
 
     except AIError:
-        return WeeklySummaryResponse(
+        summary = WeeklySummaryResponse(
             period_start=period_start,
-            period_end=period_end,
+            period_end=end_date,
             audience=Audience.MOTHER,
             status="partial",
             overview=None,
@@ -258,11 +302,14 @@ async def create_weekly_summary_v2(
             prompt_version="weekly-summary-v2",
         )
 
+        _persist_weekly_summary(user_id, summary)
+        return summary
+
     limitations.extend(result.limitations)
 
-    return WeeklySummaryResponse(
+    summary = WeeklySummaryResponse(
         period_start=period_start,
-        period_end=period_end,
+        period_end=end_date,
         audience=Audience.MOTHER,
         status="completed" if result.overview else "partial",
         overview=result.overview,
@@ -270,3 +317,6 @@ async def create_weekly_summary_v2(
         source_refs=source_refs,
         prompt_version="weekly-summary-v2",
     )
+
+    _persist_weekly_summary(user_id, summary)
+    return summary

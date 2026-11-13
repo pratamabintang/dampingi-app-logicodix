@@ -67,6 +67,16 @@ def mock_gateway():
 def mock_empty_journals():
     return SimpleNamespace(journals=[])
 
+@pytest.fixture(autouse=True)
+def mock_summary_persistence(monkeypatch):
+    from app.summaries import service
+
+    monkeypatch.setattr(
+        service,
+        "_persist_weekly_summary",
+        lambda user_id, summary: None,
+    )
+
 
 # ============================================================
 # V1 - WEEKLY MOOD SUMMARY
@@ -79,6 +89,12 @@ def test_returns_insufficient_data_when_no_moods(
     mock_gateway,
 ):
     from app.summaries import service
+
+    monkeypatch.setattr(
+        service,
+        "_persist_weekly_summary",
+        lambda user_id, summary: None,
+    )
 
     monkeypatch.setattr(
         service.mood_service,
