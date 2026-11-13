@@ -300,11 +300,12 @@ class _CompanionSupportSuggestion extends StatelessWidget {
   }
 }
 
-class CompanionProfilePage extends StatefulWidget {
+class CompanionProfilePage extends StatelessWidget {
   const CompanionProfilePage({
     required this.scale,
     required this.userName,
     required this.email,
+    required this.hasMother,
     required this.onEdit,
     required this.onEnterCode,
     required this.onLogout,
@@ -314,20 +315,14 @@ class CompanionProfilePage extends StatefulWidget {
   final double scale;
   final String userName;
   final String email;
+  final bool hasMother;
   final VoidCallback onEdit;
   final VoidCallback onEnterCode;
   final VoidCallback onLogout;
 
   @override
-  State<CompanionProfilePage> createState() => _CompanionProfilePageState();
-}
-
-class _CompanionProfilePageState extends State<CompanionProfilePage> {
-  bool _weeklySummary = true;
-
-  @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
+    final scale = this.scale;
     return ListView(
       key: const Key('companion-profile-scroll'),
       padding: EdgeInsets.fromLTRB(
@@ -356,13 +351,13 @@ class _CompanionProfilePageState extends State<CompanionProfilePage> {
             children: [
               SvgPicture.asset(
                 'assets/images/role_picker/companion.svg',
-                width: scale * 96,
-                height: scale * 96,
-                semanticsLabel: 'Foto profil ${widget.userName}',
+                width: scale * 88,
+                height: scale * 88,
+                semanticsLabel: 'Foto profil $userName',
               ),
               SizedBox(height: scale * 24),
               Text(
-                widget.userName,
+                userName,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppTheme.ink,
@@ -374,7 +369,7 @@ class _CompanionProfilePageState extends State<CompanionProfilePage> {
               ),
               SizedBox(height: scale * 4),
               Text(
-                widget.email,
+                email,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppTheme.muted,
@@ -399,117 +394,100 @@ class _CompanionProfilePageState extends State<CompanionProfilePage> {
                 key: const Key('companion-profile-edit'),
                 label: 'Ubah Profil',
                 scale: scale,
-                onPressed: widget.onEdit,
+                onPressed: onEdit,
               ),
               SizedBox(height: scale * 10),
               _CompanionProfileButton(
                 key: const Key('companion-profile-enter-code'),
                 label: 'Masukan Kode Pendampingan',
                 scale: scale,
-                onPressed: widget.onEnterCode,
+                onPressed: onEnterCode,
                 secondary: true,
               ),
             ],
           ),
         ),
-        SizedBox(height: scale * 24),
-        AppCard(
-          key: const Key('companion-profile-permissions'),
-          padding: EdgeInsets.all(scale * 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Pilih data yang boleh dilihat orang yang terhubung',
-                style: TextStyle(
-                  color: AppTheme.ink,
-                  fontFamily: AppTheme.fontFamily,
-                  fontSize: scale * 16,
-                  fontWeight: FontWeight.w600,
-                  height: 24 / 16,
+        if (hasMother) ...[
+          SizedBox(height: scale * 24),
+          AppCard(
+            key: const Key('companion-profile-mother-card'),
+            padding: EdgeInsets.all(scale * 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ibu yang anda dampingi',
+                  style: TextStyle(
+                    color: AppTheme.ink,
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: scale * 16,
+                    fontWeight: FontWeight.w600,
+                    height: 24 / 16,
+                  ),
                 ),
-              ),
-              SizedBox(height: scale * 24),
-              Container(
-                padding: EdgeInsets.all(scale * 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFAF9),
-                  borderRadius: BorderRadius.circular(scale * 32),
-                ),
-                child: Row(
-                  children: [
-                    ClipOval(
-                      child: Image.asset(
-                        'assets/images/mother_profile/man-1.png',
-                        width: scale * 56,
-                        height: scale * 56,
-                        fit: BoxFit.cover,
-                        semanticLabel: 'Foto Tn. Enzokulin',
-                      ),
+                SizedBox(height: scale * 24),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: scale * 12),
+                  child: Container(
+                    padding: EdgeInsets.all(scale * 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFAF9),
+                      borderRadius: BorderRadius.circular(scale * 32),
                     ),
-                    SizedBox(width: scale * 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tn. Enzokulin',
-                            style: TextStyle(
-                              color: AppTheme.coralText,
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: scale * 16,
-                              fontWeight: FontWeight.w600,
-                              height: 24 / 16,
-                            ),
+                    child: Row(
+                      children: [
+                        ClipOval(
+                          child: Image.asset(
+                            'assets/images/mother_home/avatar-a.png',
+                            width: scale * 56,
+                            height: scale * 56,
+                            fit: BoxFit.cover,
+                            semanticLabel: 'Foto Ny. Shopia Mudjahidah',
                           ),
-                          Text(
-                            'enzo***@gmail.com',
-                            style: TextStyle(
-                              color: AppTheme.muted,
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: scale * 16,
-                              height: 24 / 16,
-                            ),
+                        ),
+                        SizedBox(width: scale * 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ny, Shopia Mudjahidah',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppTheme.coralText,
+                                  fontFamily: AppTheme.fontFamily,
+                                  fontSize: scale * 16,
+                                  fontWeight: FontWeight.w600,
+                                  height: 24 / 16,
+                                ),
+                              ),
+                              Text(
+                                'shopia***@gmail.com',
+                                style: TextStyle(
+                                  color: AppTheme.muted,
+                                  fontFamily: AppTheme.fontFamily,
+                                  fontSize: scale * 16,
+                                  height: 24 / 16,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: scale * 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Ringkasan mingguan',
-                      style: TextStyle(
-                        color: AppTheme.ink,
-                        fontFamily: AppTheme.fontFamily,
-                        fontSize: scale * 14,
-                        height: 20 / 14,
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  Switch(
-                    key: const Key('companion-profile-weekly-toggle'),
-                    value: _weeklySummary,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: const Color(0xFF039855),
-                    onChanged: (value) =>
-                        setState(() => _weeklySummary = value),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
         SizedBox(height: scale * 32),
         _CompanionProfileButton(
           key: const Key('companion-profile-logout'),
           label: 'Keluar',
           scale: scale,
-          onPressed: widget.onLogout,
+          onPressed: onLogout,
         ),
       ],
     );

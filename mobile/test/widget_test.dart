@@ -595,20 +595,23 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-nav-profile')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
-    final weeklyToggle = find.byKey(
-      const Key('companion-profile-weekly-toggle'),
+    expect(find.text('Ibu yang anda dampingi'), findsOneWidget);
+    expect(find.text('Ny, Shopia Mudjahidah'), findsOneWidget);
+    expect(find.text('shopia***@gmail.com'), findsOneWidget);
+    expect(find.text('Ringkasan mingguan'), findsNothing);
+    expect(
+      find.byKey(const Key('companion-profile-permissions')),
+      findsNothing,
     );
-    await tester.drag(
-      find.byKey(const Key('companion-profile-scroll')),
-      const Offset(0, -400),
-    );
-    await tester.pumpAndSettle();
-    expect(tester.widget<Switch>(weeklyToggle).value, isTrue);
-    await tester.tap(weeklyToggle);
-    await tester.pumpAndSettle();
-    expect(tester.widget<Switch>(weeklyToggle).value, isFalse);
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const Key('companion-profile-logout')),
+      120,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const Key('companion-profile-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.tap(find.byKey(const Key('companion-profile-logout')));
     await tester.pumpAndSettle();

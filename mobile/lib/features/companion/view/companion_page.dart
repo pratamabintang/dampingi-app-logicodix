@@ -85,6 +85,7 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             scale: scale,
                             userName: greetingName,
                             email: user?.email ?? '',
+                            hasMother: _hasMother,
                             onEdit: () => _showNotice(context, 'Ubah profil'),
                             onEnterCode: () {
                               if (_hasMother) {
