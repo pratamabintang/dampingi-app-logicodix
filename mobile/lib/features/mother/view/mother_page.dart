@@ -13,6 +13,7 @@ import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/mother_story_list_tile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../controller/daily_entry_controller.dart';
 import '../models/mother_story.dart';
 import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
@@ -641,22 +642,47 @@ Future<void> showMotherMoodEntry(BuildContext context) {
   );
 }
 
-class _MoodEntryDialog extends StatefulWidget {
+class _MoodEntryDialog extends ConsumerStatefulWidget {
   const _MoodEntryDialog({required this.onClose});
 
   final VoidCallback onClose;
 
   @override
-  State<_MoodEntryDialog> createState() => _MoodEntryDialogState();
+  ConsumerState<_MoodEntryDialog> createState() => _MoodEntryDialogState();
 }
 
-class _MoodEntryDialogState extends State<_MoodEntryDialog> {
+class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
   final _titleController = TextEditingController();
   final _storyController = TextEditingController();
   final _selectedFeelings = <String>{};
   final _additionalFeelings = <String>[];
   var _selectedLevel = 2;
   var _step = 0;
+  var _saving = false;
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final result = await ref
+        .read(dailyEntryControllerProvider)
+        .save(
+          // Indeks 0..4 ("Sangat Sedih".."Sangat Bahagia") = skala mood 1..5 di backend.
+          mood: _selectedLevel + 1,
+          feelings: _selectedFeelings.toList(),
+          title: _titleController.text,
+          story: _storyController.text,
+        );
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      if (result.canContinue) _step = 3;
+    });
+    final message = result.message;
+    if (message != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
 
   @override
   void dispose() {
@@ -1009,8 +1035,13 @@ class _MoodEntryDialogState extends State<_MoodEntryDialog> {
         SizedBox(height: 24 * scale),
         _dialogActions(
           scale,
-          onContinue: () => setState(() => _step = 3),
-          onBack: () => setState(() => _step = 1),
+          continueLabel: _saving ? 'Menyimpan...' : 'Simpan',
+          onContinue: () {
+            if (!_saving) _save();
+          },
+          onBack: () {
+            if (!_saving) setState(() => _step = 1);
+          },
         ),
       ],
     );
@@ -1074,6 +1105,7 @@ class _MoodEntryDialogState extends State<_MoodEntryDialog> {
     required VoidCallback onContinue,
     VoidCallback? onBack,
     bool showBack = true,
+    String continueLabel = 'Lanjut',
   }) {
     return Column(
       children: [
@@ -1090,7 +1122,7 @@ class _MoodEntryDialogState extends State<_MoodEntryDialog> {
                 borderRadius: BorderRadius.circular(8 * scale),
               ),
             ),
-            child: Text('Lanjut', style: TextStyle(fontSize: 16 * scale)),
+            child: Text(continueLabel, style: TextStyle(fontSize: 16 * scale)),
           ),
         ),
         if (showBack) ...[
