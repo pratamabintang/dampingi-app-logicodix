@@ -664,11 +664,18 @@ void main() {
 
     await tester.tap(find.byKey(const Key('mother-weekly-epds-continue')));
     await tester.pumpAndSettle();
-    expect(find.text('1. Saya merasa bahagia:'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('mother-weekly-epds-option-1')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('mother-weekly-epds-next')));
-    await tester.pumpAndSettle();
+    expect(
+      find.text('1. Saya dapat tertawa dan melihat sisi lucu dari berbagai hal'),
+      findsOneWidget,
+    );
+    for (var question = 0; question < 10; question++) {
+      await tester.tap(find.byKey(const Key('mother-weekly-epds-option-3')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('mother-weekly-epds-next')));
+      await tester.pumpAndSettle();
+    }
+    expect(find.byKey(const Key('mother-weekly-epds-preview')), findsOneWidget);
+    expect(find.byKey(const Key('mother-weekly-epds-urgent')), findsNothing);
 
     expect(
       find.byKey(const Key('mother-weekly-epds-complete-message')),
