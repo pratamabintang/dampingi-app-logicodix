@@ -10,6 +10,7 @@ import 'package:mobile/core/widgets/app_error.dart';
 import 'package:mobile/core/widgets/app_loading.dart';
 import 'package:mobile/features/auth/repositories/auth_repository.dart';
 import 'package:mobile/features/auth/repositories/mock_auth_repository.dart';
+import 'package:mobile/features/auth/controller/auth_controller.dart';
 import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
@@ -386,8 +387,43 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
     expect(find.byType(CompanionPage), findsOneWidget);
+    expect(find.text('Selamat Pagi, Pendamping Demo 👋'), findsOneWidget);
+    expect(find.text('Belum ada Ibu yang anda didampingi'), findsOneWidget);
+    expect(
+      find.byKey(const Key('companion-enter-mother-code')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('companion-mother-summary')), findsNothing);
+    expect(find.text('Apa yang kamu amati hari ini?'), findsOneWidget);
+    final companionScroll = find
+        .descendant(
+          of: find.byKey(const Key('companion-dashboard-scroll')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('companion-stories-card')),
+      120,
+      scrollable: companionScroll,
+    );
+    expect(find.byKey(const Key('companion-stories-card')), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('companion-support-card')),
+      120,
+      scrollable: companionScroll,
+    );
+    expect(find.byKey(const Key('companion-support-card')), findsOneWidget);
+    expect(
+      find.byKey(const Key('companion-bottom-navigation')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byKey(const Key('logout')));
+    final companionContainer = ProviderScope.containerOf(
+      tester.element(find.byType(CompanionPage)),
+    );
+    companionContainer.read(authControllerProvider.notifier).logout();
+    GoRouter.of(tester.element(find.byType(CompanionPage))).go('/roles');
     await tester.pumpAndSettle();
     await selectRoleAndOpenLogin(tester, role: 'professional');
     await enterCredentials(
@@ -398,6 +434,98 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
+  });
+
+  testWidgets('companion links a mother and opens an observation detail', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'companion');
+    await enterCredentials(
+      tester,
+      email: 'demo.companion@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('companion-enter-mother-code')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-mother-code-dialog')),
+      findsOneWidget,
+    );
+    final codeField = find.descendant(
+      of: find.byKey(const Key('companion-mother-code-field')),
+      matching: find.byType(TextFormField),
+    );
+    await tester.enterText(codeField, 'wrong-code');
+    await tester.tap(find.byKey(const Key('companion-mother-code-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kode pendampingan tidak dikenali.'), findsOneWidget);
+
+    await tester.enterText(codeField, 'K4DSTP');
+    await tester.tap(find.byKey(const Key('companion-mother-code-next')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Apakah anda ingin mendampingi pengguna ini?'),
+      findsOneWidget,
+    );
+    expect(find.text('shopiamu@gmail.com'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('companion-mother-confirm-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('companion-mother-code-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('companion-mother-code-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('companion-mother-confirm-yes')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pengguna berhasil anda dampingi!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('companion-mother-success-done')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('companion-mother-summary')), findsOneWidget);
+    expect(find.byKey(const Key('companion-unassigned-card')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('companion-nav-observations')));
+    await tester.pumpAndSettle();
+    expect(find.text('1-7 Agu 2026'), findsOneWidget);
+    expect(find.text('Catatan anda'), findsOneWidget);
+    expect(
+      tester
+          .widget<Semantics>(
+            find
+                .ancestor(
+                  of: find.byKey(const Key('companion-nav-observations')),
+                  matching: find.byType(Semantics),
+                )
+                .first,
+          )
+          .properties
+          .selected,
+      isTrue,
+    );
+
+    final observationScroll = find
+        .descendant(
+          of: find.byKey(const Key('companion-observation-scroll')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('companion-observation-note-0')),
+      120,
+      scrollable: observationScroll,
+    );
+    await tester.tap(find.byKey(const Key('companion-observation-note-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ringkasan AI'), findsOneWidget);
+    expect(find.byKey(const Key('companion-bottom-navigation')), findsNothing);
+    await tester.tap(find.byKey(const Key('companion-note-detail-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Catatan anda'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('weekly EPDS follows the three provided dialog designs', (
@@ -420,11 +548,30 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    for (final label in [
+      'Isi Sekarang',
+      'Catat mood hari ini!',
+      'Lihat Semua',
+    ]) {
+      expect(tester.widget<Text>(find.text(label)).style?.fontSize, 16);
+    }
+
     await tester.tap(find.byKey(const Key('mother-epds-start')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('mother-weekly-epds-intro-title')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('mother-weekly-epds-continue')),
+          )
+          .style
+          ?.textStyle
+          ?.resolve({})
+          ?.fontSize,
+      16,
     );
 
     await tester.tap(find.byKey(const Key('mother-weekly-epds-continue')));
@@ -743,28 +890,34 @@ void main() {
     );
     expect(
       tester
-          .getTopLeft(find.byKey(const Key('mother-breathing-subtract-minute')))
+          .getTopLeft(
+            find.byKey(const Key('mother-breathing-subtract-30-seconds')),
+          )
           .dx,
       lessThan(
         tester
-            .getTopLeft(find.byKey(const Key('mother-breathing-add-minute')))
+            .getTopLeft(
+              find.byKey(const Key('mother-breathing-add-30-seconds')),
+            )
             .dx,
       ),
     );
     expect(
-      tester.widget<Text>(find.text('1 Menit').first).style?.fontFamily,
+      tester.widget<Text>(find.text('30 Detik').first).style?.fontFamily,
       'Mona Sans',
     );
     await tester.tap(find.byKey(const Key('mother-breathing-decrement')));
     await tester.pumpAndSettle();
-    expect(find.text('02:00'), findsOneWidget);
+    expect(find.text('02:30'), findsOneWidget);
     await tester.tap(find.byKey(const Key('mother-breathing-increment')));
     await tester.pumpAndSettle();
     expect(find.text('03:00'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('mother-breathing-subtract-minute')));
+    await tester.tap(
+      find.byKey(const Key('mother-breathing-subtract-30-seconds')),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('02:00'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('mother-breathing-add-minute')));
+    expect(find.text('02:30'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-breathing-add-30-seconds')));
     await tester.pumpAndSettle();
     expect(find.text('03:00'), findsOneWidget);
 
@@ -785,7 +938,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('mother-breathing-increment')));
     await tester.pumpAndSettle();
-    expect(find.text('04:00'), findsOneWidget);
+    expect(find.text('03:30'), findsOneWidget);
 
     await tester.ensureVisible(find.byKey(const Key('mother-breathing-start')));
     await tester.tap(find.byKey(const Key('mother-breathing-start')));
@@ -796,7 +949,7 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-breathing-reset')));
     await tester.pumpAndSettle();
     expect(find.text('Mulai'), findsOneWidget);
-    expect(find.text('04:00'), findsOneWidget);
+    expect(find.text('03:30'), findsOneWidget);
 
     await tester.drag(
       find.byKey(const Key('mother-breathing-session-scroll')),
