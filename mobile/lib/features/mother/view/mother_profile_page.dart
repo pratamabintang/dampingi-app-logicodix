@@ -14,6 +14,9 @@ import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../../services/backend_api.dart';
+import '../repositories/connection_repository.dart';
+import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
 
 const _previewCompanionCode = 'ENZOKULIN';
@@ -37,6 +40,33 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
     final user = ref.watch(authControllerProvider).asData?.value.session?.user;
     final name = user?.name?.trim();
     final email = user?.email.trim();
+    final live = ref.watch(backendTokenProvider) != null;
+    final codeAsync = live ? ref.watch(motherCompanionCodeProvider) : null;
+    final connectionsAsync = live ? ref.watch(motherConnectionsProvider) : null;
+
+    final code = codeAsync == null
+        ? 'K4DSTP'
+        : codeAsync.when(
+            data: (invite) => invite?.code ?? '-',
+            loading: () => '…',
+            error: (error, stackTrace) => 'gagal dimuat',
+          );
+    final companions = connectionsAsync == null
+        ? _companions
+        : [
+            for (final person
+                in connectionsAsync.asData?.value ?? const <ConnectionPerson>[])
+              _CompanionProfile(
+                id: person.id,
+                name: person.name,
+                email: person.roleLabel,
+                // Aturan berbagi tetap (hanya ringkasan mingguan): tidak ada toggle.
+                permissions: const [],
+              ),
+          ];
+    final permissions = connectionsAsync == null
+        ? _permissions
+        : {for (final companion in companions) companion.id: <String, bool>{}};
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -79,6 +109,7 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                                   ? 'janedoe@gmail.com'
                                   : email,
                               scale: scaled,
+                              code: code,
                               onEditProfile: () =>
                                   context.push('/mother/profile/edit'),
                               onAddCompanion: _showAddCompanionFlow,
@@ -86,8 +117,14 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                             SizedBox(height: scaled(36)),
                             _CompanionPermissionsCard(
                               scale: scaled,
-                              companions: _companions,
-                              permissions: _permissions,
+                              title: live ? 'Orang yang terhubung' : 'Pilih data yang boleh dilihat orang yang terhubung',
+                              subtitle: live
+                                  ? 'Orang yang terhubung hanya dapat melihat '
+                                        'ringkasan mingguan Anda. Jurnal, mood '
+                                        'harian, dan hasil EPDS tetap pribadi.'
+                                  : null,
+                              companions: companions,
+                              permissions: permissions,
                               onPermissionChanged: _setPermission,
                             ),
                             SizedBox(height: scaled(36)),
@@ -186,6 +223,9 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                         onClose: () => Navigator.of(dialogContext).pop(),
                         onCompanionConfirmed: _addPreviewCompanion,
                         onShareCode: _copyCompanionCode,
+                        onRedeem: ref.read(backendTokenProvider) == null
+                            ? null
+                            : _redeemCode,
                       ),
                     ),
                   ),
@@ -216,7 +256,45 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
   }
 
   Future<void> _copyCompanionCode() async {
-    await Clipboard.setData(const ClipboardData(text: 'K4DSTP'));
+    final code = ref.read(backendTokenProvider) == null
+        ? 'K4DSTP'
+        : ref.read(motherCompanionCodeProvider).asData?.value?.code;
+    if (code == null) return;
+    await Clipboard.setData(ClipboardData(text: code));
+  }
+
+  /// Mengembalikan pesan error, atau null kalau berhasil terhubung.
+  Future<String?> _redeemCode(String code) async {
+    final token = ref.read(backendTokenProvider);
+    if (token == null) return 'Sesi login tidak valid. Silakan masuk kembali.';
+    try {
+      await ref
+          .read(connectionRepositoryProvider)
+          .redeem(accessToken: token, code: code);
+      ref.invalidate(motherConnectionsProvider);
+      return null;
+    } on Exception catch (error) {
+      return switch (error) {
+        BackendApiException(statusCode: 404) =>
+          'Kode tidak valid atau sudah kedaluwarsa (kode berlaku 1 jam).',
+        BackendApiException(statusCode: 400) =>
+          'Format kode tidak dikenali. Periksa lagi kodenya.',
+        BackendApiException(statusCode: 403) =>
+          'Kode ini bukan untuk akun ibu.',
+        BackendApiException(
+          message: 'This mother already has a professional',
+        ) =>
+          'Anda sudah terhubung dengan tenaga kesehatan.',
+        BackendApiException(statusCode: 409) =>
+          'Pendamping ini sudah terhubung dengan ibu lain.',
+        BackendApiException(statusCode: 401) =>
+          'Sesi login telah berakhir. Silakan masuk kembali.',
+        BackendApiException(:final message) => message,
+        ApiNetworkException(:final message) => message,
+        ApiConfigurationException(:final message) => message,
+        _ => 'Respons server tidak dapat dibaca. Coba lagi.',
+      };
+    }
   }
 
   void _logout() {
@@ -229,6 +307,7 @@ class _ProfileInformationCard extends StatelessWidget {
   const _ProfileInformationCard({
     required this.name,
     required this.email,
+    required this.code,
     required this.scale,
     required this.onEditProfile,
     required this.onAddCompanion,
@@ -236,6 +315,7 @@ class _ProfileInformationCard extends StatelessWidget {
 
   final String name;
   final String email;
+  final String code;
   final double Function(double) scale;
   final VoidCallback onEditProfile;
   final VoidCallback onAddCompanion;
@@ -290,7 +370,7 @@ class _ProfileInformationCard extends StatelessWidget {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'Kode Pendampingan : K4DSTP',
+                    'Kode Pendampingan : $code',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.muted,
@@ -378,8 +458,11 @@ class _MotherProfileCompanionDialog extends StatefulWidget {
     required this.onClose,
     required this.onCompanionConfirmed,
     required this.onShareCode,
+    this.onRedeem,
   });
 
+  /// Login sungguhan: tukar kode ke backend. null = mode preview.
+  final Future<String?> Function(String code)? onRedeem;
   final double Function(double) scale;
   final bool isAlreadyConnected;
   final VoidCallback onClose;
@@ -397,6 +480,7 @@ class _MotherProfileCompanionDialogState
   _CompanionDialogStep _step = _CompanionDialogStep.enterCode;
   String? _errorMessage;
   String? _statusMessage;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -635,7 +719,8 @@ class _MotherProfileCompanionDialogState
     );
   }
 
-  void _continueWithCode() {
+  Future<void> _continueWithCode() async {
+    if (_submitting) return;
     final code = _codeController.text.trim().toUpperCase();
     if (code.isEmpty) {
       setState(() {
@@ -644,6 +729,28 @@ class _MotherProfileCompanionDialogState
       });
       return;
     }
+
+    final redeem = widget.onRedeem;
+    if (redeem != null) {
+      // Backend langsung menghubungkan saat kode ditukar, jadi langsung ke layar sukses.
+      setState(() {
+        _submitting = true;
+        _errorMessage = null;
+        _statusMessage = null;
+      });
+      final error = await redeem(code);
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        if (error == null) {
+          _step = _CompanionDialogStep.success;
+        } else {
+          _errorMessage = error;
+        }
+      });
+      return;
+    }
+
     if (widget.isAlreadyConnected) {
       setState(() {
         _errorMessage = 'Pendamping ini sudah terhubung.';
@@ -776,12 +883,16 @@ class _CompanionConfirmationTile extends StatelessWidget {
 class _CompanionPermissionsCard extends StatelessWidget {
   const _CompanionPermissionsCard({
     required this.scale,
+    required this.title,
+    this.subtitle,
     required this.companions,
     required this.permissions,
     required this.onPermissionChanged,
   });
 
   final double Function(double) scale;
+  final String title;
+  final String? subtitle;
   final List<_CompanionProfile> companions;
   final Map<String, Map<String, bool>> permissions;
   final void Function(String companionId, String permission, bool value)
@@ -797,7 +908,7 @@ class _CompanionPermissionsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Pilih data yang boleh dilihat orang yang terhubung',
+            title,
             maxLines: 2,
             style: TextStyle(
               color: const Color(0xFF252B37),
@@ -806,7 +917,29 @@ class _CompanionPermissionsCard extends StatelessWidget {
               height: 24 / 16,
             ),
           ),
+          if (subtitle case final text?) ...[
+            SizedBox(height: scale(8)),
+            Text(
+              text,
+              key: const Key('mother-profile-sharing-rule'),
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontSize: scale(14),
+                height: 20 / 14,
+              ),
+            ),
+          ],
           SizedBox(height: scale(24)),
+          if (companions.isEmpty)
+            Text(
+              'Belum ada pendamping yang terhubung.',
+              key: const Key('mother-profile-no-companions'),
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontSize: scale(14),
+                height: 20 / 14,
+              ),
+            ),
           for (var index = 0; index < companions.length; index++) ...[
             _CompanionPermissionCard(
               companion: companions[index],
