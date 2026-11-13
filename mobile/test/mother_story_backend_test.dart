@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile/features/mother/models/mother_story.dart';
@@ -120,6 +121,36 @@ void main() {
     expect(moodTitle(MotherMood.verySad), 'Sangat Sedih');
     expect(moodTitle(MotherMood.happy), 'Senang');
   });
+
+  test('calendar week holds 7 days ending on the given day', () async {
+    final api = _WeekApi();
+    final container = ProviderContainer(
+      overrides: [
+        backendTokenProvider.overrideWithValue('valid-access-token'),
+        backendApiProvider.overrideWithValue(api),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final week = await container.read(
+      calendarWeekProvider('2026-11-14').future,
+    );
+
+    expect(api.queries['/moods'], {
+      'start_date': '2026-11-08',
+      'end_date': '2026-11-14',
+    });
+    expect(api.queries['/journals'], {
+      'start_date': '2026-11-08',
+      'end_date': '2026-11-14',
+    });
+    expect(week.days, hasLength(7));
+    expect(isoDate(week.days.first.date), '2026-11-08');
+    expect(isoDate(week.days.last.date), '2026-11-14');
+    expect(week.days.last.mood, MotherMood.happy);
+    expect(week.stories.single.title, 'Sabtu');
+    expect(week.stories.single.mood, MotherMood.happy);
+  });
 }
 
 class _JournalsApi extends BackendApi {
@@ -146,6 +177,53 @@ class _JournalsApi extends BackendApi {
           'created_at': '2026-11-13',
           'title': 'Hari ini',
           'content': 'Lumayan.',
+        },
+      ],
+      'count': 1,
+      'offset': 0,
+      'limit': 100,
+      'total': 1,
+    };
+  }
+}
+
+class _WeekApi extends BackendApi {
+  _WeekApi() : super(baseUrl: 'https://backend.example.test');
+
+  final queries = <String, Map<String, String>?>{};
+
+  @override
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    Map<String, String>? query,
+    String? accessToken,
+  }) async {
+    queries[path] = query;
+    if (path == '/moods') {
+      return {
+        'moods': [
+          {
+            'id': 'm-1',
+            'user_id': 'mother-1',
+            'created_at': '2026-11-14',
+            'mood': 4,
+            'description': null,
+          },
+        ],
+        'count': 1,
+        'offset': 0,
+        'limit': 100,
+        'total': 1,
+      };
+    }
+    return {
+      'journals': [
+        {
+          'id': 'j-1',
+          'user_id': 'mother-1',
+          'created_at': '2026-11-14',
+          'title': 'Sabtu',
+          'content': 'Isi',
         },
       ],
       'count': 1,
