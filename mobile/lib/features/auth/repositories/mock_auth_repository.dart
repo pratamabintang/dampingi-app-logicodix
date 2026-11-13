@@ -39,7 +39,7 @@ class MockAuthRepository implements AuthRepository {
         ),
         'demo.doctor@dampingi.test': const _MockAccount(
           id: 'demo-doctor',
-          name: 'Tenaga Kesehatan Demo',
+          name: 'Maya Estiyanti',
           role: AppRole.professional,
           password: _demoPassword,
         ),

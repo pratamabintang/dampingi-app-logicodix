@@ -499,6 +499,11 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
+    expect(find.text('Halo, dr. Maya Estiyanti'), findsOneWidget);
+    expect(find.byKey(const Key('doctor-bottom-navigation')), findsOneWidget);
+    for (final tab in DoctorNavigationTab.values) {
+      expect(find.byKey(Key('doctor-nav-item-${tab.name}')), findsOneWidget);
+    }
   });
 
   testWidgets('companion links a mother and browses its dashboard tabs', (
@@ -1621,6 +1626,20 @@ void main() {
       tester.getSize(find.byKey(const Key('role-emoji-mother'))),
       const Size(36, 36),
     );
+    const roleEmojiCharacters = {
+      'mother': '🤱',
+      'companion': '👨‍💼',
+      'professional': '🩺',
+    };
+    for (final entry in roleEmojiCharacters.entries) {
+      final emoji = tester.widget<Text>(
+        find.descendant(
+          of: find.byKey(Key('role-emoji-${entry.key}')),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(emoji.data, entry.value);
+    }
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('role-create-account')), findsOneWidget);
     expect(find.byKey(const Key('role-login')), findsOneWidget);
