@@ -13,8 +13,10 @@ from app.auth.schemas import (
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
+    ResendConfirmationRequest,
     UpdateMeRequest,
     UserOut,
+    VerifyEmailRequest,
 )
 from app.config import get_settings
 from app import throttle
@@ -77,6 +79,28 @@ def _invalid_credentials() -> HTTPException:
     return HTTPException(status_code=401, detail="Invalid email or password")
 
 
+def _already_registered() -> HTTPException:
+    return HTTPException(
+        status_code=409, detail="This Gmail address is already registered"
+    )
+
+
+# Supabase spaces confirmation codes per address and answers `429` with its
+# own cooldown; the app should back off for about a minute either way.
+_UPSTREAM_COOLDOWN_SECONDS = 60
+
+
+def _upstream_cooldown() -> throttle.RateLimited:
+    return throttle.RateLimited(_UPSTREAM_COOLDOWN_SECONDS)
+
+
+def _unverified_email() -> HTTPException:
+    return HTTPException(
+        status_code=403,
+        detail="Email belum diverifikasi. Cek email untuk kode verifikasi.",
+    )
+
+
 def _handle_auth_errors(func, *args):
     try:
         return func(*args)
@@ -92,26 +116,36 @@ def _is_banned(exc: supabase.SupabaseError) -> bool:
     return exc.error_code == "user_banned"
 
 
+def _is_unverified(exc: supabase.SupabaseError) -> bool:
+    return exc.error_code == "email_not_confirmed"
+
+
 @router.post(
     "/auth/register",
     status_code=201,
     response_model=RegisterResponse,
-    summary="Register with name, Gmail address, password, and role",
+    summary="Register with name, Gmail address, password, role, and timezone",
 )
 def register(request: Request, payload: RegisterRequest) -> RegisterResponse:
     throttle.record_registration(request, payload.email)
     try:
         account = service.register_user(
-            payload.name, payload.email, payload.password, payload.role.value
+            payload.name,
+            payload.email,
+            payload.password,
+            payload.role.value,
+            payload.timezone,
         )
+    except service.EmailAlreadyRegistered as exc:
+        raise _already_registered() from exc
     except supabase.SupabaseError as exc:
+        if exc.status == 429:
+            raise _upstream_cooldown() from exc
         if exc.error_code in ("user_already_exists", "email_exists") or (
             "already registered" in exc.message.lower()
             or "already been registered" in exc.message.lower()
         ):
-            raise HTTPException(
-                status_code=409, detail="This Gmail address is already registered"
-            ) from exc
+            raise _already_registered() from exc
         raise
     return RegisterResponse(user=service.user_out(account), access_token=account.token or None)
 
@@ -129,10 +163,63 @@ def login(request: Request, payload: LoginRequest) -> LoginResponse:
     except supabase.SupabaseError as exc:
         if _is_banned(exc):
             raise _deleted() from exc
+        if _is_unverified(exc):
+            raise _unverified_email() from exc
         if exc.status == 503:
             raise
         raise _invalid_credentials() from exc
     return LoginResponse(access_token=account.token, user=service.user_out(account))
+
+
+@router.post(
+    "/auth/verify-email",
+    response_model=LoginResponse,
+    summary="Confirm an email address with the code Supabase sent",
+    description=(
+        "Exchanges the signup confirmation code for a session, so the "
+        "caller is logged in as soon as the address is confirmed. Wrong or "
+        "expired codes answer the same `400`, which keeps the endpoint from "
+        "telling an attacker whether an address is registered (ADR-0005)."
+    ),
+)
+def verify_email(request: Request, payload: VerifyEmailRequest) -> LoginResponse:
+    throttle.record_verification(request, payload.email)
+    try:
+        account = service.verify_email(payload.email, payload.token)
+    except supabase.SupabaseError as exc:
+        if _is_banned(exc):
+            raise _deleted() from exc
+        if exc.status >= 500:
+            raise
+        if exc.status == 429:
+            raise _upstream_cooldown() from exc
+        raise HTTPException(
+            status_code=400,
+            detail="Kode verifikasi salah atau sudah kedaluwarsa.",
+        ) from exc
+    return LoginResponse(access_token=account.token, user=service.user_out(account))
+
+
+@router.post(
+    "/auth/resend-confirmation",
+    status_code=202,
+    summary="Ask for a fresh signup confirmation code",
+    description=(
+        "Always answers `202` with the same body, whether or not the address "
+        "is registered, so it cannot be used to enumerate accounts. Upstream "
+        "outages (`503`) and upstream rate limits (`429`) are still surfaced."
+    ),
+)
+def resend_confirmation(request: Request, payload: ResendConfirmationRequest) -> dict:
+    throttle.record_resend(request, payload.email)
+    try:
+        service.resend_confirmation(payload.email)
+    except supabase.SupabaseError as exc:
+        if exc.status == 429:
+            raise _upstream_cooldown() from exc
+        if exc.status >= 500:
+            raise
+    return {"detail": "Jika email terdaftar, kode verifikasi sudah dikirim ulang."}
 
 
 @router.get(

@@ -16,7 +16,13 @@ from app.supabase import (
 )
 
 
-def signup(name: str, email: str, password: str, role: str) -> dict:
+def signup(
+    name: str,
+    email: str,
+    password: str,
+    role: str,
+    timezone: str = "Asia/Jakarta",
+) -> dict:
     resp = _request(
         _client().post,
         f"{_base_url()}/auth/v1/signup",
@@ -24,7 +30,7 @@ def signup(name: str, email: str, password: str, role: str) -> dict:
         json={
             "email": email,
             "password": password,
-            "data": {"name": name, "role": role},
+            "data": {"name": name, "role": role, "timezone": timezone},
         },
         timeout=TIMEOUT,
     )
@@ -45,6 +51,43 @@ def login(email: str, password: str) -> dict:
     if resp.status_code >= 400:
         raise _error_from_response(resp)
     return resp.json()
+
+
+# The GoTrue `type` that identifies the signup confirmation one-time password.
+_SIGNUP_OTP_TYPE = "signup"
+
+
+def verify_signup_otp(email: str, token: str) -> dict:
+    """Exchange the signup confirmation OTP for a session.
+
+    `type` travels both as a query parameter and in the body: GoTrue
+    versions differ on where they read it, unknown JSON fields are ignored,
+    so sending both is the portable call.
+    """
+    resp = _request(
+        _client().post,
+        f"{_base_url()}/auth/v1/verify",
+        params={"type": _SIGNUP_OTP_TYPE},
+        headers=supabase_auth_http(),
+        json={"email": email, "token": token, "type": _SIGNUP_OTP_TYPE},
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    return resp.json()
+
+
+def resend_signup_confirmation(email: str) -> None:
+    """Ask Supabase to send the signup confirmation again."""
+    resp = _request(
+        _client().post,
+        f"{_base_url()}/auth/v1/resend",
+        headers=supabase_auth_http(),
+        json={"type": _SIGNUP_OTP_TYPE, "email": email},
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
 
 
 def update_profile_name(user_id: str, name: str) -> dict:
@@ -180,6 +223,25 @@ def admin_list_users(page: int = 1, per_page: int = 100) -> tuple:
     body = resp.json()
     total = resp.headers.get("x-total-count")
     return body.get("users", []), body.get("next_page"), total
+
+
+def generate_signup_otp(email: str) -> str:
+    """Mint a fresh signup confirmation code without sending an email.
+
+    Admin-only (`generate_link`): it lets a flow be finished end to end when
+    there is no mailbox to read, as in the live tests. Needs the secret key,
+    so no request from a caller can reach it.
+    """
+    resp = _request(
+        _client().post,
+        f"{_base_url()}/auth/v1/admin/generate_link",
+        headers=supabase_service_http(),
+        json={"type": _SIGNUP_OTP_TYPE, "email": email},
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    return resp.json()["email_otp"]
 
 
 def delete_user(user_id: str) -> bool:

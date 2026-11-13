@@ -22,11 +22,12 @@ Cleanup is manual: run `python -m app.admin purge` if needed.
 
 import sys
 import uuid
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional
 
 from app.auth import supabase as auth_supabase
 from app.config import get_settings, supabase_service_http
+from app.shared.day import DEFAULT_ZONE, zone_of
 from app.supabase import (
     TIMEOUT,
     _base_url,
@@ -156,7 +157,11 @@ def seed_one(
 
     try:
         resp = auth_supabase.signup(
-            name=name, email=email, password=SEED_PASSWORD, role=role
+            name=name,
+            email=email,
+            password=SEED_PASSWORD,
+            role=role,
+            timezone=DEFAULT_ZONE,
         )
         user_id = resp.get("user", {}).get("id")
         if not user_id:
@@ -214,9 +219,12 @@ def _rows() -> Dict[str, List[dict]]:
     """Every domain row, keyed by table, dates relative to today.
 
     Dates are relative so "today" is always a valid (non-future) day and
-    the day-scoped reads have something recent to return.
+    the day-scoped reads have something recent to return. "Today" is the
+    Jakarta day, matching the default Profile timezone the seed sets, so a
+    seeded day(0) is never the local day a domain write would refuse.
     """
-    now = datetime.now(timezone.utc)
+    tz = zone_of({})
+    now = datetime.now(tz)
     today = now.date()
 
     def day(days_ago: int) -> str:
@@ -224,7 +232,7 @@ def _rows() -> Dict[str, List[dict]]:
 
     def ts(days_ago: int, hour: int = 9) -> str:
         return datetime.combine(
-            today - timedelta(days=days_ago), time(hour=hour), tzinfo=timezone.utc
+            today - timedelta(days=days_ago), time(hour=hour), tzinfo=tz
         ).isoformat()
 
     def hours_ago(hours: float) -> str:

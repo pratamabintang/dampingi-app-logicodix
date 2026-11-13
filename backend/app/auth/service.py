@@ -32,13 +32,58 @@ class Account:
     profile: dict
 
 
-def register_user(name: str, email: str, password: str, role: str) -> Account:
-    body = supabase.signup(name, email, password, role)
-    user = body.get("user") or {}
+class EmailAlreadyRegistered(Exception):
+    """Supabase answered with its pretend user: the address already exists."""
+
+
+# An empty id is never a real user either.
+_EMPTY_USER_IDS = frozenset({"", "00000000-0000-0000-0000-000000000000"})
+
+
+def _id(user: dict) -> str:
+    return user.get("id") or ""
+
+
+def is_obfuscated_user(user: dict) -> bool:
+    """True when Supabase answered with its pretend user, not the real one.
+
+    With email confirmation on, `/signup` for an address that already exists
+    and is confirmed answers `200` with a fabricated user instead of an
+    error, so the endpoint cannot be used to probe which addresses are
+    registered (see `docs/api/auth.md`). The fabrication carries a fresh
+    random id, `role: ""`, empty `user_metadata`, and — the marker that does
+    not depend on ids — an empty `identities` list. Every real answer,
+    pending or confirmed, carries at least one identity.
+    """
+    return user.get("identities") == [] or _id(user) in _EMPTY_USER_IDS
+
+
+def register_user(
+    name: str,
+    email: str,
+    password: str,
+    role: str,
+    timezone: str = "Asia/Jakarta",
+) -> Account:
+    """Register, tolerating both signup answer shapes.
+
+    With email confirmation on, Supabase answers `/signup` with the User
+    object itself: no `session`, no `access_token`, and no `user` wrapper.
+    The token is then empty and the caller must verify before logging in.
+
+    An address that already exists and is confirmed comes back as the
+    pretend user instead of an error; that is reported as
+    `EmailAlreadyRegistered` rather than returned as a registration that
+    never happened.
+    """
+    body = supabase.signup(name, email, password, role, timezone)
+    user = body.get("user") or body
+    if is_obfuscated_user(user):
+        raise EmailAlreadyRegistered(email)
     session = body.get("session") or {}
-    access_token = body.get("access_token") or session.get("access_token")
-    profile = supabase.fetch_profile(user.get("id", ""))
-    return Account(user=user, token=access_token or "", profile=profile or {})
+    access_token = body.get("access_token") or session.get("access_token") or ""
+    profile = supabase.fetch_profile(_id(user))
+    return Account(user=user, token=access_token, profile=profile or {})
 
 
 def login_user(email: str, password: str) -> Account:
@@ -46,6 +91,21 @@ def login_user(email: str, password: str) -> Account:
     user = body.get("user") or {}
     profile = supabase.fetch_profile(user.get("id", ""))
     return Account(user=user, token=body.get("access_token", ""), profile=profile or {})
+
+
+def verify_email(email: str, token: str) -> Account:
+    """Exchange the signup confirmation OTP for a session."""
+    body = supabase.verify_signup_otp(email, token)
+    user = body.get("user") or body
+    profile = {} if is_obfuscated_user(user) else supabase.fetch_profile(_id(user))
+    return Account(
+        user=user, token=body.get("access_token") or "", profile=profile or {}
+    )
+
+
+def resend_confirmation(email: str) -> None:
+    """Ask Supabase to send the signup confirmation again."""
+    supabase.resend_signup_confirmation(email)
 
 
 def active_profile(user_id: str) -> dict:
@@ -91,11 +151,12 @@ def profile_out(session: Session, profile: dict) -> UserOut:
 
 
 def user_out(account: Account) -> UserOut:
+    metadata = account.user.get("user_metadata") or {}
     return UserOut(
         id=account.user.get("id", ""),
         email=account.user.get("email", ""),
-        name=account.profile.get("name"),
-        role=account.profile.get("role"),
+        name=account.profile.get("name") or metadata.get("name"),
+        role=account.profile.get("role") or metadata.get("role"),
     )
 
 
