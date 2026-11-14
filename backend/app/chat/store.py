@@ -13,7 +13,9 @@ class ChatStore(Protocol):
     def recent_messages(self, user_id: str, session_id: str, limit: int) -> list[dict]: ...
     def add_messages(self, user_id: str, session_id: str, messages: list[tuple[str, str]]) -> list[dict]: ...
     def count_user_messages_since(self, user_id: str, since: datetime) -> int: ...
-
+    def messages_between(
+        self, user_id: str, start: datetime, end: datetime
+    ) -> list[dict]: ...
 
 class InMemoryChatStore:
     """Untuk tes. Perilakunya meniru tabel Supabase."""
@@ -54,6 +56,16 @@ class InMemoryChatStore:
         return sum(1 for m in self.messages
                    if m["user_id"] == user_id and m["role"] == "user"
                    and datetime.fromisoformat(m["created_at"]) >= since)
+
+    def messages_between(self, user_id, start, end):
+        return sorted(
+            [
+                m for m in self.messages
+                if m["user_id"] == user_id
+                and start <= datetime.fromisoformat(m["created_at"]) < end
+            ],
+            key=lambda m: m["created_at"],
+        )
 
 
 class SupabaseChatStore:
@@ -110,3 +122,20 @@ class SupabaseChatStore:
             raise _error_from_response(resp)
         # Content-Range berbentuk "0-0/12" atau "*/0": angka setelah "/" adalah totalnya.
         return int(resp.headers.get("content-range", "*/0").split("/")[-1])
+
+    def messages_between(self, user_id, start, end):
+        start_utc = start.astimezone(timezone.utc)
+        end_utc = end.astimezone(timezone.utc)
+
+        return self._get(
+            "chat_messages",
+            {
+                "user_id": f"eq.{user_id}",
+                "created_at": f"gte.{start_utc.strftime('%Y-%m-%dT%H:%M:%SZ')}",
+                "and": (
+                    f"(created_at.lt.{end_utc.strftime('%Y-%m-%dT%H:%M:%SZ')})"
+                ),
+                "select": "*",
+                "order": "created_at.asc",
+            },
+        )

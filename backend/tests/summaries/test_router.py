@@ -290,3 +290,90 @@ def test_create_weekly_summary_returns_partial(summary_client, monkeypatch):
     assert response.json()["status"] == "partial"
     assert response.json()["overview"] is None
     assert response.json()["limitations"]
+
+
+# ---------- Daily Summary ----------
+
+def test_get_daily_summary_success(summary_client, monkeypatch):
+    client, session = summary_client
+
+    from app.summaries.daily_schemas import DailySummaryResponse
+
+    expected = DailySummaryResponse(
+        summary_date=date(2026, 11, 14),
+        status="completed",
+        overview="Ibu merasa lebih tenang hari ini.",
+        limitations=[],
+        source_refs=[],
+        prompt_version="daily-summary-v1",
+    )
+
+    def mock_get_summary(user_id, summary_date):
+        assert user_id == session.user_id
+        assert summary_date == date(2026, 11, 14)
+        return expected
+
+    monkeypatch.setattr(
+        "app.summaries.router.daily_service.get_daily_summary",
+        mock_get_summary,
+    )
+
+    response = client.get(
+        "/summaries/daily",
+        params={"summary_date": "2026-11-14"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["summary_date"] == "2026-11-14"
+    assert response.json()["status"] == "completed"
+    assert response.json()["overview"] == (
+        "Ibu merasa lebih tenang hari ini."
+    )
+
+
+def test_get_daily_summary_not_found(summary_client, monkeypatch):
+    client, _ = summary_client
+
+    monkeypatch.setattr(
+        "app.summaries.router.daily_service.get_daily_summary",
+        lambda user_id, summary_date: None,
+    )
+
+    response = client.get(
+        "/summaries/daily",
+        params={"summary_date": "2026-11-14"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_get_daily_summary_rejects_companion_role(
+    offline_env,
+    monkeypatch,
+):
+    from app.main import app
+    from app.auth.router import verified_session
+
+    companion_session = auth_service.Session(
+        user_id="00000000-0000-4000-8000-000000000002",
+        email="companion@gmail.com",
+        token="offline-token",
+    )
+
+    monkeypatch.setattr(
+        "app.auth.guards.auth_supabase.fetch_profile",
+        lambda user_id: {"role": "companion"},
+    )
+
+    app.dependency_overrides[verified_session] = lambda: companion_session
+
+    try:
+        with TestClient(app) as client:
+            response = client.get(
+                "/summaries/daily",
+                params={"summary_date": "2026-11-14"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 403

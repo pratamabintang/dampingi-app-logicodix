@@ -11,9 +11,9 @@ pytestmark = pytest.mark.local
 
 # versi -> sidik jari isi prompt. Ubah prompt = naikkan versi + perbarui baris di sini.
 FROZEN = {
-    "chat-mother-v2": "66e6bc7a9b9d",
-    "chat-companion-v2": "f4f90c239a89",
-    "chat-mother-mood-v2": "9958524cc190",  # sidik jari _MOOD_RULES
+    "chat-mother-v4": "4719e030dfcc",
+    "chat-companion-v4": "53224af856a8",
+    "chat-mother-mood-v4": "9958524cc190",
 }
 
 

@@ -1,7 +1,15 @@
+
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+)
 
 from app.auth import service as auth_service
 from app.auth.guards import require_any_role
@@ -17,6 +25,16 @@ router = APIRouter(tags=["journals"])
 
 mother_or_companion = require_any_role("mother", "companion")
 
+
+def _is_mother(session: auth_service.Session) -> bool:
+    profile = auth_service.active_profile(session.user_id)
+    return profile.get("role") == "mother"
+
+
+async def _refresh_daily_summary_background(user_id, summary_date):
+    from app.summaries.daily_service import refresh_daily_summary_background
+
+    await refresh_daily_summary_background(user_id, summary_date)
 
 def _handle_journal_errors(func, *args):
     try:
@@ -60,15 +78,25 @@ def _handle_journal_errors(func, *args):
 )
 def create_journal(
     payload: JournalCreate,
+    background_tasks: BackgroundTasks,
     session: auth_service.Session = Depends(mother_or_companion),
 ) -> JournalOut:
-    return _handle_journal_errors(
+    journal = _handle_journal_errors(
         service.create_journal,
         session.user_id,
         payload.title,
         payload.content,
         payload.created_at,
     )
+
+    if _is_mother(session):
+        background_tasks.add_task(
+            _refresh_daily_summary_background,
+            session.user_id,
+            journal.created_at[:10],
+        )
+
+    return journal
 
 
 @router.get(
@@ -84,12 +112,20 @@ def create_journal(
 )
 def list_journals(
     session: auth_service.Session = Depends(mother_or_companion),
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    offset: Optional[int] = Query(None, ge=0, description="Number of results to skip (enables pagination)"),
-    limit: Optional[int] = Query(None, ge=1, le=100, description="Number of results to return (max 100)"),
+    start_date: Optional[str] = Query(
+        None, description="Start date (YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date (YYYY-MM-DD)"
+    ),
+    offset: Optional[int] = Query(
+        None, ge=0, description="Number of results to skip (enables pagination)"
+    ),
+    limit: Optional[int] = Query(
+        None, ge=1, le=100, description="Number of results to return (max 100)"
+    ),
 ) -> JournalListOut:
-    result = _handle_journal_errors(
+    return _handle_journal_errors(
         service.list_journals,
         session.user_id,
         start_date,
@@ -97,7 +133,6 @@ def list_journals(
         offset,
         limit,
     )
-    return result
 
 
 @router.patch(
@@ -114,15 +149,25 @@ def list_journals(
 def update_journal(
     id: UUID,
     payload: JournalUpdate,
+    background_tasks: BackgroundTasks,
     session: auth_service.Session = Depends(mother_or_companion),
 ) -> JournalOut:
-    return _handle_journal_errors(
+    journal = _handle_journal_errors(
         service.update_journal,
         session.user_id,
         str(id),
         payload.title,
         payload.content,
     )
+
+    if _is_mother(session):
+        background_tasks.add_task(
+            _refresh_daily_summary_background,
+            session.user_id,
+            journal.created_at[:10],
+        )
+
+    return journal
 
 
 @router.delete(
@@ -137,13 +182,28 @@ def update_journal(
 )
 def delete_journal(
     id: UUID,
+    background_tasks: BackgroundTasks,
     session: auth_service.Session = Depends(mother_or_companion),
 ) -> Response:
+    existing_journal = _handle_journal_errors(
+        service.get_journal,
+        session.user_id,
+        str(id),
+    )
+
     _handle_journal_errors(
         service.delete_journal,
         session.user_id,
         str(id),
     )
+
+    if _is_mother(session):
+        background_tasks.add_task(
+            _refresh_daily_summary_background,
+            session.user_id,
+            existing_journal.created_at[:10],
+        )
+
     return Response(status_code=204)
 
 

@@ -87,10 +87,7 @@ async def extract_journal_themes(
         )
 
     except (AIError, ValidationError, ValueError) as exc:
-        logger.warning(
-            "Ekstraksi tema jurnal gagal: %s",
-            type(exc).__name__,
-        )
+        logger.exception("Ekstraksi tema jurnal gagal")
         return JournalExtractionOut(
             themes=[],
             processing_status="failed",

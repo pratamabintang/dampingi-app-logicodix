@@ -1,7 +1,15 @@
-﻿from typing import Optional
+﻿
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+)
 
 from app.auth.guards import require_role
 from app.auth import service as auth_service
@@ -16,6 +24,12 @@ from app.moods.schemas import (
 router = APIRouter(tags=["moods"])
 
 mother_only = require_role("mother")
+
+
+async def _refresh_daily_summary_background(user_id, summary_date):
+    from app.summaries.daily_service import refresh_daily_summary_background
+
+    await refresh_daily_summary_background(user_id, summary_date)
 
 
 def _handle_mood_errors(func, *args):
@@ -42,7 +56,10 @@ def _handle_mood_errors(func, *args):
             detail=f"A mood already exists for {exc.created_at}",
         )
     except service.MoodNotFound:
-        raise HTTPException(status_code=404, detail="Mood entry not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Mood entry not found",
+        )
 
 
 @router.post(
@@ -58,15 +75,24 @@ def _handle_mood_errors(func, *args):
 )
 def create_mood(
     payload: MoodCreate,
+    background_tasks: BackgroundTasks,
     session: auth_service.Session = Depends(mother_only),
 ) -> MoodOut:
-    return _handle_mood_errors(
+    mood = _handle_mood_errors(
         service.create_mood,
         session.user_id,
         payload.created_at,
         payload.mood,
         payload.description,
     )
+
+    background_tasks.add_task(
+        _refresh_daily_summary_background,
+        session.user_id,
+        mood.created_at[:10],
+    )
+
+    return mood
 
 
 @router.get(
@@ -83,8 +109,13 @@ def get_mood(
         session.user_id,
         str(id),
     )
+
     if mood is None:
-        raise HTTPException(status_code=404, detail="Mood entry not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Mood entry not found",
+        )
+
     return mood
 
 
@@ -100,12 +131,27 @@ def get_mood(
 )
 def list_moods(
     session: auth_service.Session = Depends(mother_only),
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    offset: Optional[int] = Query(None, ge=0, description="Number of results to skip (enables pagination)"),
-    limit: Optional[int] = Query(None, ge=1, le=100, description="Number of results to return (max 100)"),
+    start_date: Optional[str] = Query(
+        None,
+        description="Start date (YYYY-MM-DD)",
+    ),
+    end_date: Optional[str] = Query(
+        None,
+        description="End date (YYYY-MM-DD)",
+    ),
+    offset: Optional[int] = Query(
+        None,
+        ge=0,
+        description="Number of results to skip (enables pagination)",
+    ),
+    limit: Optional[int] = Query(
+        None,
+        ge=1,
+        le=100,
+        description="Number of results to return (max 100)",
+    ),
 ) -> MoodListOut:
-    result = _handle_mood_errors(
+    return _handle_mood_errors(
         service.list_moods,
         session.user_id,
         start_date,
@@ -113,7 +159,6 @@ def list_moods(
         offset,
         limit,
     )
-    return result
 
 
 @router.patch(
@@ -128,15 +173,24 @@ def list_moods(
 def update_mood(
     id: UUID,
     payload: MoodUpdate,
+    background_tasks: BackgroundTasks,
     session: auth_service.Session = Depends(mother_only),
 ) -> MoodOut:
-    return _handle_mood_errors(
+    mood = _handle_mood_errors(
         service.update_mood,
         session.user_id,
         str(id),
         payload.mood,
         payload.description,
     )
+
+    background_tasks.add_task(
+        _refresh_daily_summary_background,
+        session.user_id,
+        mood.created_at[:10],
+    )
+
+    return mood
 
 
 @router.delete(
@@ -147,11 +201,26 @@ def update_mood(
 )
 def delete_mood(
     id: UUID,
+    background_tasks: BackgroundTasks,
     session: auth_service.Session = Depends(mother_only),
-):
+) -> Response:
+    existing_mood = _handle_mood_errors(
+        service.get_mood,
+        session.user_id,
+        str(id),
+    )
+
     _handle_mood_errors(
         service.delete_mood,
         session.user_id,
         str(id),
     )
+
+    if existing_mood:
+        background_tasks.add_task(
+            _refresh_daily_summary_background,
+            session.user_id,
+            existing_mood.created_at[:10],
+        )
+
     return Response(status_code=204)

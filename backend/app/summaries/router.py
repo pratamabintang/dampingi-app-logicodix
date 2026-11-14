@@ -9,11 +9,13 @@ from app.moods import service as mood_service
 from app.moods import supabase as mood_supabase
 from app.summaries import service
 from app.summaries import supabase as summary_supabase
+from app.summaries import daily_service
+from app.summaries import daily_supabase
+from app.summaries.daily_schemas import DailySummaryResponse
 from app.summaries.schemas import (
     WeeklySummaryRequest,
     WeeklySummaryResponse,
 )
-
 
 router = APIRouter(tags=["summaries"])
 
@@ -86,6 +88,47 @@ async def get_weekly_summary(
         raise HTTPException(
             status_code=404,
             detail="Weekly summary not found",
+        )
+
+    return summary
+
+
+@router.get(
+    "/summaries/daily",
+    response_model=DailySummaryResponse,
+    summary="Get a saved daily summary",
+    description=(
+        "Retrieve the authenticated mother's saved daily summary "
+        "for a specific local calendar date."
+    ),
+)
+async def get_daily_summary(
+    summary_date: date = Query(
+        ...,
+        description="Date in YYYY-MM-DD format",
+    ),
+    session: auth_service.Session = Depends(mother_only),
+) -> DailySummaryResponse:
+    try:
+        summary = daily_service.get_daily_summary(
+            user_id=session.user_id,
+            summary_date=summary_date,
+        )
+    except daily_supabase.SupabaseError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=exc.message,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        )
+
+    if summary is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Daily summary not found",
         )
 
     return summary
