@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../shared/view/app_bottom_navigation_bar.dart';
 import 'doctor_guide_page.dart';
-import 'doctor_invitation_flow.dart';
 import 'doctor_profile_page.dart';
 import 'doctor_patient_summary_page.dart';
 
@@ -163,10 +163,10 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                             ),
                           ),
                           SizedBox(height: 36 * scale),
-                          _InvitationCard(
+                          _ConnectionCard(
                             scale: scale,
-                            onInvite: () =>
-                                showDoctorInvitationFlow(context, scale: scale),
+                            onOpenConnections: () =>
+                                context.push('/doctor/connections'),
                           ),
                           SizedBox(height: 36 * scale),
                           _PatientsCard(
@@ -265,23 +265,23 @@ class _DoctorHeader extends StatelessWidget {
   }
 }
 
-class _InvitationCard extends StatelessWidget {
-  const _InvitationCard({required this.scale, required this.onInvite});
+class _ConnectionCard extends StatelessWidget {
+  const _ConnectionCard({required this.scale, required this.onOpenConnections});
 
   final double scale;
-  final VoidCallback onInvite;
+  final VoidCallback onOpenConnections;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      key: const Key('doctor-invitation-card'),
+      key: const Key('doctor-connections-card'),
       padding: EdgeInsets.all(20 * scale),
       borderRadius: 32 * scale,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Undang pasien anda',
+            'Koneksi',
             style: TextStyle(
               fontFamily: AppTheme.fontFamily,
               color: AppTheme.coralText,
@@ -291,7 +291,7 @@ class _InvitationCard extends StatelessWidget {
           ),
           SizedBox(height: 8 * scale),
           Text(
-            'Masukan kode pendampingan',
+            'Tukar Kode Undangan dari Ibu',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -306,8 +306,8 @@ class _InvitationCard extends StatelessWidget {
           SizedBox(
             height: 48 * scale,
             child: FilledButton(
-              key: const Key('doctor-invite-patient'),
-              onPressed: onInvite,
+              key: const Key('doctor-connections-open'),
+              onPressed: onOpenConnections,
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.coral,
                 foregroundColor: Colors.white,
@@ -323,7 +323,7 @@ class _InvitationCard extends StatelessWidget {
                   height: 24 / 16,
                 ),
               ),
-              child: const Text('Undang Pasien'),
+              child: const Text('Masukkan Kode'),
             ),
           ),
         ],

@@ -45,6 +45,14 @@ class BackendApi {
     return _send('PATCH', path, body: body, accessToken: accessToken);
   }
 
+  /// 204 No Content (mis. mencabut Kode Undangan) sengaja dibalas objek kosong.
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    String? accessToken,
+  }) {
+    return _send('DELETE', path, accessToken: accessToken);
+  }
+
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {

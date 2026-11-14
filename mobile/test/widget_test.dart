@@ -16,6 +16,8 @@ import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
 import 'package:mobile/features/companion/view/companion_extra_pages.dart';
+import 'package:mobile/features/connections/preview_invite_codes.dart';
+import 'package:mobile/features/connections/view/koneksi_page.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
@@ -502,8 +504,8 @@ void main() {
     expect(find.text('Halo, dr. Maya Estiyanti'), findsOneWidget);
     expect(find.text('Senin, 28 Oktober 2026'), findsOneWidget);
     expect(find.byKey(const Key('doctor-home-avatar')), findsOneWidget);
-    expect(find.byKey(const Key('doctor-invitation-card')), findsOneWidget);
-    expect(find.byKey(const Key('doctor-invite-patient')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-connections-card')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-connections-open')), findsOneWidget);
     expect(find.byKey(const Key('doctor-patients-card')), findsOneWidget);
     expect(find.byKey(const Key('doctor-bottom-navigation')), findsOneWidget);
     final notificationIcon = tester.widget<SvgPicture>(
@@ -560,7 +562,7 @@ void main() {
     expect(find.text('Ringkasan Belum ditinjau'), findsNothing);
   });
 
-  testWidgets('doctor invites a patient through the three Figma dialogs', (
+  testWidgets('doctor reaches the Koneksi screen from the home card', (
     tester,
   ) async {
     await startApp(tester);
@@ -573,76 +575,13 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('doctor-invite-patient')));
+    await tester.tap(find.byKey(const Key('doctor-connections-open')));
     await tester.pumpAndSettle();
-    final codeDialog = find.byKey(
-      const Key('doctor-invitation-enterCode-dialog'),
-    );
-    expect(codeDialog, findsOneWidget);
-    expect(tester.getSize(codeDialog), const Size(342, 254));
-    expect(find.text('Masukan kode pendampingan Ibu'), findsOneWidget);
+    expect(find.byType(KoneksiPage), findsOneWidget);
+    expect(find.byKey(const Key('koneksi-redeem')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-connections-card')), findsNothing);
 
-    final codeField = find.descendant(
-      of: find.byKey(const Key('doctor-invitation-code-field')),
-      matching: find.byType(TextFormField),
-    );
-    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
-    await tester.pumpAndSettle();
-    expect(find.text('Masukan kode pendampingan Ibu.'), findsOneWidget);
-
-    await tester.enterText(codeField, 'wrong-code');
-    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
-    await tester.pumpAndSettle();
-    expect(find.text('Kode pendampingan tidak dikenali.'), findsOneWidget);
-
-    await tester.enterText(codeField, 'K4DSTP');
-    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('doctor-invitation-confirm-dialog')),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Apakah anda ingin mendampingi pengguna ini?'),
-      findsOneWidget,
-    );
-    final confirmDialog = find.byKey(
-      const Key('doctor-invitation-confirm-dialog'),
-    );
-    expect(tester.getSize(confirmDialog), const Size(342, 338));
-    expect(
-      find.descendant(
-        of: confirmDialog,
-        matching: find.text('Ny. Shopia Mudj.'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: confirmDialog,
-        matching: find.text('shopiamu@gmail.com'),
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const Key('doctor-invitation-confirm-back')));
-    await tester.pumpAndSettle();
-    expect(codeDialog, findsOneWidget);
-    expect(tester.widget<TextFormField>(codeField).controller?.text, 'K4DSTP');
-    await tester.tap(find.byKey(const Key('doctor-invitation-code-next')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('doctor-invitation-confirm-yes')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('doctor-invitation-success-dialog')),
-      findsOneWidget,
-    );
-    expect(
-      tester.getSize(find.byKey(const Key('doctor-invitation-success-dialog'))),
-      const Size(342, 160),
-    );
-    expect(find.text('Pengguna berhasil anda dampingi!'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('doctor-invitation-success-done')));
+    await tester.tap(find.byKey(const Key('koneksi-back')));
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -744,13 +683,39 @@ void main() {
     expect(find.byKey(const Key('doctor-profile-avatar')), findsOneWidget);
     expect(find.text('Maya Estiyanti'), findsOneWidget);
     expect(find.text('demo.doctor@dampingi.test'), findsOneWidget);
-    expect(find.text('Kode pendampingan : AIS128'), findsOneWidget);
     expect(find.text('Ubah Profil'), findsOneWidget);
+    expect(find.text('Tambah Pasien'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-profile-add-patient')));
+    await tester.pumpAndSettle();
+    expect(find.byType(KoneksiPage), findsOneWidget);
+    await tester.tap(find.byKey(const Key('koneksi-back')));
+    await tester.pumpAndSettle();
     expect(find.text('Tambah Pasien'), findsOneWidget);
     expect(find.byKey(const Key('doctor-profile-logout')), findsOneWidget);
     expect(find.byKey(const Key('doctor-bottom-navigation')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'doctor notification affordance still just says there is nothing',
+    (tester) async {
+      await startApp(tester);
+      await selectRoleAndOpenLogin(tester, role: 'professional');
+      await enterCredentials(
+        tester,
+        email: 'demo.doctor@dampingi.test',
+        password: 'demo1234',
+      );
+      await tapLoginSubmit(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('doctor-home-notifications')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Belum ada notifikasi baru.'), findsOneWidget);
+      expect(find.byType(DoctorPage), findsOneWidget);
+    },
+  );
 
   testWidgets('doctor patients tab shows the Figma patient summary', (
     tester,
@@ -947,42 +912,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('companion-enter-mother-code')));
     await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('companion-mother-code-dialog')),
-      findsOneWidget,
-    );
-    final codeField = find.descendant(
-      of: find.byKey(const Key('companion-mother-code-field')),
-      matching: find.byType(TextFormField),
-    );
-    await tester.enterText(codeField, 'wrong-code');
-    await tester.tap(find.byKey(const Key('companion-mother-code-next')));
+    expect(find.byType(KoneksiPage), findsOneWidget);
+    expect(find.byKey(const Key('koneksi-redeem')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('koneksi-back')));
     await tester.pumpAndSettle();
-    expect(find.text('Kode pendampingan tidak dikenali.'), findsOneWidget);
-
-    await tester.enterText(codeField, 'K4DSTP');
-    await tester.tap(find.byKey(const Key('companion-mother-code-next')));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Apakah anda ingin mendampingi pengguna ini?'),
-      findsOneWidget,
-    );
-    expect(find.text('shopiamu@gmail.com'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('companion-mother-confirm-back')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('companion-mother-code-dialog')),
-      findsOneWidget,
-    );
-    await tester.tap(find.byKey(const Key('companion-mother-code-next')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('companion-mother-confirm-yes')));
-    await tester.pumpAndSettle();
-    expect(find.text('Pengguna berhasil anda dampingi!'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('companion-mother-success-done')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('companion-mother-summary')), findsOneWidget);
-    expect(find.byKey(const Key('companion-unassigned-card')), findsNothing);
+    expect(find.byType(CompanionPage), findsOneWidget);
+    expect(find.byKey(const Key('companion-unassigned-card')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('mother-nav-item-calendar')));
     await tester.pumpAndSettle();
@@ -1073,9 +1008,10 @@ void main() {
       (profileAvatar.image as AssetImage).assetName,
       'assets/images/companion_profile/profile-avatar.png',
     );
-    expect(find.text('Ibu yang anda dampingi'), findsOneWidget);
-    expect(find.text('Ny, Shopia Mudjahidah'), findsOneWidget);
-    expect(find.text('shopia***@gmail.com'), findsOneWidget);
+    expect(
+      find.byKey(const Key('companion-profile-mother-card')),
+      findsNothing,
+    );
     expect(find.text('Ringkasan mingguan'), findsNothing);
     expect(
       find.byKey(const Key('companion-profile-permissions')),
@@ -1131,6 +1067,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('companion reaches the Koneksi screen from her profile', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'companion');
+    await enterCredentials(
+      tester,
+      email: 'demo.companion@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('companion-profile-enter-code')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(KoneksiPage), findsOneWidget);
+    expect(find.byKey(const Key('koneksi-redeem')), findsOneWidget);
+    expect(find.byKey(const Key('koneksi-issue')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('koneksi-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanionPage), findsOneWidget);
+    expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('weekly EPDS follows the three provided dialog designs', (
     tester,
   ) async {
@@ -1180,7 +1145,9 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-weekly-epds-continue')));
     await tester.pumpAndSettle();
     expect(
-      find.text('1. Saya dapat tertawa dan melihat sisi lucu dari berbagai hal'),
+      find.text(
+        '1. Saya dapat tertawa dan melihat sisi lucu dari berbagai hal',
+      ),
       findsOneWidget,
     );
     for (var question = 0; question < 10; question++) {
@@ -1218,22 +1185,25 @@ void main() {
 
       expect(find.byType(MotherNotificationsPage), findsOneWidget);
       expect(find.text('Notifikasi anda'), findsOneWidget);
-      expect(find.text('Sdr. Enzokulin Mengundang anda'), findsOneWidget);
-      expect(find.text('Dr. Aisyah Salsabila Mengundang anda'), findsOneWidget);
+      expect(find.text('Kode Undangan dari Sdr. Enzokulin'), findsOneWidget);
+      expect(
+        find.text('Kode Undangan dari Dr. Aisyah Salsabila'),
+        findsOneWidget,
+      );
       expect(
         find.text('Lakukan gerakan yoga ini supaya segar'),
         findsOneWidget,
       );
       expect(
         tester.getSize(
-          find.byKey(const Key('mother-notification-companion-invitation')),
+          find.byKey(const Key('mother-notification-companion-code')),
         ),
         const Size(342, 94),
       );
       expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
 
       await tester.tap(
-        find.byKey(const Key('mother-notification-companion-invitation')),
+        find.byKey(const Key('mother-notification-companion-code')),
       );
       await tester.pumpAndSettle();
       expect(
@@ -1248,7 +1218,7 @@ void main() {
       );
       expect(
         tester.getSize(
-          find.byKey(const Key('mother-notification-inviter-profile')),
+          find.byKey(const Key('mother-notification-code-sender')),
         ),
         const Size(300, 72),
       );
@@ -1265,14 +1235,14 @@ void main() {
       );
 
       await tester.tap(
-        find.byKey(const Key('mother-notification-companion-invitation')),
+        find.byKey(const Key('mother-notification-companion-code')),
       );
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const Key('mother-notification-confirm-accept')),
+        find.byKey(const Key('mother-notification-confirm-redeem')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Persetujuan undangan belum tersedia.'), findsOneWidget);
+      expect(find.text('Tukar kode belum tersedia.'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('mother-notifications-back')));
       await tester.pumpAndSettle();
@@ -1643,9 +1613,22 @@ void main() {
     expect(find.text('Dampingi'), findsOneWidget);
     expect(find.text('Ibu Demo'), findsOneWidget);
     expect(find.text('demo.mother@dampingi.test'), findsOneWidget);
-    expect(find.text('Kode Pendampingan : K4DSTP'), findsOneWidget);
     expect(
-      find.text('Pilih data yang boleh dilihat orang yang terhubung'),
+      find.byKey(const Key('mother-profile-invite-summary')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('mother-profile-connection-summary')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('mother-profile-sharing-note')), findsNothing);
+    expect(find.byKey(const Key('mother-profile-connections')), findsOneWidget);
+    expect(find.byKey(const Key('mother-profile-add-companion')), findsNothing);
+    expect(find.text('Tambah Pendamping'), findsNothing);
+    expect(
+      find.text(
+        'Pratinjau: pilih data yang boleh dilihat orang yang terhubung',
+      ),
       findsOneWidget,
     );
     expect(
@@ -1658,7 +1641,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const Key('mother-profile-information-card'))),
-      const Size(342, 369),
+      const Size(342, 329),
     );
     expect(
       tester.getSize(find.byKey(const Key('mother-profile-permissions-card'))),
@@ -1685,6 +1668,40 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-profile-logout')));
     await tester.pumpAndSettle();
     expect(find.text('Pilih Peranmu di Dampingi'), findsOneWidget);
+  });
+
+  testWidgets("mother reaches the Koneksi screen from her profile", (
+    tester,
+  ) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-nav-profile')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mother-profile-connections')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(KoneksiPage), findsOneWidget);
+    expect(find.text('Koneksi'), findsOneWidget);
+    expect(find.text(previewInviteCodeForCompanion), findsOneWidget);
+    expect(
+      find.text(
+        'Orang yang terhubung hanya dapat melihat ringkasan mingguan Anda. '
+        'Jurnal, mood harian, dan hasil EPDS tetap pribadi.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('koneksi-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(MotherProfilePage), findsOneWidget);
   });
 
   testWidgets('mother can open and return from profile edit design', (
@@ -1758,94 +1775,6 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-profile-edit-back')));
     await tester.pumpAndSettle();
     expect(find.byType(MotherProfilePage), findsOneWidget);
-  });
-
-  testWidgets('mother profile follows the three Figma add-companion dialogs', (
-    tester,
-  ) async {
-    await startApp(tester);
-    await selectRoleAndOpenLogin(tester, role: 'mother');
-    await enterCredentials(
-      tester,
-      email: 'demo.mother@dampingi.test',
-      password: 'demo1234',
-    );
-    await tapLoginSubmit(tester);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('mother-nav-profile')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('mother-profile-add-companion')));
-    await tester.pumpAndSettle();
-
-    final dialog = find.byKey(const Key('mother-profile-companion-dialog'));
-    expect(tester.getSize(dialog), const Size(342, 338));
-    final codeField = find.descendant(
-      of: find.byKey(const Key('mother-profile-companion-code-field')),
-      matching: find.byType(TextFormField),
-    );
-    await tester.tap(codeField);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('mother-profile-companion-close')));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.byKey(const Key('mother-profile-add-companion')));
-    await tester.pumpAndSettle();
-    expect(find.text('Tambahkan Pendamping Anda'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const Key('mother-profile-companion-code-next')),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Masukkan kode pendampingan.'), findsOneWidget);
-
-    await tester.enterText(codeField, 'unknown-code');
-    await tester.tap(
-      find.byKey(const Key('mother-profile-companion-code-next')),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Kode tidak dikenali dalam mode pratinjau.'),
-      findsOneWidget,
-    );
-
-    await tester.enterText(codeField, 'enzokulin');
-    await tester.tap(
-      find.byKey(const Key('mother-profile-companion-code-next')),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Apakah ini pengguna yang ingin mendampingi anda?'),
-      findsOneWidget,
-    );
-    expect(tester.getSize(dialog), const Size(342, 364));
-    expect(find.text('Tn. Enzokulin Samsidan'), findsOneWidget);
-    expect(find.text('samsidan@gmail.com'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('mother-profile-companion-back')));
-    await tester.pumpAndSettle();
-    expect(find.text('Tambahkan Pendamping Anda'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const Key('mother-profile-companion-code-next')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('mother-profile-companion-confirm')));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Pengguna berhasil menjadi pendamping anda!'),
-      findsOneWidget,
-    );
-    expect(tester.getSize(dialog), const Size(342, 210));
-    await tester.tap(
-      find.byKey(const Key('mother-profile-companion-success-done')),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(
-        const Key('mother-profile-companion-preview-enzokulin-samsidan'),
-      ),
-      findsOneWidget,
-    );
   });
 
   testWidgets('mother can open the Figma chat screen without a mock API call', (

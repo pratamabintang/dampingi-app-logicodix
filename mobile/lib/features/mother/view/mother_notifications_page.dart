@@ -2,25 +2,39 @@ import 'dart:ui' show ImageFilter;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_submit_button.dart';
+import '../../mother/repositories/mother_story_repository.dart';
 
-class MotherNotificationsPage extends StatefulWidget {
+/// Notifikasi ibu. Desainnya masih berlanjut, jadi layar ini tetap ada dan
+/// tetap dapat dibuka dari header rumah.
+///
+/// Kontrak backend belum punya notifikasi: kode undangan menyebut Peran, bukan
+/// orang tertentu, dan yang menghubungkan diri adalah penukar kode, bukan
+/// pihak yang menerima permintaan. Karena itu, saat aplikasi benar-benar bicara
+/// dengan backend, layar ini mengatakan
+/// sejujurnya bahwa belum ada apa-apa. Mock desain hanya muncul di mode preview.
+class MotherNotificationsPage extends ConsumerStatefulWidget {
   const MotherNotificationsPage({super.key});
 
   @override
-  State<MotherNotificationsPage> createState() =>
+  ConsumerState<MotherNotificationsPage> createState() =>
       _MotherNotificationsPageState();
 }
 
-class _MotherNotificationsPageState extends State<MotherNotificationsPage> {
-  bool _invitationOpened = false;
+class _MotherNotificationsPageState
+    extends ConsumerState<MotherNotificationsPage> {
+  bool _codeOpened = false;
 
   @override
   Widget build(BuildContext context) {
+    final live = ref.watch(backendTokenProvider) != null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -84,29 +98,37 @@ class _MotherNotificationsPageState extends State<MotherNotificationsPage> {
                       ),
                     ),
                     SizedBox(height: scaled(36)),
-                    _NotificationCard(
-                      id: 'companion-invitation',
-                      title: 'Sdr. Enzokulin Mengundang anda',
-                      message: 'Anda diundang untuk didampingi Sdr. Enzokulin',
-                      isUnread: true,
-                      isHighlighted: !_invitationOpened,
-                      scale: scale,
-                      onTap: _openInvitation,
-                    ),
-                    SizedBox(height: scaled(10)),
-                    _NotificationCard(
-                      id: 'professional-invitation',
-                      title: 'Dr. Aisyah Salsabila Mengundang anda',
-                      message: 'Anda diundang untuk didampingi Dr. Aisyah',
-                      scale: scale,
-                    ),
-                    SizedBox(height: scaled(10)),
-                    _NotificationCard(
-                      id: 'wellness-tip',
-                      title: 'Lakukan gerakan yoga ini supaya segar',
-                      message: 'lorem ipsum dolor sit amet',
-                      scale: scale,
-                    ),
+                    if (live)
+                      const AppEmpty(
+                        key: Key('mother-notifications-empty'),
+                        title: 'Belum ada notifikasi',
+                        message: 'Belum ada kabar baru untuk Anda.',
+                      )
+                    else ...[
+                      _NotificationCard(
+                        id: 'companion-code',
+                        title: 'Kode Undangan dari Sdr. Enzokulin',
+                        message: 'Tukar kodenya di halaman Koneksi',
+                        isUnread: true,
+                        isHighlighted: !_codeOpened,
+                        scale: scale,
+                        onTap: _openCode,
+                      ),
+                      SizedBox(height: scaled(10)),
+                      _NotificationCard(
+                        id: 'professional-code',
+                        title: 'Kode Undangan dari Dr. Aisyah Salsabila',
+                        message: 'Tukar kodenya di halaman Koneksi',
+                        scale: scale,
+                      ),
+                      SizedBox(height: scaled(10)),
+                      _NotificationCard(
+                        id: 'wellness-tip',
+                        title: 'Lakukan gerakan yoga ini supaya segar',
+                        message: 'lorem ipsum dolor sit amet',
+                        scale: scale,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -117,12 +139,12 @@ class _MotherNotificationsPageState extends State<MotherNotificationsPage> {
     );
   }
 
-  Future<void> _openInvitation() async {
-    setState(() => _invitationOpened = true);
+  Future<void> _openCode() async {
+    setState(() => _codeOpened = true);
     await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Tutup konfirmasi undangan',
+      barrierLabel: 'Tutup konfirmasi penukaran kode',
       barrierColor: Colors.transparent,
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         final screenWidth = MediaQuery.sizeOf(dialogContext).width;
@@ -149,13 +171,13 @@ class _MotherNotificationsPageState extends State<MotherNotificationsPage> {
                     offset: Offset(scale(4), scale(-0.5)),
                     child: SizedBox(
                       width: width,
-                      child: _InvitationConfirmationDialog(
+                      child: _CodeRedemptionDialog(
                         scale: scale,
                         onClose: () => Navigator.of(dialogContext).pop(),
-                        onAccept: () {
+                        onRedeem: () {
                           Navigator.of(dialogContext).pop();
                           _showUnavailableNotice(
-                            'Persetujuan undangan belum tersedia.',
+                            'Tukar kode belum tersedia.',
                           );
                         },
                       ),
@@ -272,16 +294,16 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
-class _InvitationConfirmationDialog extends StatelessWidget {
-  const _InvitationConfirmationDialog({
+class _CodeRedemptionDialog extends StatelessWidget {
+  const _CodeRedemptionDialog({
     required this.scale,
     required this.onClose,
-    required this.onAccept,
+    required this.onRedeem,
   });
 
   final double Function(double) scale;
   final VoidCallback onClose;
-  final VoidCallback onAccept;
+  final VoidCallback onRedeem;
 
   @override
   Widget build(BuildContext context) {
@@ -333,18 +355,19 @@ class _InvitationConfirmationDialog extends StatelessWidget {
           ),
           SizedBox(height: scale(24)),
           Semantics(
-            label: 'Apakah anda menyetujui undangan pendampingan dari pengguna ini?',
+            label:
+                'Apakah anda ingin menukar Kode Undangan dari pengguna ini?',
             child: SizedBox(
               key: const Key('mother-notification-confirm-title'),
               width: double.infinity,
               child: Column(
                 children: [
                   _ConfirmationTitleLine(
-                    text: 'Apakah anda menyetujui undangan',
+                    text: 'Apakah anda ingin menukar',
                     scale: scale,
                   ),
                   _ConfirmationTitleLine(
-                    text: 'pendampingan dari pengguna ini?',
+                    text: 'Kode Undangan dari pengguna ini?',
                     scale: scale,
                   ),
                 ],
@@ -353,7 +376,7 @@ class _InvitationConfirmationDialog extends StatelessWidget {
           ),
           SizedBox(height: scale(24)),
           Container(
-            key: const Key('mother-notification-inviter-profile'),
+            key: const Key('mother-notification-code-sender'),
             height: scale(72),
             padding: EdgeInsets.all(scale(8)),
             decoration: BoxDecoration(
@@ -408,14 +431,14 @@ class _InvitationConfirmationDialog extends StatelessWidget {
           SizedBox(height: scale(24)),
           Column(
             children: [
-              _InvitationDialogButton(
-                key: const Key('mother-notification-confirm-accept'),
-                label: 'Ya',
+              _RedemptionDialogButton(
+                key: const Key('mother-notification-confirm-redeem'),
+                label: 'Tukar',
                 scale: scale,
-                onPressed: onAccept,
+                onPressed: onRedeem,
               ),
               SizedBox(height: scale(10)),
-              _InvitationDialogButton(
+              _RedemptionDialogButton(
                 key: const Key('mother-notification-confirm-cancel'),
                 label: 'Kembali',
                 scale: scale,
@@ -459,8 +482,8 @@ class _ConfirmationTitleLine extends StatelessWidget {
   }
 }
 
-class _InvitationDialogButton extends StatelessWidget {
-  const _InvitationDialogButton({
+class _RedemptionDialogButton extends StatelessWidget {
+  const _RedemptionDialogButton({
     required this.label,
     required this.scale,
     required this.onPressed,
