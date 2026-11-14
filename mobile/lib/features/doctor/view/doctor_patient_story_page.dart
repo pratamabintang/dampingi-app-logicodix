@@ -126,8 +126,10 @@ class _PatientStoryCard extends StatelessWidget {
             ),
           ),
           SizedBox(height: scale(24)),
-          _AiSummary(summary: story.summary, scale: scale),
-          SizedBox(height: scale(24)),
+          if (story.summary.trim().isNotEmpty) ...[
+            _AiSummary(summary: story.summary, scale: scale),
+            SizedBox(height: scale(24)),
+          ],
           Text(
             story.title,
             key: const Key('doctor-patient-story-title'),
