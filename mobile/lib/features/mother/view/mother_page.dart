@@ -1,3 +1,4 @@
+import '../repositories/weekly_summary_repository.dart';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -226,7 +227,17 @@ class _WeeklyEpdsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Preview: selalu null, jadi tetap "Belum diisi" seperti desain.
     final latest = ref.watch(latestEpdsProvider).asData?.value;
-    final filled = epdsFilledThisWeek(latest, DateTime.now());
+    final preview = ref.watch(backendTokenProvider) == null;
+    final weekAsync = ref.watch(epdsWeekStatusProvider);
+    final week = weekAsync.asData?.value;
+    final filled = preview
+        ? epdsFilledThisWeek(latest, DateTime.now())
+        : week?.filled ?? false;
+    final status = preview || week != null
+        ? filled ? 'Sudah diisi' : (preview || week!.canSubmit) ? 'Belum diisi' : 'Buka ${week!.nextAvailableDate}'
+        : weekAsync.hasError ? 'Status gagal dimuat' : 'Memuat status...';
+    final disabled = !preview && !weekAsync.hasError &&
+        (weekAsync.isLoading || !(week?.canSubmit ?? false));
 
     return Container(
       key: const Key('mother-epds-card'),
@@ -252,7 +263,7 @@ class _WeeklyEpdsCard extends ConsumerWidget {
                 ),
                 SizedBox(height: context.scaled(8)),
                 Text(
-                  filled ? 'Sudah diisi' : 'Belum diisi',
+                  status,
                   key: const Key('mother-epds-status'),
                   style: TextStyle(
                     color: AppTheme.coralText,
@@ -270,10 +281,18 @@ class _WeeklyEpdsCard extends ConsumerWidget {
               height: context.scaled(48),
               child: FilledButton(
                 key: const Key('mother-epds-start'),
-                onPressed: () async {
+                onPressed: disabled ? null : () async {
+                  if (!preview && weekAsync.hasError) {
+                    ref.invalidate(epdsWeekStatusProvider);
+                    return;
+                  }
                   await showMotherWeeklyEpds(context);
                   // Baca ulang status setelah dialog ditutup.
-                  if (context.mounted) ref.invalidate(latestEpdsProvider);
+                  if (context.mounted) {
+                    ref.invalidate(latestEpdsProvider);
+                    ref.invalidate(epdsWeekStatusProvider);
+                    ref.invalidate(weeklySummaryProvider);
+                  }
                 },
                 style: FilledButton.styleFrom(
                   minimumSize: Size.fromHeight(context.scaled(48)),
@@ -284,7 +303,7 @@ class _WeeklyEpdsCard extends ConsumerWidget {
                   ),
                 ),
                 child: Text(
-                  'Isi Sekarang',
+                  weekAsync.hasError && !preview ? 'Coba lagi' : 'Isi Sekarang',
                   maxLines: 1,
                   style: TextStyle(fontSize: context.scaled(16)),
                 ),

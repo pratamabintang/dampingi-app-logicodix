@@ -119,6 +119,17 @@ class Coverage(BaseModel):
     epds_available: bool
 
 
+class SummaryEPDS(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    total_score: int = Field(ge=0, le=30)
+    evaluation_mode: Literal["demo_only"]
+    follow_up_required: bool
+    immediate_review_required: bool
+    disclaimer: str
+    created_at: str
+
+
 class WeeklySummaryInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -126,6 +137,7 @@ class WeeklySummaryInput(BaseModel):
     period_end: date
     audience: Audience
     coverage: Coverage
+    epds_assessment: SummaryEPDS | None = None
     mother_mood_entries: list[MoodEntry] = Field(default_factory=list)
     permitted_journal_items: list[dict[str, Any]] = Field(
         default_factory=list
@@ -164,6 +176,7 @@ class SummarySourceRef(BaseModel):
         "mother_mood",
         "mother_journal",
         "companion_observation",
+        "epds_assessment",
     ]
     source_id: str = Field(min_length=1)
 
@@ -208,6 +221,7 @@ class WeeklySummaryResponse(BaseModel):
     limitations: list[str] = Field(default_factory=list)
     source_refs: list[SummarySourceRef] = Field(default_factory=list)
     prompt_version: str
+    epds_assessment: SummaryEPDS | None = None
 
     @model_validator(mode="after")
     def validate_response(self):

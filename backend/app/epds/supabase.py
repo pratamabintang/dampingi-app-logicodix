@@ -44,6 +44,44 @@ def create_assessment(payload: dict) -> dict:
     return rows[0]
 
 
+def latest_between(mother_id: str, start_at: str, end_at: str) -> dict | None:
+    resp = _request(
+        _client().get,
+        f"{_base_url()}/rest/v1/epds_assessments",
+        params=[
+            ("mother_id", f"eq.{mother_id}"),
+            ("created_at", f"gte.{start_at}"),
+            ("created_at", f"lt.{end_at}"),
+            ("select", _ASSESSMENT_COLUMNS),
+            ("order", "created_at.desc,id.desc"),
+            ("limit", "1"),
+        ],
+        headers=supabase_service_http(),
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    rows = resp.json()
+    return rows[0] if rows else None
+
+
+def registration_time(mother_id: str) -> str:
+    resp = _request(
+        _client().get,
+        f"{_base_url()}/auth/v1/admin/users/{mother_id}",
+        headers=supabase_service_http(),
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    payload = resp.json()
+    user = payload.get("user", payload)
+    created_at = user.get("created_at")
+    if not isinstance(created_at, str):
+        raise SupabaseError(502, "Registration timestamp unavailable")
+    return created_at
+
+
 def list_assessments(
     mother_id: str,
     offset: int = 0,

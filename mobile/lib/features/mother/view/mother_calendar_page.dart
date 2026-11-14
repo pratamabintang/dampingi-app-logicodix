@@ -568,7 +568,8 @@ class _WeeklySummaryCardState extends ConsumerState<_WeeklySummaryCard> {
 
     // Minggu yang sudah lewat cukup dibuat sekali; minggu ini boleh diperbarui.
     final canCreate =
-        !summaryAsync.isLoading && (summary == null || isCurrentWeek);
+        !summaryAsync.isLoading && (summary == null || isCurrentWeek ||
+            (summary.epds != null && !summary.epdsIncluded));
 
     final textStyle = TextStyle(
       color: AppTheme.coralText,
@@ -603,6 +604,18 @@ class _WeeklySummaryCardState extends ConsumerState<_WeeklySummaryCard> {
             key: const Key('mother-calendar-weekly-summary-text'),
             style: textStyle,
           ),
+          if (summary != null) ...[
+            SizedBox(height: scale(10)),
+            Text(
+              summary.epds == null
+                  ? 'EPDS belum diisi pada periode ini.'
+                  : 'EPDS periode ini: ${summary.epds!.totalScore}/30 — simulasi demo.',
+              key: const Key('mother-calendar-weekly-epds'),
+              style: textStyle,
+            ),
+            if (summary.epds != null)
+              Text(summary.epds!.disclaimer, style: noteStyle),
+          ],
           if (summary != null && summary.limitations.isNotEmpty) ...[
             SizedBox(height: scale(10)),
             for (final limitation in summary.limitations)
@@ -648,7 +661,7 @@ class _WeeklySummaryCardState extends ConsumerState<_WeeklySummaryCard> {
           ],
           SizedBox(height: scale(10)),
           Text(
-            'Dibuat AI dari mood dan jurnalmu minggu ini. Bukan penilaian klinis.',
+            'Narasi AI menggunakan data periode ini. Skor EPDS dihitung oleh sistem, bukan AI. Bukan penilaian klinis.',
             style: noteStyle,
           ),
         ],

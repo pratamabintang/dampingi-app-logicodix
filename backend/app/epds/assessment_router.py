@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.auth import service as auth_service
 from app.auth.guards import require_role
 from app.epds import assessment_service
+from app.epds.weekly import weekly_status
 from app.epds.schemas import EPDSEvaluateRequest
 from app.epds.assessment_schemas import (
     EPDSAssessmentSubmitOut,
@@ -40,10 +41,25 @@ def submit_epds_assessment(
             payload,
         )
     except SupabaseError as exc:
+        if exc.error_code == "23505":
+            raise HTTPException(status_code=409, detail="EPDS dapat diisi lagi 7 hari setelah pengisian terakhir.") from exc
+        if exc.error_code == "P0002":
+            raise HTTPException(
+                status_code=403,
+                detail="EPDS pertama dapat diisi 7 hari setelah daftar.",
+            ) from exc
         raise HTTPException(
             status_code=502,
             detail="Unable to save EPDS demo assessment",
         ) from exc
+
+
+@router.get("/me/epds-status", summary="Get the current EPDS eligibility and next available time")
+def get_weekly_epds_status(session: auth_service.Session = Depends(mother_only)):
+    try:
+        return weekly_status(session.user_id)
+    except SupabaseError as exc:
+        raise HTTPException(status_code=502, detail="Status EPDS belum dapat dimuat.") from exc
 
 
 @router.get(
