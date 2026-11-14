@@ -297,19 +297,15 @@ class CompanionProfilePage extends StatelessWidget {
     required this.scale,
     required this.userName,
     required this.email,
-    required this.hasMother,
     required this.onEdit,
     required this.onOpenConnections,
     required this.onLogout,
-    this.motherName = '',
     super.key,
   });
 
   final double scale;
   final String userName;
   final String email;
-  final bool hasMother;
-  final String motherName;
   final VoidCallback onEdit;
   final VoidCallback onOpenConnections;
   final VoidCallback onLogout;
@@ -381,8 +377,8 @@ class CompanionProfilePage extends StatelessWidget {
               ),
               SizedBox(height: scale * 10),
               _CompanionProfileButton(
-                key: const Key('companion-profile-enter-code'),
-                label: 'Masukkan Kode Undangan',
+                key: const Key('companion-profile-connections'),
+                label: 'Kelola Koneksi',
                 scale: scale,
                 onPressed: onOpenConnections,
                 secondary: true,
@@ -390,72 +386,6 @@ class CompanionProfilePage extends StatelessWidget {
             ],
           ),
         ),
-        if (hasMother) ...[
-          SizedBox(height: scale * 24),
-          AppCard(
-            key: const Key('companion-profile-mother-card'),
-            padding: EdgeInsets.all(scale * 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Ibu yang anda dampingi',
-                  style: TextStyle(
-                    color: AppTheme.ink,
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: scale * 16,
-                    fontWeight: FontWeight.w600,
-                    height: 24 / 16,
-                  ),
-                ),
-                SizedBox(height: scale * 24),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: scale * 12),
-                  child: Container(
-                    padding: EdgeInsets.all(scale * 8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.pink1,
-                      borderRadius: BorderRadius.circular(scale * 32),
-                    ),
-                    child: Row(
-                      children: [
-                        ClipOval(
-                          child: Image.asset(
-                            'assets/images/mother_home/avatar-a.png',
-                            width: scale * 56,
-                            height: scale * 56,
-                            fit: BoxFit.cover,
-                            semanticLabel: 'Foto $motherName',
-                          ),
-                        ),
-                        SizedBox(width: scale * 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                motherName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppTheme.coralText,
-                                  fontFamily: AppTheme.fontFamily,
-                                  fontSize: scale * 16,
-                                  fontWeight: FontWeight.w600,
-                                  height: 24 / 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
         SizedBox(height: scale * 32),
         _CompanionProfileButton(
           key: const Key('companion-profile-logout'),
