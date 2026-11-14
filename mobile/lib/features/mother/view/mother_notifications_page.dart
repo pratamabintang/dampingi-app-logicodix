@@ -176,9 +176,7 @@ class _MotherNotificationsPageState
                         onClose: () => Navigator.of(dialogContext).pop(),
                         onRedeem: () {
                           Navigator.of(dialogContext).pop();
-                          _showUnavailableNotice(
-                            'Tukar kode belum tersedia.',
-                          );
+                          _showUnavailableNotice('Tukar kode belum tersedia.');
                         },
                       ),
                     ),
@@ -353,8 +351,7 @@ class _CodeRedemptionDialog extends StatelessWidget {
           ),
           SizedBox(height: scale(24)),
           Semantics(
-            label:
-                'Apakah anda ingin menukar Kode Undangan dari pengguna ini?',
+            label: 'Apakah anda ingin menukar Kode Undangan dari pengguna ini?',
             child: SizedBox(
               key: const Key('mother-notification-confirm-title'),
               width: double.infinity,
@@ -403,8 +400,8 @@ class _CodeRedemptionDialog extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: AppTheme.fontFamily,
-                          color: AppTheme.coralText,
-                          fontSize: scale(16),
+                          color: AppTheme.white10,
+                          fontSize: scale(14),
                           fontWeight: FontWeight.w600,
                           height: 24 / 16,
                         ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_popup.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
@@ -324,16 +325,24 @@ class _DoctorGuidePageState extends ConsumerState<DoctorGuidePage> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus arahan?'),
+        title: AppPopupTitle(
+          title: 'Hapus arahan?',
+          onClose: () => Navigator.of(dialogContext).pop(false),
+        ),
         content: const Text('Arahan untuk pasien ini akan dihapus.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Hapus'),
+          AppPopupActions(
+            buttons: [
+              AppPopupButton(
+                label: 'Hapus',
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+              ),
+              AppPopupButton(
+                label: 'Kembali',
+                type: AppButtonType.secondary,
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+              ),
+            ],
           ),
         ],
       ),
@@ -856,23 +865,24 @@ class _GuideButton extends StatelessWidget {
       height: 48 * scale,
       child: FilledButton(
         onPressed: onPressed,
-        style: AppButtonStyles.forType(
-          secondary ? AppButtonType.secondary : AppButtonType.primary,
-        ).merge(
-          FilledButton.styleFrom(
-            padding: EdgeInsets.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8 * scale),
+        style:
+            AppButtonStyles.forType(
+              secondary ? AppButtonType.secondary : AppButtonType.primary,
+            ).merge(
+              FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8 * scale),
+                ),
+                textStyle: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: 16 * scale,
+                  fontWeight: FontWeight.w600,
+                  height: 24 / 16,
+                ),
+              ),
             ),
-            textStyle: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: 16 * scale,
-              fontWeight: FontWeight.w600,
-              height: 24 / 16,
-            ),
-          ),
-        ),
         child: Text(label),
       ),
     );

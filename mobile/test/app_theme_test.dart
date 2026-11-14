@@ -14,6 +14,23 @@ void main() {
     expect(theme.scaffoldBackgroundColor, AppTheme.white1);
     expect(theme.textTheme.bodyLarge?.color, AppTheme.white10);
     expect(theme.textTheme.bodyMedium?.color, AppTheme.white7);
+    expect(theme.dialogTheme.backgroundColor, AppTheme.white1);
+    expect(
+      theme.dialogTheme.shape,
+      isA<RoundedRectangleBorder>().having(
+        (shape) => shape.borderRadius,
+        'border radius',
+        BorderRadius.circular(32),
+      ),
+    );
+    expect(
+      theme.dialogTheme.titleTextStyle?.color,
+      AppTheme.pink6,
+    );
+    expect(
+      theme.dialogTheme.contentTextStyle?.color,
+      AppTheme.white10,
+    );
     expect(
       theme.inputDecorationTheme.enabledBorder?.borderSide.color,
       AppTheme.white3,

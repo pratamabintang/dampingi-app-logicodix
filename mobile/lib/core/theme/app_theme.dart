@@ -92,6 +92,25 @@ abstract final class AppTheme {
         borderSide: const BorderSide(color: Color(0xFFD92D20), width: 1.5),
       ),
     ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: white1,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+      titleTextStyle: const TextStyle(
+        fontFamily: fontFamily,
+        color: pink6,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        height: 30 / 20,
+      ),
+      contentTextStyle: const TextStyle(
+        fontFamily: fontFamily,
+        color: white10,
+        fontSize: 16,
+        height: 24 / 16,
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+    ),
     filledButtonTheme: FilledButtonThemeData(style: AppButtonStyles.primary),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(

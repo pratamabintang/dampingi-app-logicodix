@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_popup.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_error.dart';
@@ -619,7 +620,10 @@ class _TargetRoleDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       key: const Key('koneksi-issue-dialog'),
-      title: const Text('Untuk siapa kode ini?'),
+      title: AppPopupTitle(
+        title: 'Untuk siapa kode ini?',
+        onClose: () => Navigator.of(context).pop(),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -635,10 +639,15 @@ class _TargetRoleDialog extends StatelessWidget {
         ],
       ),
       actions: [
-        TextButton(
-          key: const Key('koneksi-issue-cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Kembali'),
+        AppPopupActions(
+          buttons: [
+            AppPopupButton(
+              key: const Key('koneksi-issue-cancel'),
+              label: 'Kembali',
+              type: AppButtonType.secondary,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       ],
     );
@@ -692,21 +701,29 @@ class _RevokeDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       key: const Key('koneksi-revoke-dialog'),
-      title: const Text('Cabut Kode Undangan ini?'),
+      title: AppPopupTitle(
+        title: 'Cabut Kode Undangan ini?',
+        onClose: () => Navigator.of(context).pop(),
+      ),
       content: Text(
         'Kode ${code.code} untuk ${code.targetRoleLabel} tidak akan bisa '
         'ditukar lagi.',
       ),
       actions: [
-        TextButton(
-          key: const Key('koneksi-revoke-cancel'),
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Kembali'),
-        ),
-        FilledButton(
-          key: const Key('koneksi-revoke-confirm'),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Cabut'),
+        AppPopupActions(
+          buttons: [
+            AppPopupButton(
+              key: const Key('koneksi-revoke-confirm'),
+              label: 'Cabut',
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+            AppPopupButton(
+              key: const Key('koneksi-revoke-cancel'),
+              label: 'Kembali',
+              type: AppButtonType.secondary,
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+          ],
         ),
       ],
     );
@@ -722,18 +739,26 @@ class _EndDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       key: const Key('koneksi-end-dialog'),
-      title: Text('Akhiri Koneksi dengan ${person.name}?'),
+      title: AppPopupTitle(
+        title: 'Akhiri Koneksi dengan ${person.name}?',
+        onClose: () => Navigator.of(context).pop(),
+      ),
       content: const Text('Koneksi ini akan berakhir untuk kedua pihak.'),
       actions: [
-        TextButton(
-          key: const Key('koneksi-end-cancel'),
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Kembali'),
-        ),
-        FilledButton(
-          key: const Key('koneksi-end-confirm'),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Akhiri'),
+        AppPopupActions(
+          buttons: [
+            AppPopupButton(
+              key: const Key('koneksi-end-confirm'),
+              label: 'Akhiri',
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+            AppPopupButton(
+              key: const Key('koneksi-end-cancel'),
+              label: 'Kembali',
+              type: AppButtonType.secondary,
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+          ],
         ),
       ],
     );
