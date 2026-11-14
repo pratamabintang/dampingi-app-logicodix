@@ -16,6 +16,7 @@ import '../../auth/controller/auth_controller.dart';
 import '../controller/daily_entry_controller.dart';
 import '../models/mother_story.dart';
 import '../repositories/epds_repository.dart';
+import '../repositories/mother_professional_note_notifications.dart';
 import '../repositories/mother_story_repository.dart';
 import '../widgets/mother_mood_face.dart';
 import '../widgets/mother_weekly_epds_dialog.dart';
@@ -146,11 +147,25 @@ extension on BuildContext {
   double scaled(double value) => value * _HomeScale.of(this);
 }
 
-class _HomeHeader extends StatelessWidget {
+class _HomeHeader extends ConsumerWidget {
   const _HomeHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accessToken = ref.watch(backendTokenProvider);
+    final notes = accessToken == null
+        ? null
+        : ref.watch(motherProfessionalNotesProvider);
+    final seenKeys = ref.watch(seenMotherProfessionalNoteKeysProvider);
+    final hasNewNotifications =
+        notes?.maybeWhen(
+          data: (items) => items.any(
+            (note) => !seenKeys.contains(motherProfessionalNoteKey(note)),
+          ),
+          orElse: () => false,
+        ) ??
+        false;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -165,17 +180,37 @@ class _HomeHeader extends StatelessWidget {
         ),
         IconButton(
           key: const Key('mother-notifications'),
-          tooltip: 'Notifikasi',
+          tooltip: hasNewNotifications ? 'Notifikasi baru' : 'Notifikasi',
           onPressed: () => context.go('/mother/notifications'),
           padding: EdgeInsets.all(context.scaled(8)),
           constraints: BoxConstraints(
             minWidth: context.scaled(48),
             minHeight: context.scaled(48),
           ),
-          icon: SvgPicture.asset(
-            'assets/images/mother_home/notification.svg',
-            width: context.scaled(24),
-            height: context.scaled(24),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              SvgPicture.asset(
+                'assets/images/mother_home/notification.svg',
+                width: context.scaled(24),
+                height: context.scaled(24),
+              ),
+              if (hasNewNotifications)
+                Positioned(
+                  key: const Key('mother-notifications-new-indicator'),
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD92D20),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],

@@ -14,6 +14,7 @@ void main() {
         authenticatedApiFor(api),
       );
 
+      final visibleNotes = await repository.listVisibleNotes();
       final notes = await repository.listNotes(connectionId: 'connection-1');
       final created = await repository.createNote(
         connectionId: 'connection-1',
@@ -26,20 +27,23 @@ void main() {
       await repository.deleteNote(noteId: 'note-1');
 
       expect(notes.single.id, 'note-1');
+      expect(visibleNotes.single.id, 'note-1');
       expect(created.content, 'New guidance');
       expect(updated.content, 'Updated guidance');
       expect(api.requests.map((request) => '${request.$1} ${request.$2}'), [
+        'GET /professional-notes',
         'GET /professional-notes',
         'POST /professional-notes',
         'PATCH /professional-notes/note-1',
         'DELETE /professional-notes/note-1',
       ]);
-      expect(api.requests[0].$3, {'connection_id': 'connection-1'});
-      expect(api.requests[1].$4, {
+      expect(api.requests[0].$3, isNull);
+      expect(api.requests[1].$3, {'connection_id': 'connection-1'});
+      expect(api.requests[2].$4, {
         'connection_id': 'connection-1',
         'content': 'New guidance',
       });
-      expect(api.requests[2].$4, {'content': 'Updated guidance'});
+      expect(api.requests[3].$4, {'content': 'Updated guidance'});
     },
   );
 }

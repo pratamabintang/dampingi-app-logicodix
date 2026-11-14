@@ -75,10 +75,22 @@ class DoctorProfessionalNoteRepository {
 
   Future<List<DoctorProfessionalNote>> listNotes({
     required String connectionId,
+  }) {
+    return _listNotes(query: {'connection_id': connectionId});
+  }
+
+  /// Lists every note visible to the authenticated caller.
+  ///
+  /// For a Mother this includes notes on all Connections, as documented by the
+  /// backend. Use [listNotes] when a Connection-specific result is needed.
+  Future<List<DoctorProfessionalNote>> listVisibleNotes() => _listNotes();
+
+  Future<List<DoctorProfessionalNote>> _listNotes({
+    Map<String, String>? query,
   }) async {
     final notes = (await _api.getJson(
       '/professional-notes',
-      query: {'connection_id': connectionId},
+      query: query,
     ))['notes'];
     if (notes is! List) {
       throw const FormatException(

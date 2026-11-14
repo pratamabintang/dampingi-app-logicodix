@@ -8,17 +8,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_popup.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../doctor/repositories/doctor_professional_note_repository.dart';
+import '../repositories/mother_professional_note_notifications.dart';
 
-/// Notifikasi ibu. Desainnya masih berlanjut, jadi layar ini tetap ada dan
-/// tetap dapat dibuka dari header rumah.
-///
-/// Kontrak backend belum punya notifikasi: kode undangan menyebut Peran, bukan
-/// orang tertentu, dan yang menghubungkan diri adalah penukar kode, bukan
-/// pihak yang menerima permintaan. Karena itu, saat aplikasi benar-benar bicara
-/// dengan backend, layar ini mengatakan
-/// sejujurnya bahwa belum ada apa-apa. Mock desain hanya muncul di mode preview.
+/// Notifikasi ibu menampilkan arahan profesional yang terlihat oleh ibu.
 class MotherNotificationsPage extends ConsumerStatefulWidget {
   const MotherNotificationsPage({super.key});
 
@@ -33,7 +30,10 @@ class _MotherNotificationsPageState
 
   @override
   Widget build(BuildContext context) {
-    final live = ref.watch(backendTokenProvider) != null;
+    final accessToken = ref.watch(backendTokenProvider);
+    final professionalNotes = accessToken == null
+        ? null
+        : ref.watch(motherProfessionalNotesProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -98,11 +98,31 @@ class _MotherNotificationsPageState
                       ),
                     ),
                     SizedBox(height: scaled(36)),
-                    if (live)
-                      const AppEmpty(
-                        key: Key('mother-notifications-empty'),
-                        title: 'Belum ada notifikasi',
-                        message: 'Belum ada kabar baru untuk Anda.',
+                    if (professionalNotes != null)
+                      professionalNotes.when(
+                        data: (notes) => notes.isEmpty
+                            ? const AppEmpty(
+                                key: Key('mother-notifications-empty'),
+                                title: 'Belum ada notifikasi',
+                                message: 'Belum ada arahan baru untuk Anda.',
+                              )
+                            : _buildProfessionalNoteCards(notes, scale),
+                        error: (error, stackTrace) => SizedBox(
+                          key: const Key('mother-notifications-error'),
+                          height: scaled(180),
+                          child: AppError(
+                            message: 'Arahan belum dapat dimuat. Periksa koneksi lalu coba lagi.',
+                            onRetry: () =>
+                                ref.invalidate(motherProfessionalNotesProvider),
+                          ),
+                        ),
+                        loading: () => SizedBox(
+                          key: const Key('mother-notifications-loading'),
+                          height: scaled(180),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
                       )
                     else ...[
                       _NotificationCard(
@@ -136,6 +156,106 @@ class _MotherNotificationsPageState
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildProfessionalNoteCards(
+    List<DoctorProfessionalNote> notes,
+    double scale,
+  ) {
+    final seenKeys = ref.watch(seenMotherProfessionalNoteKeysProvider);
+    return Column(
+      children: [
+        for (var index = 0; index < notes.length; index++) ...[
+          _NotificationCard(
+            id: 'professional-note-${notes[index].id}',
+            title: 'Arahan dari tenaga kesehatan',
+            message: notes[index].content,
+            isUnread: !seenKeys.contains(
+              motherProfessionalNoteKey(notes[index]),
+            ),
+            isHighlighted: !seenKeys.contains(
+              motherProfessionalNoteKey(notes[index]),
+            ),
+            scale: scale,
+            onTap: () {
+              ref
+                  .read(seenMotherProfessionalNoteKeysProvider.notifier)
+                  .markSeen(motherProfessionalNoteKey(notes[index]));
+              _openProfessionalNote(notes[index]);
+            },
+          ),
+          if (index < notes.length - 1) SizedBox(height: 10 * scale),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _openProfessionalNote(DoctorProfessionalNote note) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
+        final dialogScale = (screenWidth / 390).clamp(0.7, 1.15).toDouble();
+        double scaled(double value) => value * dialogScale;
+        final width = math.min(scaled(342), screenWidth - scaled(40));
+
+        return Dialog(
+          key: const Key('mother-professional-note-dialog'),
+          backgroundColor: Colors.white,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: scaled(20),
+            vertical: scaled(24),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(scaled(32)),
+          ),
+          child: SizedBox(
+            width: width,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(scaled(20)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppPopupTitle(
+                    title: 'Arahan dari tenaga kesehatan',
+                    closeKey: const Key('mother-professional-note-close'),
+                    onClose: () => Navigator.of(dialogContext).pop(),
+                  ),
+                  SizedBox(height: scaled(16)),
+                  Text(
+                    'Disampaikan ${_formatProfessionalNoteDate(note.createdAt)}',
+                    style: AppTypography.bodySmallRegular.copyWith(
+                      color: AppTheme.white6,
+                      fontSize: scaled(14),
+                    ),
+                  ),
+                  SizedBox(height: scaled(16)),
+                  Text(
+                    note.content,
+                    key: const Key('mother-professional-note-content'),
+                    style: AppTypography.bodyDefaultRegular.copyWith(
+                      color: AppTheme.white10,
+                      fontSize: scaled(16),
+                    ),
+                  ),
+                  SizedBox(height: scaled(24)),
+                  AppPopupActions(
+                    buttons: [
+                      AppPopupButton(
+                        key: const Key('mother-professional-note-done'),
+                        label: 'Selesai',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -199,6 +319,29 @@ class _MotherNotificationsPageState
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
+
+String _formatProfessionalNoteDate(String value) {
+  final date = DateTime.tryParse(value);
+  if (date == null) return value;
+
+  final localDate = date.toLocal();
+  return '${localDate.day} ${_indonesianMonths[localDate.month - 1]} ${localDate.year}';
+}
+
+const _indonesianMonths = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
 
 class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
