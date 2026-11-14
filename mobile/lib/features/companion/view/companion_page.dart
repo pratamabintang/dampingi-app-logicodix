@@ -188,10 +188,7 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
         scale * 24,
       ),
       children: [
-        _CompanionHeader(
-          scale: scale,
-          onNotificationsTap: () => context.push('/companion/notifications'),
-        ),
+        _CompanionHeader(scale: scale),
         SizedBox(height: scale * 36),
         Text(
           'Selamat Pagi, $greetingName 👋',
@@ -383,14 +380,12 @@ extension on BuildContext {
       value;
 }
 
+// Notifikasi sengaja tidak ada di sisi pendamping: menunya dihapus dan baru
+// akan dirancang ulang. Sisi ibu tetap punya, lihat mother_page.dart.
 class _CompanionHeader extends StatelessWidget {
-  const _CompanionHeader({
-    required this.scale,
-    required this.onNotificationsTap,
-  });
+  const _CompanionHeader({required this.scale});
 
   final double scale;
-  final VoidCallback onNotificationsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -404,21 +399,6 @@ class _CompanionHeader extends StatelessWidget {
             height: 56 * scale,
             fit: BoxFit.cover,
             semanticLabel: 'Foto profil pendamping',
-          ),
-        ),
-        IconButton(
-          key: const Key('companion-notification'),
-          tooltip: 'Notifikasi',
-          onPressed: onNotificationsTap,
-          padding: EdgeInsets.all(8 * scale),
-          constraints: BoxConstraints(
-            minWidth: 48 * scale,
-            minHeight: 48 * scale,
-          ),
-          icon: SvgPicture.asset(
-            'assets/images/mother_home/notification.svg',
-            width: 24 * scale,
-            height: 24 * scale,
           ),
         ),
       ],

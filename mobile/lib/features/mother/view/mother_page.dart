@@ -12,6 +12,7 @@ import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/mother_story_list_tile.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/greeting.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../controller/daily_entry_controller.dart';
 import '../models/mother_story.dart';
@@ -78,7 +79,7 @@ class MotherPage extends ConsumerWidget {
                             const _HomeHeader(),
                             SizedBox(height: context.scaled(36)),
                             Text(
-                              'Selamat Pagi, $greetingName 👋',
+                              '${timeGreeting()}, $greetingName 👋',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
