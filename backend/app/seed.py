@@ -375,7 +375,7 @@ def _rows() -> Dict[str, List[dict]]:
             "user_id": "mother",
             "created_at": day(0),
             "mood": 4,
-            "description": "Steady",
+            "description": "Bersemangat, Lega",
         },
         {
             "id": seed_id("mood.mother.yesterday"),
@@ -385,10 +385,17 @@ def _rows() -> Dict[str, List[dict]]:
             "description": None,
         },
         {
+            "id": seed_id("mood.mother.three_days_ago"),
+            "user_id": "mother",
+            "created_at": day(3),
+            "mood": 2,
+            "description": None,
+        },
+        {
             "id": seed_id("mood.mother.six_days_ago"),
             "user_id": "mother",
             "created_at": day(6),
-            "mood": 2,
+            "mood": 5,
             "description": None,
         },
         {
@@ -400,6 +407,8 @@ def _rows() -> Dict[str, List[dict]]:
         },
     ]
 
+    # Every Mood day has a Journal on the same day for the same Mother, so
+    # the calendar always has a story to show when a mood day is selected.
     journals = [
         {
             "id": seed_id("journal.mother.today"),
@@ -409,11 +418,32 @@ def _rows() -> Dict[str, List[dict]]:
             "content": "Slept better; the morning walk helped.",
         },
         {
+            "id": seed_id("journal.mother.yesterday"),
+            "user_id": "mother",
+            "created_at": day(1),
+            "title": "Slow start",
+            "content": "Took the afternoon slowly and felt steadier.",
+        },
+        {
             "id": seed_id("journal.mother.three_days_ago"),
             "user_id": "mother",
             "created_at": day(3),
             "title": "Hard afternoon",
             "content": "Tired by three, but the call with my companion helped.",
+        },
+        {
+            "id": seed_id("journal.mother.six_days_ago"),
+            "user_id": "mother",
+            "created_at": day(6),
+            "title": "Weekend walk",
+            "content": "A long walk with the family cleared my head.",
+        },
+        {
+            "id": seed_id("journal.mother2.today"),
+            "user_id": "mother2",
+            "created_at": day(0),
+            "title": "First entry",
+            "content": "Starting this journal to track the week.",
         },
         {
             "id": seed_id("journal.companion.today"),

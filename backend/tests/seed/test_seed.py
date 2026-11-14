@@ -152,3 +152,24 @@ def test_seed_ids_are_deterministic_across_calls():
         "connection.mother1.companion1"
     )
     assert seed.seed_id("a") != seed.seed_id("b")
+
+
+def test_every_seeded_mother_mood_day_has_a_journal():
+    rows = seed._rows()
+    mother_id = "mother"
+
+    mood_days = {
+        row["created_at"]
+        for row in rows["moods"]
+        if row["user_id"] == mother_id
+    }
+    journal_days = {
+        row["created_at"]
+        for row in rows["journals"]
+        if row["user_id"] == mother_id
+    }
+
+    assert mood_days
+    assert mood_days == journal_days
+    assert len(mood_days) <= 7
+
