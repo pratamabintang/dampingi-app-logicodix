@@ -10,6 +10,7 @@ from app.summaries.router import router as summaries_router
 from app.chat.router import router as chat_router
 from app.observations.router import router as observations_router
 from app.professional_notes.router import router as professional_notes_router
+from app.patient_summaries.router import router as patient_summaries_router
 from app.config import get_settings
 from app import errors, security
 from app.epds.router import router as epds_router
@@ -50,6 +51,7 @@ app.include_router(journals_router)
 app.include_router(connections_router)
 app.include_router(observations_router)
 app.include_router(professional_notes_router)
+app.include_router(patient_summaries_router)
 
 
 @app.get("/health")

@@ -177,6 +177,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/doctor', builder: (context, state) => const DoctorPage()),
       GoRoute(
+        path: '/doctor/profile/edit',
+        builder: (context, state) => const DoctorProfileEditPage(),
+      ),
+      GoRoute(
         path: '/doctor/connections',
         builder: (context, state) =>
             const KoneksiPage(role: AppRole.professional),

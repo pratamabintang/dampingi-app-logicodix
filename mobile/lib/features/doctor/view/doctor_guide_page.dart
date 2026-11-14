@@ -2,33 +2,55 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_loading.dart';
+import '../../connections/repositories/connection_repository.dart';
+import '../repositories/doctor_professional_note_repository.dart';
+import '../../mother/repositories/mother_story_repository.dart';
 import 'doctor_patient_picker.dart';
 
-class DoctorGuidePage extends StatefulWidget {
+class DoctorGuidePage extends ConsumerStatefulWidget {
   const DoctorGuidePage({required this.bottomNavigation, super.key});
 
   final Widget bottomNavigation;
 
   @override
-  State<DoctorGuidePage> createState() => _DoctorGuidePageState();
+  ConsumerState<DoctorGuidePage> createState() => _DoctorGuidePageState();
 }
 
-class _DoctorGuidePageState extends State<DoctorGuidePage> {
+class _DoctorGuidePageState extends ConsumerState<DoctorGuidePage> {
   static const _sampleDate = 'Senin, 12 Agustus 2026';
   static const _sampleInstruction =
       "Lorem Ipsum is simply dummy text of the printing and typesetting "
       "industry. Lorem Ipsum has been the industry's standard dummy text "
       'ever since the 1500s.';
 
-  String _selectedPatient = 'Ny. Shopia Mudj.';
+  String _selectedPreviewPatient = 'Ny. Shopia Mudj.';
+  String? _selectedConnectionId;
   String? _instruction = _sampleInstruction;
 
   @override
   Widget build(BuildContext context) {
+    final backendSession = ref.watch(backendTokenProvider) != null;
+    final connections = ref.watch(activeConnectionsProvider);
+    final patients = (connections.asData?.value ?? const <ConnectionPerson>[])
+        .where((connection) => connection.role == 'mother')
+        .toList();
+    final selectedPatient =
+        patients
+            .where((patient) => patient.id == _selectedConnectionId)
+            .firstOrNull ??
+        patients.firstOrNull;
+    final notes = backendSession && selectedPatient != null
+        ? ref.watch(doctorProfessionalNotesProvider(selectedPatient.id))
+        : null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -71,19 +93,18 @@ class _DoctorGuidePageState extends State<DoctorGuidePage> {
                             ),
                           ),
                           SizedBox(height: 36 * scale),
-                          DoctorPatientPicker(
-                            keyPrefix: 'doctor-guide',
-                            value: _selectedPatient,
-                            onChanged: (value) =>
-                                setState(() => _selectedPatient = value),
+                          _buildPatientPicker(
+                            backendSession: backendSession,
+                            connections: connections,
+                            patients: patients,
+                            selectedPatient: selectedPatient,
                           ),
                           SizedBox(height: 36 * scale),
-                          _GuidanceCard(
-                            instruction: _instruction,
-                            onCreate: () => _editInstruction(),
-                            onEdit: () =>
-                                _editInstruction(initialText: _instruction),
-                            onDelete: () => _deleteInstruction(),
+                          _buildGuidance(
+                            backendSession: backendSession,
+                            connections: connections,
+                            selectedPatient: selectedPatient,
+                            notes: notes,
                           ),
                         ],
                       ),
@@ -99,8 +120,113 @@ class _DoctorGuidePageState extends State<DoctorGuidePage> {
     );
   }
 
-  Future<void> _editInstruction({String? initialText}) async {
-    final isEditing = initialText != null;
+  Widget _buildPatientPicker({
+    required bool backendSession,
+    required AsyncValue<List<ConnectionPerson>?> connections,
+    required List<ConnectionPerson> patients,
+    required ConnectionPerson? selectedPatient,
+  }) {
+    if (!backendSession) {
+      return DoctorPatientPicker(
+        keyPrefix: 'doctor-guide',
+        value: _selectedPreviewPatient,
+        onChanged: (value) => setState(() => _selectedPreviewPatient = value),
+      );
+    }
+
+    return connections.when(
+      data: (_) => patients.isEmpty
+          ? const AppEmpty(
+              key: Key('doctor-guide-no-patients'),
+              title: 'Belum ada pasien terhubung',
+              message: 'Ibu yang terhubung akan muncul di sini.',
+            )
+          : DoctorPatientPicker(
+              keyPrefix: 'doctor-guide',
+              value: selectedPatient!.id,
+              patients: patients,
+              onChanged: (value) =>
+                  setState(() => _selectedConnectionId = value),
+            ),
+      loading: () => const SizedBox(
+        key: Key('doctor-guide-patients-loading'),
+        height: 100,
+        child: AppLoading(message: 'Memuat pasien...'),
+      ),
+      error: (error, stackTrace) => AppError(
+        key: const Key('doctor-guide-patients-error'),
+        message: connectionFailureMessage(error),
+        onRetry: () => ref.invalidate(activeConnectionsProvider),
+      ),
+    );
+  }
+
+  Widget _buildGuidance({
+    required bool backendSession,
+    required AsyncValue<List<ConnectionPerson>?> connections,
+    required ConnectionPerson? selectedPatient,
+    required AsyncValue<List<DoctorProfessionalNote>>? notes,
+  }) {
+    if (!backendSession) {
+      final items = _instruction == null
+          ? const <_GuidanceItem>[]
+          : [
+              _GuidanceItem(
+                id: 'preview',
+                content: _instruction!,
+                date: _sampleDate,
+              ),
+            ];
+      return _GuidanceCard(
+        items: items,
+        onCreate: () => _editInstruction(),
+        onEdit: (item) => _editInstruction(item: item),
+        onDelete: (item) => _deleteInstruction(item: item),
+      );
+    }
+
+    if (connections.isLoading ||
+        connections.hasError ||
+        selectedPatient == null ||
+        notes == null) {
+      return const SizedBox.shrink();
+    }
+
+    return notes.when(
+      data: (items) => _GuidanceCard(
+        items: [
+          for (final note in items)
+            _GuidanceItem(
+              id: note.id,
+              content: note.content,
+              date: formatStoryDate(DateTime.parse(note.updatedAt).toLocal()),
+            ),
+        ],
+        onCreate: () => _editInstruction(connectionId: selectedPatient.id),
+        onEdit: (item) =>
+            _editInstruction(connectionId: selectedPatient.id, item: item),
+        onDelete: (item) =>
+            _deleteInstruction(connectionId: selectedPatient.id, item: item),
+      ),
+      loading: () => const SizedBox(
+        key: Key('doctor-guide-notes-loading'),
+        height: 100,
+        child: AppLoading(message: 'Memuat arahan...'),
+      ),
+      error: (error, stackTrace) => AppError(
+        key: const Key('doctor-guide-notes-error'),
+        message: connectionFailureMessage(error),
+        onRetry: () =>
+            ref.invalidate(doctorProfessionalNotesProvider(selectedPatient.id)),
+      ),
+    );
+  }
+
+  Future<void> _editInstruction({
+    String? connectionId,
+    _GuidanceItem? item,
+  }) async {
+    final isEditing = item != null;
     final instruction = await showGeneralDialog<String>(
       context: context,
       barrierDismissible: true,
@@ -132,7 +258,7 @@ class _DoctorGuidePageState extends State<DoctorGuidePage> {
                   child: SizedBox(
                     width: dialogWidth,
                     child: _InstructionFormDialog(
-                      initialText: initialText ?? '',
+                      initialText: item?.content ?? '',
                       scale: scale,
                       title: isEditing
                           ? 'Ubah arahan kepada pasien'
@@ -152,7 +278,36 @@ class _DoctorGuidePageState extends State<DoctorGuidePage> {
     );
 
     if (instruction != null && mounted) {
-      setState(() => _instruction = instruction);
+      if (connectionId == null) {
+        setState(() => _instruction = instruction);
+      } else {
+        final token = ref.read(backendTokenProvider);
+        if (token == null) {
+          _showSessionExpired();
+          return;
+        }
+        try {
+          final repository = ref.read(doctorProfessionalNoteRepositoryProvider);
+          if (item == null) {
+            await repository.createNote(
+              accessToken: token,
+              connectionId: connectionId,
+              content: instruction,
+            );
+          } else {
+            await repository.updateNote(
+              accessToken: token,
+              noteId: item.id,
+              content: instruction,
+            );
+          }
+          ref.invalidate(doctorProfessionalNotesProvider(connectionId));
+        } catch (error) {
+          if (mounted) _showFailure(error);
+          return;
+        }
+      }
+      if (!mounted) return;
       await _showCompletionDialog(
         context,
         message: isEditing
@@ -162,7 +317,10 @@ class _DoctorGuidePageState extends State<DoctorGuidePage> {
     }
   }
 
-  Future<void> _deleteInstruction() async {
+  Future<void> _deleteInstruction({
+    String? connectionId,
+    _GuidanceItem? item,
+  }) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -182,9 +340,43 @@ class _DoctorGuidePageState extends State<DoctorGuidePage> {
     );
 
     if (shouldDelete == true && mounted) {
-      setState(() => _instruction = null);
+      if (connectionId == null || item == null) {
+        setState(() => _instruction = null);
+      } else {
+        final token = ref.read(backendTokenProvider);
+        if (token == null) {
+          _showSessionExpired();
+          return;
+        }
+        try {
+          await ref
+              .read(doctorProfessionalNoteRepositoryProvider)
+              .deleteNote(accessToken: token, noteId: item.id);
+          ref.invalidate(doctorProfessionalNotesProvider(connectionId));
+        } catch (error) {
+          if (mounted) _showFailure(error);
+          return;
+        }
+      }
+      if (!mounted) return;
       await _showCompletionDialog(context, message: 'Arahan berhasil dihapus!');
     }
+  }
+
+  void _showFailure(Object error) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(connectionFailureMessage(error))));
+  }
+
+  void _showSessionExpired() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Sesi login telah berakhir. Silakan masuk kembali.'),
+        ),
+      );
   }
 
   Future<void> _showCompletionDialog(
@@ -492,16 +684,16 @@ class _GuideDialogCloseButton extends StatelessWidget {
 
 class _GuidanceCard extends StatelessWidget {
   const _GuidanceCard({
-    required this.instruction,
+    required this.items,
     required this.onCreate,
     required this.onEdit,
     required this.onDelete,
   });
 
-  final String? instruction;
+  final List<_GuidanceItem> items;
   final VoidCallback onCreate;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final ValueChanged<_GuidanceItem> onEdit;
+  final ValueChanged<_GuidanceItem> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -532,15 +724,7 @@ class _GuidanceCard extends StatelessWidget {
             scale: scale,
           ),
           SizedBox(height: 24 * scale),
-          if (instruction case final text?)
-            _InstructionCard(
-              date: _DoctorGuidePageState._sampleDate,
-              instruction: text,
-              onEdit: onEdit,
-              onDelete: onDelete,
-              scale: scale,
-            )
-          else
+          if (items.isEmpty)
             Text(
               'Belum ada arahan untuk pasien ini.',
               key: const Key('doctor-guide-empty'),
@@ -551,24 +735,44 @@ class _GuidanceCard extends StatelessWidget {
                 fontSize: 14 * scale,
                 height: 20 / 14,
               ),
-            ),
+            )
+          else
+            for (var index = 0; index < items.length; index++) ...[
+              _InstructionCard(
+                item: items[index],
+                onEdit: () => onEdit(items[index]),
+                onDelete: () => onDelete(items[index]),
+                scale: scale,
+              ),
+              if (index < items.length - 1) SizedBox(height: 20 * scale),
+            ],
         ],
       ),
     );
   }
 }
 
+class _GuidanceItem {
+  const _GuidanceItem({
+    required this.id,
+    required this.content,
+    required this.date,
+  });
+
+  final String id;
+  final String content;
+  final String date;
+}
+
 class _InstructionCard extends StatelessWidget {
   const _InstructionCard({
-    required this.date,
-    required this.instruction,
+    required this.item,
     required this.onEdit,
     required this.onDelete,
     required this.scale,
   });
 
-  final String date;
-  final String instruction;
+  final _GuidanceItem item;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final double scale;
@@ -576,7 +780,7 @@ class _InstructionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('doctor-guide-instruction'),
+      key: Key('doctor-guide-instruction-${item.id}'),
       padding: EdgeInsets.symmetric(
         horizontal: 18 * scale,
         vertical: 16 * scale,
@@ -590,7 +794,7 @@ class _InstructionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            date,
+            item.date,
             style: TextStyle(
               color: AppTheme.coralText,
               fontFamily: AppTheme.fontFamily,
@@ -600,7 +804,7 @@ class _InstructionCard extends StatelessWidget {
           ),
           SizedBox(height: 10 * scale),
           Text(
-            instruction,
+            item.content,
             key: const Key('doctor-guide-instruction-text'),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,

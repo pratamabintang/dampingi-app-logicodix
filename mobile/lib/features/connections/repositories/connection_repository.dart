@@ -17,6 +17,18 @@ final activeConnectionsProvider =
           .listConnections(accessToken: token);
     });
 
+final professionalSharingPermissionsProvider = FutureProvider.autoDispose
+    .family<ProfessionalSharingPermissions?, String>((ref, connectionId) async {
+      final token = ref.watch(backendTokenProvider);
+      if (token == null) return null;
+      return ref
+          .watch(connectionRepositoryProvider)
+          .getProfessionalSharingPermissions(
+            accessToken: token,
+            connectionId: connectionId,
+          );
+    });
+
 /// Kode undangan milik pemanggil yang masih berlaku. null = mode preview.
 ///
 /// Membaca daftar tidak pernah membuat kode baru: kode dibuat hanya oleh
@@ -108,10 +120,69 @@ class InviteCode {
   }
 }
 
+class ProfessionalSharingPermissions {
+  const ProfessionalSharingPermissions({
+    required this.connectionId,
+    required this.weeklySummary,
+    required this.epds,
+    required this.journal,
+  });
+
+  final String connectionId;
+  final bool weeklySummary;
+  final bool epds;
+  final bool journal;
+
+  factory ProfessionalSharingPermissions.fromJson(Map<String, dynamic> json) {
+    final connectionId = json['connection_id'];
+    final weeklySummary = json['weekly_summary'];
+    final epds = json['epds'];
+    final journal = json['journal'];
+    if (connectionId is! String ||
+        weeklySummary is! bool ||
+        epds is! bool ||
+        journal is! bool) {
+      throw const FormatException('Sharing permissions have an invalid shape.');
+    }
+    return ProfessionalSharingPermissions(
+      connectionId: connectionId,
+      weeklySummary: weeklySummary,
+      epds: epds,
+      journal: journal,
+    );
+  }
+}
+
 class ConnectionRepository {
   ConnectionRepository(this._api);
 
   final BackendApi _api;
+
+  Future<ProfessionalSharingPermissions> getProfessionalSharingPermissions({
+    required String accessToken,
+    required String connectionId,
+  }) async {
+    return ProfessionalSharingPermissions.fromJson(
+      await _api.getJson(
+        '/connections/$connectionId/sharing-permissions',
+        accessToken: accessToken,
+      ),
+    );
+  }
+
+  Future<ProfessionalSharingPermissions> updateProfessionalSharingPermissions({
+    required String accessToken,
+    required String connectionId,
+    required Map<String, Object?> changes,
+  }) async {
+    return ProfessionalSharingPermissions.fromJson(
+      await _api.patchJson(
+        '/connections/$connectionId/sharing-permissions',
+        body: changes,
+        accessToken: accessToken,
+      ),
+    );
+  }
 
   Future<List<ConnectionPerson>> listConnections({
     required String accessToken,

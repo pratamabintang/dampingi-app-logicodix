@@ -243,6 +243,91 @@ def list_active_connections(user_id: str) -> list:
     )
 
 
+def fetch_professional_connection_for_mother(
+    mother_id: str, connection_id: str
+) -> dict | None:
+    return _fetch_professional_connection(
+        connection_id=connection_id,
+        mother_id=mother_id,
+    )
+
+
+def fetch_active_professional_connection(
+    professional_id: str, connection_id: str
+) -> dict | None:
+    return _fetch_professional_connection(
+        connection_id=connection_id,
+        professional_id=professional_id,
+    )
+
+
+def _fetch_professional_connection(
+    *,
+    connection_id: str,
+    mother_id: str | None = None,
+    professional_id: str | None = None,
+) -> dict | None:
+    params = [
+        ("id", f"eq.{connection_id}"),
+        ("counterpart_role", "eq.professional"),
+        ("ended_at", "is.null"),
+        (
+            "select",
+            "id,mother_id,counterpart_id,share_weekly_summary,share_epds,"
+            "share_journal,mother:profiles!mother_id(name)",
+        ),
+        ("limit", "1"),
+    ]
+    if mother_id is not None:
+        params.append(("mother_id", f"eq.{mother_id}"))
+    if professional_id is not None:
+        params.append(("counterpart_id", f"eq.{professional_id}"))
+
+    resp = _request(
+        _client().get,
+        f"{_base_url()}/rest/v1/connections",
+        params=params,
+        headers=supabase_service_http(),
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    rows = resp.json()
+    return rows[0] if rows else None
+
+
+def update_professional_sharing_permissions(
+    mother_id: str,
+    connection_id: str,
+    permissions: dict[str, bool],
+) -> dict | None:
+    resp = _request(
+        _client().patch,
+        f"{_base_url()}/rest/v1/connections",
+        params=[
+            ("id", f"eq.{connection_id}"),
+            ("mother_id", f"eq.{mother_id}"),
+            ("counterpart_role", "eq.professional"),
+            ("ended_at", "is.null"),
+            (
+                "select",
+                "id,mother_id,counterpart_id,share_weekly_summary,"
+                "share_epds,share_journal",
+            ),
+        ],
+        headers={
+            **supabase_service_http(),
+            "Prefer": "return=representation",
+        },
+        json=permissions,
+        timeout=TIMEOUT,
+    )
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    rows = resp.json()
+    return rows[0] if rows else None
+
+
 def end_connection(id: str, user_id: str) -> bool:
     resp = _request(
         _client().patch,

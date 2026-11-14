@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../connections/repositories/connection_repository.dart';
 
 class DoctorPatientPicker extends StatelessWidget {
   const DoctorPatientPicker({
     required this.value,
     required this.onChanged,
     required this.keyPrefix,
+    this.patients,
     super.key,
   });
 
   final String value;
   final ValueChanged<String> onChanged;
   final String keyPrefix;
+  final List<ConnectionPerson>? patients;
 
   @override
   Widget build(BuildContext context) {
@@ -54,12 +57,23 @@ class DoctorPatientPicker extends StatelessWidget {
                   size: 28 * scale,
                 ),
                 borderRadius: BorderRadius.circular(20 * scale),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'Ny. Shopia Mudj.',
-                    child: _PatientPickerLabel(),
-                  ),
-                ],
+                items: patients == null
+                    ? const [
+                        DropdownMenuItem(
+                          value: 'Ny. Shopia Mudj.',
+                          child: _PatientPickerLabel(),
+                        ),
+                      ]
+                    : [
+                        for (final patient in patients!)
+                          DropdownMenuItem(
+                            value: patient.id,
+                            child: _PatientPickerLabel(
+                              name: patient.name,
+                              status: 'Pasien terhubung',
+                            ),
+                          ),
+                      ],
                 onChanged: (selected) {
                   if (selected != null) onChanged(selected);
                 },
@@ -73,7 +87,13 @@ class DoctorPatientPicker extends StatelessWidget {
 }
 
 class _PatientPickerLabel extends StatelessWidget {
-  const _PatientPickerLabel();
+  const _PatientPickerLabel({
+    this.name = 'Ny. Shopia Mudj.',
+    this.status = 'Ringkasan Belum ditinjau',
+  });
+
+  final String name;
+  final String status;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +104,7 @@ class _PatientPickerLabel extends StatelessWidget {
       children: [
         Text(
           key: const Key('doctor-patient-picker-name'),
-          'Ny. Shopia Mudj.',
+          name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -96,7 +116,7 @@ class _PatientPickerLabel extends StatelessWidget {
           ),
         ),
         Text(
-          'Ringkasan Belum ditinjau',
+          status,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

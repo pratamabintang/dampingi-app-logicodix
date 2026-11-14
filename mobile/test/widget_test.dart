@@ -715,10 +715,24 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('doctor-profile-avatar')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('doctor-profile-avatar'))),
+      const Size(85, 85),
+    );
     expect(find.text('Maya Estiyanti'), findsOneWidget);
     expect(find.text('demo.doctor@dampingi.test'), findsOneWidget);
+    expect(find.text('AIS128'), findsOneWidget);
     expect(find.text('Ubah Profil'), findsOneWidget);
     expect(find.text('Tambah Pasien'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('doctor-profile-edit')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DoctorProfileEditPage), findsOneWidget);
+    expect(find.byKey(const Key('doctor-profile-edit-name')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-profile-edit-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tambah Pasien'), findsOneWidget);
+
     await tester.tap(find.byKey(const Key('doctor-profile-add-patient')));
     await tester.pumpAndSettle();
     expect(find.byType(KoneksiPage), findsOneWidget);
