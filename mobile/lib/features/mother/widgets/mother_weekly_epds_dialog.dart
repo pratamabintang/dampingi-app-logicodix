@@ -73,7 +73,7 @@ class _MotherWeeklyEpdsDialogState
     try {
       final result = await ref
           .read(epdsRepositoryProvider)
-          .evaluate(
+          .submit(
             accessToken: token,
             answers: [for (final answer in _answers) answer!],
           );
@@ -93,7 +93,7 @@ class _MotherWeeklyEpdsDialogState
           BackendApiException(:final message) => message,
           ApiNetworkException(:final message) => message,
           ApiConfigurationException(:final message) => message,
-          _ => 'Hasil EPDS belum dapat dihitung. Coba lagi.',
+          _ => 'Hasil EPDS belum dapat dikirim. Coba lagi.',
         };
       });
     }

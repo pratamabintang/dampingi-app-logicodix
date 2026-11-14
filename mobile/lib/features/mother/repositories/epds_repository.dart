@@ -1,18 +1,46 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/backend_api.dart';
+import '../../auth/controller/auth_controller.dart';
+import 'mother_story_repository.dart';
 
 final epdsRepositoryProvider = Provider<EpdsRepository>(
   (ref) => EpdsRepository(ref.watch(backendApiProvider)),
 );
 
-/// Hasil `POST /epds/evaluate` (mode demo).
+/// EPDS terakhir milik ibu yang login. null = belum pernah mengisi, atau
+/// mode preview.
+final latestEpdsProvider = FutureProvider.autoDispose<EpdsResult?>((ref) async {
+  final token = ref.watch(backendTokenProvider);
+  final motherId = ref
+      .watch(authControllerProvider)
+      .asData
+      ?.value
+      .session
+      ?.user
+      .id;
+  if (token == null || motherId == null) return null;
+  return ref
+      .watch(epdsRepositoryProvider)
+      .latest(accessToken: token, motherId: motherId);
+});
+
+/// EPDS mingguan dianggap sudah diisi kalau ada hasil sejak Senin minggu ini.
+bool epdsFilledThisWeek(EpdsResult? latest, DateTime now) {
+  final createdAt = latest?.createdAt;
+  if (createdAt == null) return false;
+  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  return !createdAt.toLocal().isBefore(monday);
+}
+
+/// Satu hasil EPDS (mode demo) yang tersimpan di backend.
 class EpdsResult {
   const EpdsResult({
     required this.totalScore,
     required this.followUpRequired,
     required this.immediateReviewRequired,
     required this.disclaimer,
+    this.createdAt,
   });
 
   final int totalScore;
@@ -20,11 +48,15 @@ class EpdsResult {
   final bool immediateReviewRequired;
   final String disclaimer;
 
+  /// Kapan EPDS ini dikirim. null kalau backend tidak menyebutkannya.
+  final DateTime? createdAt;
+
   factory EpdsResult.fromJson(Map<String, dynamic> json) {
     final totalScore = json['total_score'];
     final followUp = json['follow_up_required'];
     final immediate = json['immediate_review_required'];
     final disclaimer = json['disclaimer'];
+    final createdAt = json['created_at'];
     if (totalScore is! int ||
         followUp is! bool ||
         immediate is! bool ||
@@ -36,6 +68,7 @@ class EpdsResult {
       followUpRequired: followUp,
       immediateReviewRequired: immediate,
       disclaimer: disclaimer,
+      createdAt: createdAt is String ? DateTime.tryParse(createdAt) : null,
     );
   }
 }
@@ -45,8 +78,9 @@ class EpdsRepository {
 
   final BackendApi _api;
 
+  /// Menghitung **dan menyimpan** EPDS.
   /// `answers[i]` = indeks pilihan (0–3) untuk pertanyaan ke-(i + 1).
-  Future<EpdsResult> evaluate({
+  Future<EpdsResult> submit({
     required String accessToken,
     required List<int> answers,
   }) async {
@@ -58,7 +92,7 @@ class EpdsRepository {
       );
     }
     final json = await _api.postJson(
-      '/epds/evaluate',
+      '/v1/me/epds-assessments',
       accessToken: accessToken,
       body: {
         'answers': [
@@ -67,6 +101,32 @@ class EpdsRepository {
         ],
       },
     );
-    return EpdsResult.fromJson(json);
+    final assessment = json['assessment'];
+    if (assessment is! Map<String, dynamic>) {
+      throw const FormatException('EPDS submission has an invalid shape.');
+    }
+    return EpdsResult.fromJson(assessment);
+  }
+
+  /// EPDS terbaru milik ibu ini, atau null kalau belum pernah mengisi.
+  Future<EpdsResult?> latest({
+    required String accessToken,
+    required String motherId,
+  }) async {
+    final json = await _api.getJson(
+      '/v1/mothers/$motherId/epds-assessments',
+      query: {'limit': '1'},
+      accessToken: accessToken,
+    );
+    final items = json['items'];
+    if (items is! List) {
+      throw const FormatException('EPDS history has an invalid shape.');
+    }
+    if (items.isEmpty) return null;
+    final first = items.first;
+    if (first is! Map<String, dynamic>) {
+      throw const FormatException('EPDS history has an invalid shape.');
+    }
+    return EpdsResult.fromJson(first);
   }
 }

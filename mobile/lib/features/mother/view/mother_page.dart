@@ -15,6 +15,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../controller/daily_entry_controller.dart';
 import '../models/mother_story.dart';
+import '../repositories/epds_repository.dart';
 import '../repositories/mother_story_repository.dart';
 import '../widgets/mother_mood_face.dart';
 import '../widgets/mother_weekly_epds_dialog.dart';
@@ -182,11 +183,15 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _WeeklyEpdsCard extends StatelessWidget {
+class _WeeklyEpdsCard extends ConsumerWidget {
   const _WeeklyEpdsCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Preview: selalu null, jadi tetap "Belum diisi" seperti desain.
+    final latest = ref.watch(latestEpdsProvider).asData?.value;
+    final filled = epdsFilledThisWeek(latest, DateTime.now());
+
     return Container(
       key: const Key('mother-epds-card'),
       padding: EdgeInsets.all(context.scaled(20)),
@@ -211,7 +216,8 @@ class _WeeklyEpdsCard extends StatelessWidget {
                 ),
                 SizedBox(height: context.scaled(8)),
                 Text(
-                  'Belum diisi',
+                  filled ? 'Sudah diisi' : 'Belum diisi',
+                  key: const Key('mother-epds-status'),
                   style: TextStyle(
                     color: AppTheme.coralText,
                     fontSize: context.scaled(20),
@@ -228,7 +234,11 @@ class _WeeklyEpdsCard extends StatelessWidget {
               height: context.scaled(48),
               child: FilledButton(
                 key: const Key('mother-epds-start'),
-                onPressed: () => showMotherWeeklyEpds(context),
+                onPressed: () async {
+                  await showMotherWeeklyEpds(context);
+                  // Baca ulang status setelah dialog ditutup.
+                  if (context.mounted) ref.invalidate(latestEpdsProvider);
+                },
                 style: FilledButton.styleFrom(
                   minimumSize: Size.fromHeight(context.scaled(48)),
                   padding: EdgeInsets.symmetric(horizontal: context.scaled(20)),
