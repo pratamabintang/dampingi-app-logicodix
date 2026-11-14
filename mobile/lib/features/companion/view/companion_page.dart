@@ -450,7 +450,7 @@ class _MotherSummaryCard extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(scale(8)),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFAF9),
+              color: AppTheme.pink1,
               borderRadius: BorderRadius.circular(scale(32)),
             ),
             child: Row(
@@ -547,8 +547,6 @@ class _UnassignedMotherCard extends StatelessWidget {
               key: const Key('companion-enter-mother-code'),
               onPressed: onTap,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.coral,
-                foregroundColor: Colors.white,
                 padding: EdgeInsets.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
@@ -619,8 +617,6 @@ class _ObservationCard extends StatelessWidget {
               key: const Key('companion-observation-start'),
               onPressed: onTap,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.coral,
-                foregroundColor: Colors.white,
                 padding: EdgeInsets.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
@@ -756,7 +752,7 @@ class _CompanionNoteRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: const Color(0xFF252B37),
+                          color: AppTheme.white10,
                           fontFamily: AppTheme.fontFamily,
                           fontSize: scale(16),
                           fontWeight: FontWeight.w600,
@@ -1300,18 +1296,20 @@ class _CompanionDialogButton extends StatelessWidget {
       height: scale * 48,
       child: FilledButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.pink2 : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(scale * 8),
-          ),
-          textStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: scale * 16,
-            fontWeight: FontWeight.w600,
+        style: AppButtonStyles.forType(
+          secondary ? AppButtonType.secondary : AppButtonType.primary,
+        ).merge(
+          FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(scale * 8),
+            ),
+            textStyle: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: scale * 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         child: Text(label),
@@ -1458,11 +1456,11 @@ class _WeekButton extends StatelessWidget {
       height: 56 * scale,
       child: IconButton(
         onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: AppTheme.pink2,
-          foregroundColor: AppTheme.coralText,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12 * scale),
+        style: AppButtonStyles.secondaryIcon.merge(
+          IconButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12 * scale),
+            ),
           ),
         ),
         icon: Icon(icon, size: 24 * scale),
@@ -1524,7 +1522,7 @@ class _CompanionNoteDetailPageState extends State<_CompanionNoteDetailPage> {
                 width: double.infinity,
                 padding: EdgeInsets.all(scale(20)),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFAF9),
+                  color: AppTheme.pink1,
                   border: Border.all(color: AppTheme.coral),
                   borderRadius: BorderRadius.circular(scale(24)),
                 ),

@@ -289,7 +289,7 @@ class _MoodCard extends ConsumerWidget {
       padding: EdgeInsets.all(context.scaled(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(context.scaled(32)),
       ),
       child: Column(
@@ -444,6 +444,7 @@ class _StoriesCard extends StatelessWidget {
       key: const Key('mother-stories-card'),
       padding: EdgeInsets.all(scale(20)),
       borderRadius: scale(32),
+      backgroundColor: Colors.white,
       child: Column(
         children: [
           AppSectionHeader(
@@ -541,7 +542,7 @@ class _ActivitiesCard extends StatelessWidget {
       padding: EdgeInsets.all(context.scaled(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(context.scaled(32)),
       ),
       child: Column(
@@ -577,7 +578,7 @@ class _ActivityRow extends StatelessWidget {
               Text(
                 'Meditasi Singkat',
                 style: TextStyle(
-                  color: Color(0xFF252B37),
+                  color: AppTheme.white10,
                   fontSize: context.scaled(16),
                   fontWeight: FontWeight.w600,
                   height: 24 / 16,
@@ -678,6 +679,10 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
       if (!known.contains(feeling)) _additionalFeelings.add(feeling);
       _selectedFeelings.add(feeling);
     }
+  }
+
+  void _selectLevel(int value) {
+    setState(() => _selectedLevel = value);
   }
 
   Future<void> _save() async {
@@ -828,7 +833,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
                 index: index,
                 scale: scale,
                 selected: _selectedLevel == index,
-                onTap: () => setState(() => _selectedLevel = index),
+                onTap: () => _selectLevel(index),
               ),
           ],
         ),
@@ -836,7 +841,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
         _MoodLevelSlider(
           value: _selectedLevel,
           scale: scale,
-          onChanged: (value) => setState(() => _selectedLevel = value),
+          onChanged: _selectLevel,
         ),
         SizedBox(height: 24 * scale),
         Row(
@@ -890,6 +895,11 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
                 _additionalFeelings.clear();
               }
               _step = 1;
+              if (_selectedFeelings.isEmpty) {
+                _selectedFeelings.add(
+                  _moodLevels[_selectedLevel].feelings.first,
+                );
+              }
             });
           },
           showBack: false,
@@ -921,7 +931,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
           child: Text(
             'Apa yang paling menggambarkan perasaanmu?',
             style: TextStyle(
-              color: const Color(0xFF252B37),
+              color: AppTheme.white10,
               fontSize: 14 * scale,
               fontWeight: FontWeight.w600,
               height: 20 / 14,
@@ -1097,11 +1107,12 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
           child: FilledButton(
             key: const Key('mother-mood-dialog-continue'),
             onPressed: onContinue,
-            style: FilledButton.styleFrom(
-              minimumSize: Size.fromHeight(48 * scale),
-              backgroundColor: AppTheme.coral,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8 * scale),
+            style: AppButtonStyles.primary.merge(
+              FilledButton.styleFrom(
+                minimumSize: Size.fromHeight(48 * scale),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8 * scale),
+                ),
               ),
             ),
             child: Text(continueLabel, style: TextStyle(fontSize: 16 * scale)),
@@ -1115,13 +1126,13 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
             child: FilledButton(
               key: const Key('mother-mood-dialog-back'),
               onPressed: onBack ?? widget.onClose,
-              style: FilledButton.styleFrom(
-                minimumSize: Size.fromHeight(48 * scale),
-                backgroundColor: AppTheme.coralLight,
-                foregroundColor: AppTheme.coralText,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8 * scale),
+              style: AppButtonStyles.secondary.merge(
+                FilledButton.styleFrom(
+                  minimumSize: Size.fromHeight(48 * scale),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8 * scale),
+                  ),
                 ),
               ),
               child: Text('Kembali', style: TextStyle(fontSize: 16 * scale)),

@@ -5,6 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:mobile/app.dart';
+import 'package:mobile/core/theme/app_theme.dart';
+import 'package:mobile/core/widgets/app_card.dart';
 import 'package:mobile/core/widgets/app_empty.dart';
 import 'package:mobile/core/widgets/app_error.dart';
 import 'package:mobile/core/widgets/app_loading.dart';
@@ -346,6 +348,16 @@ void main() {
     await tester.pumpAndSettle();
     final narrowStoriesCard = tester.getRect(
       find.byKey(const Key('mother-stories-card')),
+    );
+    expect(
+      tester
+          .widget<AppCard>(find.byKey(const Key('mother-stories-card')))
+          .backgroundColor,
+      (tester
+              .widget<Container>(find.byKey(const Key('mother-mood-card')))
+              .decoration!
+          as BoxDecoration)
+          .color,
     );
     final narrowStoryFace = tester.widget<SvgPicture>(
       find.byKey(const Key('mother-story-happy-face')),
@@ -981,7 +993,7 @@ void main() {
                   .decoration!
               as BoxDecoration)
           .color,
-      const Color(0xFFFDA29B),
+      AppTheme.pink6,
     );
 
     final observationScroll = find

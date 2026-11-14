@@ -221,9 +221,7 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isHighlighted
-        ? AppTheme.coralText
-        : const Color(0xFF252B37);
+    final titleColor = isHighlighted ? AppTheme.coralText : AppTheme.white10;
     final messageColor = isHighlighted ? AppTheme.coralText : AppTheme.muted;
 
     return Container(
@@ -310,7 +308,7 @@ class _CodeRedemptionDialog extends StatelessWidget {
       padding: EdgeInsets.all(scale(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scale(32)),
         boxShadow: const [
           BoxShadow(
@@ -402,8 +400,8 @@ class _CodeRedemptionDialog extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: AppTheme.fontFamily,
-                          color: AppTheme.coralText,
-                          fontSize: scale(16),
+                          color: AppTheme.white10,
+                          fontSize: scale(14),
                           fontWeight: FontWeight.w600,
                           height: 24 / 16,
                         ),
@@ -500,16 +498,14 @@ class _RedemptionDialogButton extends StatelessWidget {
       child: AppSubmitButton(
         label: label,
         onPressed: onPressed,
+        type: secondary ? AppButtonType.secondary : AppButtonType.primary,
         textStyle: TextStyle(
           fontFamily: AppTheme.fontFamily,
-          color: secondary ? AppTheme.coralText : Colors.white,
           fontSize: scale(16),
           fontWeight: FontWeight.w600,
           height: 24 / 16,
         ),
         buttonStyle: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.coralLight : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
           padding: EdgeInsets.symmetric(
             horizontal: scale(20),
             vertical: scale(12),

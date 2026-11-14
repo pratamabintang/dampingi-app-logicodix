@@ -54,10 +54,10 @@ MotherStory _storyFrom(JournalEntry journal, MoodEntry? mood) {
     moodLabel: mood == null ? 'Mood belum dicatat' : _moodLabels[mood.mood - 1],
     title: journal.title,
     note: journal.content,
+    day: isoDate(day),
+    description: mood?.description ?? '',
     // Belum ada ringkasan AI per jurnal; halaman detail menyembunyikan kotaknya.
     summary: '',
-    description: mood?.description ?? '',
-    day: journal.date,
   );
 }
 

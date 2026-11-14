@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class AppSubmitButton extends StatelessWidget {
   const AppSubmitButton({
     required this.label,
@@ -7,6 +9,7 @@ class AppSubmitButton extends StatelessWidget {
     this.isLoading = false,
     this.textStyle,
     this.buttonStyle,
+    this.type = AppButtonType.primary,
     super.key,
   });
 
@@ -15,24 +18,34 @@ class AppSubmitButton extends StatelessWidget {
   final bool isLoading;
   final TextStyle? textStyle;
   final ButtonStyle? buttonStyle;
+  final AppButtonType type;
 
   @override
   Widget build(BuildContext context) {
+    final style = AppButtonStyles.forType(type);
+    final resolvedStyle = style
+        .merge(
+          textStyle == null
+              ? buttonStyle
+              : FilledButton.styleFrom(
+                  textStyle: textStyle!.copyWith(color: null),
+                ).merge(buttonStyle),
+        )
+        .copyWith(
+          backgroundColor: style.backgroundColor,
+          foregroundColor: style.foregroundColor,
+        );
+
     return FilledButton(
       onPressed: isLoading ? null : onPressed,
-      style:
-          (textStyle == null
-                  ? null
-                  : FilledButton.styleFrom(textStyle: textStyle))
-              ?.merge(buttonStyle) ??
-          buttonStyle,
+      style: resolvedStyle,
       child: isLoading
-          ? const SizedBox(
+          ? SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: AppButtonStyles.disabledForeground(type),
               ),
             )
           : Text(label),

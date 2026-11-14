@@ -12,12 +12,9 @@ class AppBrandMark extends StatelessWidget {
     return Text(
       'Dampingi',
       textAlign: TextAlign.center,
-      style: TextStyle(
-        fontFamily: AppTheme.fontFamily,
+      style: AppTypography.headingLargeSemibold.copyWith(
         color: AppTheme.coral,
         fontSize: fontSize,
-        fontWeight: FontWeight.w600,
-        height: 32 / 24,
         letterSpacing: 0,
       ),
     );
@@ -29,9 +26,6 @@ class AppBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: const Center(child: AppBrandMark()),
-    );
+    return SizedBox(height: 56, child: const Center(child: AppBrandMark()));
   }
 }

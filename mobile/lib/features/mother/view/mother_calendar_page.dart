@@ -414,7 +414,7 @@ class _MoodDay extends StatelessWidget {
                   child: Text(
                     day,
                     style: TextStyle(
-                      color: const Color(0xFF252B37),
+                      color: AppTheme.white10,
                       fontSize: scale(14),
                       fontWeight: FontWeight.w700,
                       height: 20 / 14,

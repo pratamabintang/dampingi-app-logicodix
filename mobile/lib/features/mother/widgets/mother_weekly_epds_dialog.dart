@@ -145,7 +145,7 @@ class _MotherWeeklyEpdsDialogState
                       padding: EdgeInsets.all(20 * scale),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border.all(color: const Color(0xFFFAFAFA)),
+                        border: Border.all(color: AppTheme.white3),
                         borderRadius: BorderRadius.circular(32 * scale),
                         boxShadow: const [
                           BoxShadow(
@@ -293,19 +293,19 @@ class _MotherWeeklyEpdsDialogState
           child: FilledButton(
             key: const Key('mother-weekly-epds-back'),
             onPressed: _back,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.coralLight,
-              foregroundColor: AppTheme.coralText,
-              elevation: 1,
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8 * scale),
-              ),
-              textStyle: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                fontSize: 16 * scale,
-                fontWeight: FontWeight.w600,
+            style: AppButtonStyles.secondary.merge(
+              FilledButton.styleFrom(
+                elevation: 1,
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8 * scale),
+                ),
+                textStyle: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: 16 * scale,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             child: const Text('Kembali'),
@@ -343,7 +343,7 @@ class _MotherWeeklyEpdsDialogState
             decoration: BoxDecoration(
               color: isSelected ? Colors.white : const Color(0xFFFAFAFA),
               border: Border.all(
-                color: isSelected ? selectedGreen : const Color(0xFFE9EAEB),
+                color: isSelected ? selectedGreen : AppTheme.white3,
                 width: isSelected ? 1.5 * scale : 1,
               ),
               borderRadius: BorderRadius.circular(12 * scale),
@@ -527,8 +527,6 @@ class _MotherWeeklyEpdsDialogState
         key: key,
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: AppTheme.coral,
-          foregroundColor: Colors.white,
           elevation: 1,
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

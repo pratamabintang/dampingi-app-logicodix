@@ -236,7 +236,7 @@ class _CompanionNotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isUnread ? AppTheme.coralText : const Color(0xFF252B37);
+    final titleColor = isUnread ? AppTheme.pink6 : AppTheme.white10;
     final messageColor = isUnread ? AppTheme.coralText : AppTheme.muted;
 
     return Container(
@@ -636,7 +636,7 @@ class CompanionProfilePage extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.all(scale * 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFAF9),
+                      color: AppTheme.pink1,
                       borderRadius: BorderRadius.circular(scale * 32),
                     ),
                     child: Row(
@@ -711,18 +711,20 @@ class _CompanionProfileButton extends StatelessWidget {
       height: scale * 48,
       child: FilledButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.pink2 : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(scale * 8),
-          ),
-          textStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: scale * 16,
-            fontWeight: FontWeight.w600,
+        style: AppButtonStyles.forType(
+          secondary ? AppButtonType.secondary : AppButtonType.primary,
+        ).merge(
+          FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(scale * 8),
+            ),
+            textStyle: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: scale * 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         child: Text(label),

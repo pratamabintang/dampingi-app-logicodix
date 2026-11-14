@@ -136,7 +136,7 @@ class _PatientStoryCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: const Color(0xFF252B37),
+              color: AppTheme.white10,
               fontSize: scale(14),
               fontWeight: FontWeight.w600,
               height: 20 / 14,
@@ -161,13 +161,13 @@ class _PatientStoryCard extends StatelessWidget {
             child: TextButton(
               key: const Key('doctor-patient-story-expand'),
               onPressed: onToggleExpanded,
-              style: TextButton.styleFrom(
-                backgroundColor: AppTheme.coralLight,
-                foregroundColor: AppTheme.coralText,
-                padding: EdgeInsets.symmetric(vertical: scale(4)),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(scale(8)),
+              style: AppButtonStyles.secondaryText.merge(
+                TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: scale(4)),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(scale(8)),
+                  ),
                 ),
               ),
               child: Text(

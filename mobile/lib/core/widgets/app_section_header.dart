@@ -25,11 +25,9 @@ class AppSectionHeader extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: const Color(0xFF252B37),
+            style: AppTypography.labelStrongSemibold.copyWith(
+              color: AppTheme.white10,
               fontSize: 16 * scale,
-              fontWeight: FontWeight.w600,
-              height: 24 / 16,
             ),
           ),
         ),

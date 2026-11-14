@@ -89,18 +89,18 @@ class _RolePickerContent extends StatelessWidget {
                         onPressed: selectedRole == null
                             ? null
                             : onCreateAccount,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppTheme.coral,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          textStyle: const TextStyle(
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            height: 24 / 16,
+                        style: AppButtonStyles.primary.merge(
+                          FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            textStyle: const TextStyle(
+                              fontFamily: AppTheme.fontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 24 / 16,
+                            ),
                           ),
                         ),
                         child: const Text('Buat akun'),
@@ -109,23 +109,23 @@ class _RolePickerContent extends StatelessWidget {
                       FilledButton(
                         key: const Key('role-login'),
                         onPressed: selectedRole == null ? null : onLogin,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppTheme.coralLight,
-                          foregroundColor: AppTheme.coralText,
-                          minimumSize: const Size.fromHeight(48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          textStyle: const TextStyle(
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            height: 24 / 16,
+                        style: AppButtonStyles.secondary.merge(
+                          FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            textStyle: const TextStyle(
+                              fontFamily: AppTheme.fontFamily,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 24 / 16,
+                            ),
                           ),
                         ),
                         child: const Text(
                           'Masuk',
-                          style: TextStyle(fontFamily: 'Mona Sans'),
+                          style: TextStyle(fontFamily: AppTheme.fontFamily),
                         ),
                       ),
                     ],
@@ -151,7 +151,7 @@ class _RolePickerHeader extends StatelessWidget {
           'Pilih Peranmu di Dampingi',
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'Mona Sans',
+            fontFamily: AppTheme.fontFamily,
             color: AppTheme.coral,
             fontSize: 24,
             fontWeight: FontWeight.w600,

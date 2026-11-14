@@ -111,8 +111,6 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                                   height: 24 / 16,
                                 ),
                                 buttonStyle: FilledButton.styleFrom(
-                                  backgroundColor: AppTheme.coral,
-                                  foregroundColor: Colors.white,
                                   padding: EdgeInsets.symmetric(
                                     horizontal: scaled(20),
                                     vertical: scaled(12),
@@ -263,14 +261,11 @@ class _ProfileActionButton extends StatelessWidget {
         onPressed: onPressed,
         textStyle: TextStyle(
           fontFamily: AppTheme.fontFamily,
-          color: Colors.white,
           fontSize: scale(16),
           fontWeight: FontWeight.w600,
           height: 24 / 16,
         ),
         buttonStyle: FilledButton.styleFrom(
-          backgroundColor: AppTheme.coral,
-          foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(
             horizontal: scale(20),
             vertical: scale(12),
@@ -317,7 +312,7 @@ class _CompanionPermissionsCard extends StatelessWidget {
             title,
             maxLines: 2,
             style: TextStyle(
-              color: const Color(0xFF252B37),
+              color: AppTheme.white10,
               fontSize: scale(16),
               fontWeight: FontWeight.w600,
               height: 24 / 16,
@@ -382,7 +377,7 @@ class _CompanionPermissionCard extends StatelessWidget {
       padding: EdgeInsets.all(scale(16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scale(24)),
       ),
       child: Column(
@@ -490,7 +485,7 @@ class _PermissionRow extends StatelessWidget {
             child: Text(
               permission.label,
               style: TextStyle(
-                color: const Color(0xFF252B37),
+                color: AppTheme.white10,
                 fontSize: scale(14),
                 fontWeight: FontWeight.w500,
                 height: 20 / 14,
@@ -600,7 +595,7 @@ class _ProfessionalSharingPermissionsSection extends ConsumerWidget {
           Text(
             'Bagikan data kepada tenaga kesehatan',
             style: TextStyle(
-              color: const Color(0xFF252B37),
+              color: AppTheme.white10,
               fontSize: scale(16),
               fontWeight: FontWeight.w600,
               height: 24 / 16,
@@ -694,7 +689,7 @@ class _ProfessionalSharingEditorState
       padding: EdgeInsets.all(widget.scale(16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(widget.scale(24)),
       ),
       child: Column(

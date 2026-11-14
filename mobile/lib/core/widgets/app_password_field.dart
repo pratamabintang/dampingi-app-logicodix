@@ -48,7 +48,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
           widget.label,
           style:
               widget.labelStyle ??
-              Theme.of(context).textTheme.bodyMedium
+              Theme.of(context).textTheme.labelMedium
                   ?.copyWith(color: AppTheme.body),
         ),
         const SizedBox(height: 6),
@@ -62,7 +62,11 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
             height: widget.inputHeight,
             child: TextFormField(
               controller: widget.controller,
-              style: widget.textStyle,
+              style:
+                  widget.textStyle ??
+                  AppTypography.bodyDefaultRegular.copyWith(
+                    color: AppTheme.white10,
+                  ),
               validator: widget.validator,
               obscureText: _obscureText,
               textInputAction: widget.textInputAction,

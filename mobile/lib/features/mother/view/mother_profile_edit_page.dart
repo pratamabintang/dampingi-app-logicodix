@@ -152,26 +152,26 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                               key: _key('photo'),
                               onPressed: () =>
                                   _notify('Fitur ubah foto belum tersedia.'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppTheme.coralLight,
-                                foregroundColor: AppTheme.coralText,
-                                minimumSize: Size(0, scaled(48)),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: scaled(20),
-                                  vertical: scaled(12),
-                                ),
-                                elevation: 1,
-                                shadowColor: const Color(0x0D101828),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    scaled(8),
+                              style: AppButtonStyles.secondary.merge(
+                                FilledButton.styleFrom(
+                                  minimumSize: Size(0, scaled(48)),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: scaled(20),
+                                    vertical: scaled(12),
                                   ),
-                                ),
-                                textStyle: TextStyle(
-                                  fontFamily: AppTheme.fontFamily,
-                                  fontSize: scaled(16),
-                                  fontWeight: FontWeight.w600,
-                                  height: 24 / 16,
+                                  elevation: 1,
+                                  shadowColor: const Color(0x0D101828),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      scaled(8),
+                                    ),
+                                  ),
+                                  textStyle: TextStyle(
+                                    fontFamily: AppTheme.fontFamily,
+                                    fontSize: scaled(16),
+                                    fontWeight: FontWeight.w600,
+                                    height: 24 / 16,
+                                  ),
                                 ),
                               ),
                               child: const Text('Ubah Foto'),
@@ -216,8 +216,6 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                             height: 24 / 16,
                           ),
                           buttonStyle: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.coral,
-                            foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
                               horizontal: scaled(20),
                               vertical: scaled(12),
@@ -290,8 +288,6 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
                                   height: 24 / 16,
                                 ),
                                 buttonStyle: FilledButton.styleFrom(
-                                  backgroundColor: AppTheme.coral,
-                                  foregroundColor: Colors.white,
                                   padding: EdgeInsets.symmetric(
                                     horizontal: scaled(20),
                                     vertical: scaled(12),

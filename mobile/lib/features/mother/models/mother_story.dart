@@ -71,6 +71,12 @@ class MotherStory {
     if (mood == null) {
       throw FormatException('Invalid mood "$moodName" for story "$id".');
     }
+    final day = json['day'];
+    final description = json['description'];
+    if ((day != null && day is! String) ||
+        (description != null && description is! String)) {
+      throw FormatException('Invalid entry details for story "$id".');
+    }
     return MotherStory(
       id: id,
       weekdayIndex: weekdayIndex,
@@ -80,10 +86,8 @@ class MotherStory {
       title: _requiredString(json, 'title'),
       note: _requiredString(json, 'note'),
       summary: _requiredString(json, 'summary'),
-      description: json['description'] is String
-          ? json['description'] as String
-          : '',
-      day: json['day'] is String ? json['day'] as String : '',
+      day: day as String? ?? '',
+      description: description as String? ?? '',
     );
   }
 }

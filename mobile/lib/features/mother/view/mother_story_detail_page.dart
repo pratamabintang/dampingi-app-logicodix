@@ -101,8 +101,6 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                             height: 24 / 16,
                           ),
                           buttonStyle: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.coral,
-                            foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
                               horizontal: scaled(20),
                               vertical: scaled(12),
@@ -131,14 +129,13 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                                 journalContent: story.note,
                               ),
                             ),
+                            type: AppButtonType.secondary,
                             textStyle: TextStyle(
                               fontSize: scaled(16),
                               fontWeight: FontWeight.w600,
                               height: 24 / 16,
                             ),
                             buttonStyle: FilledButton.styleFrom(
-                              backgroundColor: AppTheme.coralLight,
-                              foregroundColor: AppTheme.coralText,
                               padding: EdgeInsets.symmetric(
                                 horizontal: scaled(20),
                                 vertical: scaled(12),
@@ -396,7 +393,7 @@ class _StoryText extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                color: const Color(0xFF252B37),
+                color: AppTheme.white10,
                 fontSize: scale(14),
                 fontWeight: FontWeight.w600,
                 height: 20 / 14,
@@ -420,12 +417,12 @@ class _StoryText extends StatelessWidget {
                 child: TextButton(
                   key: const Key('mother-story-toggle-text'),
                   onPressed: onToggleExpanded,
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppTheme.coralLight,
-                    foregroundColor: AppTheme.coralText,
-                    padding: EdgeInsets.symmetric(vertical: scale(4)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(scale(8)),
+                  style: AppButtonStyles.secondaryText.merge(
+                    TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: scale(4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(scale(8)),
+                      ),
                     ),
                   ),
                   child: Text(

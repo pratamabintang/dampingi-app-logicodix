@@ -111,7 +111,7 @@ class _SuggestionCard extends StatelessWidget {
       padding: EdgeInsets.all(scaled(20)),
       decoration: BoxDecoration(
         color: const Color(0x1AFFFFFF),
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scaled(32)),
       ),
       child: Column(
@@ -152,8 +152,6 @@ class _SuggestionCard extends StatelessWidget {
               key: const Key('mother-meditation-suggestion-start'),
               onPressed: onTap,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.coral,
-                foregroundColor: Colors.white,
                 fixedSize: Size.fromHeight(scaled(48)),
                 minimumSize: Size(0, scaled(48)),
                 padding: EdgeInsets.zero,
@@ -197,7 +195,7 @@ class _MeditationActivitiesCard extends StatelessWidget {
       padding: EdgeInsets.all(scaled(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scaled(32)),
       ),
       child: Column(
@@ -265,7 +263,7 @@ class _MeditationActivityRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: const Color(0xFF252B37),
+                            color: AppTheme.white10,
                             fontSize: scaled(16),
                             fontWeight: FontWeight.w600,
                             height: 24 / 16,
@@ -481,8 +479,7 @@ class _MotherBreathingSessionPageState
                           child: _SessionActionButton(
                             key: const Key('mother-breathing-start'),
                             label: _isRunning ? 'Jeda' : 'Mulai',
-                            backgroundColor: AppTheme.coral,
-                            foregroundColor: Colors.white,
+                            type: AppButtonType.primary,
                             scale: scale,
                             onPressed: _startOrPause,
                           ),
@@ -492,8 +489,7 @@ class _MotherBreathingSessionPageState
                           child: _SessionActionButton(
                             key: const Key('mother-breathing-reset'),
                             label: 'Ulangi',
-                            backgroundColor: AppTheme.coralLight,
-                            foregroundColor: AppTheme.coralText,
+                            type: AppButtonType.secondary,
                             scale: scale,
                             onPressed: _reset,
                           ),
@@ -705,43 +701,40 @@ class _DurationAdjustmentButton extends StatelessWidget {
 class _SessionActionButton extends StatelessWidget {
   const _SessionActionButton({
     required this.label,
-    required this.backgroundColor,
-    required this.foregroundColor,
+    required this.type,
     required this.scale,
     required this.onPressed,
     super.key,
   });
 
   final String label;
-  final Color backgroundColor;
-  final Color foregroundColor;
+  final AppButtonType type;
   final double scale;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(8 * scale),
-      elevation: 1,
-      shadowColor: const Color(0x0D101828),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8 * scale),
-        child: SizedBox(
-          height: 48 * scale,
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: foregroundColor,
-                fontSize: 16 * scale,
-                fontWeight: FontWeight.w600,
-                height: 24 / 16,
-              ),
+    return SizedBox(
+      height: 48 * scale,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: AppButtonStyles.forType(type).merge(
+          FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            elevation: 1,
+            shadowColor: const Color(0x0D101828),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8 * scale),
+            ),
+            textStyle: TextStyle(
+              fontSize: 16 * scale,
+              fontWeight: FontWeight.w600,
+              height: 24 / 16,
             ),
           ),
         ),
+        child: Text(label),
       ),
     );
   }
@@ -876,7 +869,7 @@ class _BreathingStep extends StatelessWidget {
                     maxLines: isLast ? 2 : 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: const Color(0xFF252B37),
+                      color: AppTheme.white10,
                       fontSize: scaled(14),
                       fontWeight: FontWeight.w600,
                       height: 20 / 14,
