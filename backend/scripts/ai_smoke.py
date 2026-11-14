@@ -35,11 +35,16 @@ CASES = [
 
 async def main() -> int:
     settings = AISettings()
-    if settings.ai_provider != "gemini":
-        print("AI_PROVIDER di .env bukan 'gemini'. Isi dulu AI_PROVIDER, GEMINI_API_KEY, GEMINI_MODEL.")
+    if settings.ai_provider not in ("gemini", "openai_compatible"):
+        print(
+            "AI_PROVIDER di .env belum menunjuk provider sungguhan.\n"
+            "  gemini            -> isi GEMINI_API_KEY dan GEMINI_MODEL\n"
+            "  openai_compatible -> isi AI_API_KEY, AI_BASE_URL, dan AI_MODEL"
+        )
         return 1
     gateway = build_gateway(settings)
-    print(f"Model: {settings.gemini_model}\n")
+    model = settings.gemini_model if settings.ai_provider == "gemini" else settings.ai_model
+    print(f"Model: {model} ({settings.ai_provider})\n")
 
     failed = 0
     for title, role, moods, message, want_urgent, forbidden in CASES:

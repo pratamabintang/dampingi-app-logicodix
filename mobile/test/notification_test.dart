@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:mobile/features/doctor/repositories/doctor_professional_note_repository.dart';
-import 'package:mobile/features/companion/view/companion_extra_pages.dart';
 import 'package:mobile/features/mother/repositories/mother_professional_note_notifications.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
@@ -229,23 +228,6 @@ void main() {
     expect(find.byKey(const Key('mother-notifications-empty')), findsNothing);
   });
 
-  testWidgets(
-    'a live Companion is told there is nothing, not shown mock cards',
-    (tester) async {
-      await pumpPage(
-        tester,
-        const CompanionNotificationsPage(),
-        token: 'real-access-token',
-      );
-
-      expect(
-        find.byKey(const Key('companion-notifications-empty')),
-        findsOneWidget,
-      );
-      expect(find.text('Ibu membagikan catatan baru'), findsNothing);
-    },
-  );
-
   testWidgets('preview keeps the design mock, worded as a redemption', (
     tester,
   ) async {
@@ -267,21 +249,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Layar Koneksi tujuan'), findsOneWidget);
     expect(find.text('Tukar kode belum tersedia.'), findsNothing);
-  });
-
-  testWidgets('notifikasi pendamping live tetap kosong', (tester) async {
-    await pumpPage(tester, const CompanionNotificationsPage(), token: 'token');
-    expect(
-      find.byKey(const Key('companion-notifications-empty')),
-      findsOneWidget,
-    );
-    expect(find.text('Ibu membagikan catatan baru'), findsNothing);
-  });
-
-  testWidgets('preview pendamping tetap tersedia', (tester) async {
-    await pumpPage(tester, const CompanionNotificationsPage());
-    expect(find.text('Ibu membagikan catatan baru'), findsOneWidget);
-    expect(find.text('Tips dukungan baru tersedia'), findsOneWidget);
   });
 }
 

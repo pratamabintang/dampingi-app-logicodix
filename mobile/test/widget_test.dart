@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:mobile/app.dart';
 import 'package:mobile/core/theme/app_theme.dart';
+import 'package:mobile/core/utils/greeting.dart';
 import 'package:mobile/core/widgets/app_card.dart';
 import 'package:mobile/core/widgets/app_empty.dart';
 import 'package:mobile/core/widgets/app_error.dart';
@@ -17,7 +18,6 @@ import 'package:mobile/features/auth/controller/auth_controller.dart';
 import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
-import 'package:mobile/features/companion/view/companion_extra_pages.dart';
 import 'package:mobile/features/connections/repositories/connection_repository.dart';
 import 'package:mobile/features/connections/preview_invite_codes.dart';
 import 'package:mobile/features/connections/view/koneksi_page.dart';
@@ -316,7 +316,7 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
     expect(find.byType(MotherPage), findsOneWidget);
-    expect(find.text('Selamat Pagi, Ibu Demo 👋'), findsOneWidget);
+    expect(find.text('${timeGreeting()}, Ibu Demo 👋'), findsOneWidget);
     expect(find.byKey(const Key('mother-mood-card')), findsOneWidget);
     expect(find.byKey(const Key('mother-epds-card')), findsOneWidget);
     expect(find.text('EPDS mingguan'), findsOneWidget);
@@ -928,14 +928,8 @@ void main() {
     );
     expect((activeHome.decoration! as BoxDecoration).color, AppTheme.coral);
 
-    await tester.tap(find.byKey(const Key('companion-notification')));
-    await tester.pumpAndSettle();
-    expect(find.byType(CompanionNotificationsPage), findsOneWidget);
-    expect(find.text('Notifikasi anda'), findsOneWidget);
-    expect(find.text('Ibu membagikan catatan baru'), findsOneWidget);
-    expect(find.byKey(const Key('mother-bottom-navigation')), findsNothing);
-    await tester.tap(find.byKey(const Key('companion-notifications-back')));
-    await tester.pumpAndSettle();
+    // Notifikasi sengaja tidak ada di sisi pendamping: menunya dihapus.
+    expect(find.byKey(const Key('companion-notification')), findsNothing);
     expect(find.byType(CompanionPage), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('companion-observation-start')));
