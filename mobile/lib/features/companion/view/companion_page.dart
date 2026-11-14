@@ -43,8 +43,6 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                 ? constraints.maxWidth
                 : 390 * scale;
             final isDetail = _screen == _CompanionScreen.noteDetail;
-            final isChat = _screen == _CompanionScreen.chat;
-
             return _CompanionScale(
               factor: scale,
               child: Center(
@@ -124,21 +122,13 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                           onProfileTap: () => setState(
                             () => _screen = _CompanionScreen.profile,
                           ),
-                          calendarLabel: isChat ? 'Kalender' : 'Observasi',
-                          chatLabel: isChat ? 'Rekomendasi' : 'Chat AI',
-                          meditationLabel: isChat ? 'Meditasi' : 'Dukungan',
-                          calendarInactiveAsset: isChat
-                              ? 'calendar.svg'
-                              : 'observation.svg',
-                          calendarActiveAsset: isChat
-                              ? 'calendar-active.svg'
-                              : 'observation-active.svg',
-                          meditationInactiveAsset: isChat
-                              ? 'meditation.svg'
-                              : 'support.svg',
-                          meditationActiveAsset: isChat
-                              ? 'meditation-active.svg'
-                              : 'support-active.svg',
+                          calendarLabel: 'Observasi',
+                          chatLabel: 'Rekomendasi',
+                          meditationLabel: 'Panduan',
+                          calendarInactiveAsset: 'observation.svg',
+                          calendarActiveAsset: 'observation-active.svg',
+                          meditationInactiveAsset: 'doctor-book.svg',
+                          meditationActiveAsset: 'doctor-book-active.svg',
                         ),
                     ],
                   ),
