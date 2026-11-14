@@ -253,3 +253,40 @@ def test_get_weekly_summary_rejects_non_monday(
     )
 
     assert response.status_code == 422
+
+def test_create_weekly_summary_returns_partial(summary_client, monkeypatch):
+    client, session = summary_client
+
+    from app.summaries.schemas import (
+        Audience,
+        WeeklySummaryResponse,
+    )
+
+    async def mock_create_summary(user_id, period_start):
+        return WeeklySummaryResponse(
+            period_start=date(2026, 11, 9),
+            period_end=date(2026, 11, 15),
+            audience=Audience.MOTHER,
+            status="partial",
+            overview=None,
+            limitations=[
+                "Ringkasan AI tidak tersedia saat ini."
+            ],
+            source_refs=[],
+            prompt_version="weekly-summary-v2",
+        )
+
+    monkeypatch.setattr(
+        "app.summaries.router.service.create_weekly_summary_v2",
+        mock_create_summary,
+    )
+
+    response = client.post(
+        "/summaries/weekly",
+        json={"period_start": "2026-11-09"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "partial"
+    assert response.json()["overview"] is None
+    assert response.json()["limitations"]
