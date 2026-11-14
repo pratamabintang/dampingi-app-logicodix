@@ -532,6 +532,7 @@ class CompanionProfilePage extends StatelessWidget {
     required this.onEdit,
     required this.onOpenConnections,
     required this.onLogout,
+    this.motherName = '',
     super.key,
   });
 
@@ -539,6 +540,7 @@ class CompanionProfilePage extends StatelessWidget {
   final String userName;
   final String email;
   final bool hasMother;
+  final String motherName;
   final VoidCallback onEdit;
   final VoidCallback onOpenConnections;
   final VoidCallback onLogout;
@@ -654,7 +656,7 @@ class CompanionProfilePage extends StatelessWidget {
                             width: scale * 56,
                             height: scale * 56,
                             fit: BoxFit.cover,
-                            semanticLabel: 'Foto Ny. Shopia Mudjahidah',
+                            semanticLabel: 'Foto $motherName',
                           ),
                         ),
                         SizedBox(width: scale * 16),
@@ -663,7 +665,7 @@ class CompanionProfilePage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Ny, Shopia Mudjahidah',
+                                motherName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -671,15 +673,6 @@ class CompanionProfilePage extends StatelessWidget {
                                   fontFamily: AppTheme.fontFamily,
                                   fontSize: scale * 16,
                                   fontWeight: FontWeight.w600,
-                                  height: 24 / 16,
-                                ),
-                              ),
-                              Text(
-                                'shopia***@gmail.com',
-                                style: TextStyle(
-                                  color: AppTheme.muted,
-                                  fontFamily: AppTheme.fontFamily,
-                                  fontSize: scale * 16,
                                   height: 24 / 16,
                                 ),
                               ),
