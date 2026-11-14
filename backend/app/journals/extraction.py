@@ -1,5 +1,6 @@
 
 import json
+import logging
 from functools import lru_cache
 
 from pydantic import ValidationError
@@ -13,7 +14,7 @@ from .extraction_schemas import (
     JournalExtractionOut,
 )
 
-
+logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """
 Ekstrak tema utama dari jurnal yang diberikan.
 
@@ -85,7 +86,11 @@ async def extract_journal_themes(
             processing_status="completed",
         )
 
-    except (AIError, ValidationError, ValueError):
+    except (AIError, ValidationError, ValueError) as exc:
+        logger.warning(
+            "Ekstraksi tema jurnal gagal: %s",
+            type(exc).__name__,
+        )
         return JournalExtractionOut(
             themes=[],
             processing_status="failed",

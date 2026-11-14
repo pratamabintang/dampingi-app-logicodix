@@ -101,6 +101,18 @@ class AIGateway:
         try:
             return output.model_validate_json(raw)
         except ValidationError as exc:
+            errors = [
+                {
+                    "loc": error["loc"],
+                    "type": error["type"],
+                }
+                for error in exc.errors(include_input=False)
+            ]
+            logger.warning(
+                "AI output tidak sesuai schema %s: %s",
+                output.__name__,
+                errors,
+            )
             raise AIBadOutput() from exc
 
     async def reply(self, system: str, turns: list[Turn]) -> AIReply:

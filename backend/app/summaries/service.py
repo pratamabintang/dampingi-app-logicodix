@@ -3,6 +3,7 @@ import asyncio
 import json
 from datetime import date, timedelta
 from functools import lru_cache
+import logging
 
 from app.ai import AIGateway, AIError, Turn
 from app.ai.config import build_gateway
@@ -23,6 +24,7 @@ from app.summaries.schemas import (
     WeeklySummaryResponse,
 )
 
+logger = logging.getLogger(__name__)
 
 @lru_cache(maxsize=1)
 def get_summary_gateway() -> AIGateway:
@@ -288,7 +290,11 @@ async def create_weekly_summary_v2(
             output=WeeklySummaryAIOut,
         )
 
-    except AIError:
+    except AIError as exc:
+        logger.warning(
+            "Weekly summary AI gagal: %s",
+            type(exc).__name__,
+        )
         summary = WeeklySummaryResponse(
             period_start=period_start,
             period_end=end_date,
