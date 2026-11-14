@@ -136,7 +136,7 @@ class _PatientStoryCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: const Color(0xFF252B37),
+              color: AppTheme.white10,
               fontSize: scale(14),
               fontWeight: FontWeight.w600,
               height: 20 / 14,

@@ -344,7 +344,7 @@ class _MotherSummaryCard extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(scale(8)),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFAF9),
+              color: AppTheme.pink1,
               borderRadius: BorderRadius.circular(scale(32)),
             ),
             child: Row(
@@ -658,7 +658,7 @@ class _CompanionNoteRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: const Color(0xFF252B37),
+                          color: AppTheme.white10,
                           fontFamily: AppTheme.fontFamily,
                           fontSize: scale(16),
                           fontWeight: FontWeight.w600,
@@ -1431,7 +1431,7 @@ class _CompanionNoteDetailPageState extends State<_CompanionNoteDetailPage> {
                 width: double.infinity,
                 padding: EdgeInsets.all(scale(20)),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFAF9),
+                  color: AppTheme.pink1,
                   border: Border.all(color: AppTheme.coral),
                   borderRadius: BorderRadius.circular(scale(24)),
                 ),

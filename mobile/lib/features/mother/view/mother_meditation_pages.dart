@@ -111,7 +111,7 @@ class _SuggestionCard extends StatelessWidget {
       padding: EdgeInsets.all(scaled(20)),
       decoration: BoxDecoration(
         color: const Color(0x1AFFFFFF),
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scaled(32)),
       ),
       child: Column(
@@ -197,7 +197,7 @@ class _MeditationActivitiesCard extends StatelessWidget {
       padding: EdgeInsets.all(scaled(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scaled(32)),
       ),
       child: Column(
@@ -265,7 +265,7 @@ class _MeditationActivityRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: const Color(0xFF252B37),
+                            color: AppTheme.white10,
                             fontSize: scaled(16),
                             fontWeight: FontWeight.w600,
                             height: 24 / 16,
@@ -876,7 +876,7 @@ class _BreathingStep extends StatelessWidget {
                     maxLines: isLast ? 2 : 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: const Color(0xFF252B37),
+                      color: AppTheme.white10,
                       fontSize: scaled(14),
                       fontWeight: FontWeight.w600,
                       height: 20 / 14,

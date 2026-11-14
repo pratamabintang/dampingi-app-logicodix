@@ -223,9 +223,7 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isHighlighted
-        ? AppTheme.coralText
-        : const Color(0xFF252B37);
+    final titleColor = isHighlighted ? AppTheme.coralText : AppTheme.white10;
     final messageColor = isHighlighted ? AppTheme.coralText : AppTheme.muted;
 
     return Container(
@@ -312,7 +310,7 @@ class _CodeRedemptionDialog extends StatelessWidget {
       padding: EdgeInsets.all(scale(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(scale(32)),
         boxShadow: const [
           BoxShadow(

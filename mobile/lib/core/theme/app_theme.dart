@@ -2,32 +2,43 @@ import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
   static const fontFamily = 'Mona Sans';
-  static const coral = Color(0xFFFDA29B);
-  static const coralText = Color(0xFFF97066);
-  static const coralLight = Color(0xFFFEE4E2);
-  static const cream = Color(0xFFFAF4E7);
-  static const ink = Color(0xFF0A0D12);
-  static const body = Color(0xFF344054);
-  static const secondary = Color(0xFF667085);
-  static const gray500 = Color(0xFF717680);
-  static const gray200 = Color(0xFFE9EAEB);
-  static const muted = Color(0xFFA4A7AE);
-  static const border = Color(0xFFD0D5DD);
+  static const pink1 = Color(0xFFFFFAFA);
   static const pink2 = Color(0xFFFEF3F2);
-  static const selectedSurface = Color(0xFFFFFBFA);
-  static const unselectedSurface = Color(0xFFF5F5F5);
+  static const pink3 = Color(0xFFFEE4E2);
+  static const pink6 = Color(0xFFF97066);
+  static const white1 = Color(0xFFFDFDFD);
+  static const white2 = Color(0xFFFAFAFA);
+  static const white3 = Color(0xFFF5F5F5);
+  static const white6 = Color(0xFFA4A7AE);
+  static const white7 = Color(0xFF717680);
+  static const white10 = Color(0xFF252B37);
+  static const white12 = Color(0xFF0A0D12);
+
+  static const coral = pink6;
+  static const coralText = pink6;
+  static const coralLight = pink3;
+  static const cream = Color(0xFFFAF4E7);
+  static const ink = white12;
+  static const body = white10;
+  static const secondary = white7;
+  static const gray500 = white7;
+  static const gray200 = white3;
+  static const muted = white6;
+  static const border = white3;
+  static const selectedSurface = pink1;
+  static const unselectedSurface = white3;
   static const inputShadow = [
     BoxShadow(color: Color(0x0D101828), offset: Offset(0, 1), blurRadius: 2),
   ];
 
   static final light = ThemeData(
     colorScheme: ColorScheme.fromSeed(
-      seedColor: coral,
-      primary: coral,
-      onPrimary: Colors.white,
+      seedColor: pink6,
+      primary: pink6,
+      onPrimary: white1,
     ),
     useMaterial3: true,
-    scaffoldBackgroundColor: Colors.white,
+    scaffoldBackgroundColor: white1,
     textTheme: TextTheme(
       titleLarge: TextStyle(
         color: ink,
@@ -51,7 +62,7 @@ abstract final class AppTheme {
     ).apply(fontFamily: fontFamily),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: white1,
       hintStyle: TextStyle(
         fontFamily: fontFamily,
         color: secondary,
@@ -68,7 +79,7 @@ abstract final class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: coral, width: 1.5),
+        borderSide: const BorderSide(color: pink6, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -81,8 +92,8 @@ abstract final class AppTheme {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: coral,
-        foregroundColor: Colors.white,
+        backgroundColor: pink6,
+        foregroundColor: white1,
         minimumSize: const Size.fromHeight(48),
         elevation: 1,
         shadowColor: const Color(0x0D101828),
@@ -96,7 +107,7 @@ abstract final class AppTheme {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: coral,
+        foregroundColor: pink6,
         textStyle: const TextStyle(
           fontFamily: fontFamily,
           fontWeight: FontWeight.w600,

@@ -50,7 +50,7 @@ class AppBottomNavigationBar extends StatelessWidget {
           key: navigationKey,
           decoration: const BoxDecoration(
             color: Color(0xFFFDFDFD),
-            border: Border(top: BorderSide(color: Color(0xFFFAFAFA))),
+            border: Border(top: BorderSide(color: AppTheme.white3)),
           ),
           child: SafeArea(
             top: false,

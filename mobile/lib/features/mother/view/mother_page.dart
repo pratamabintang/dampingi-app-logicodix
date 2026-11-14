@@ -275,7 +275,7 @@ class _MoodCard extends ConsumerWidget {
       padding: EdgeInsets.all(context.scaled(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(context.scaled(32)),
       ),
       child: Column(
@@ -399,6 +399,7 @@ class _StoriesCard extends StatelessWidget {
       key: const Key('mother-stories-card'),
       padding: EdgeInsets.all(scale(20)),
       borderRadius: scale(32),
+      backgroundColor: Colors.white,
       child: Column(
         children: [
           AppSectionHeader(
@@ -496,7 +497,7 @@ class _ActivitiesCard extends StatelessWidget {
       padding: EdgeInsets.all(context.scaled(20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(context.scaled(32)),
       ),
       child: Column(
@@ -532,7 +533,7 @@ class _ActivityRow extends StatelessWidget {
               Text(
                 'Meditasi Singkat',
                 style: TextStyle(
-                  color: Color(0xFF252B37),
+                  color: AppTheme.white10,
                   fontSize: context.scaled(16),
                   fontWeight: FontWeight.w600,
                   height: 24 / 16,
@@ -856,7 +857,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
           child: Text(
             'Apa yang paling menggambarkan perasaanmu?',
             style: TextStyle(
-              color: const Color(0xFF252B37),
+              color: AppTheme.white10,
               fontSize: 14 * scale,
               fontWeight: FontWeight.w600,
               height: 20 / 14,

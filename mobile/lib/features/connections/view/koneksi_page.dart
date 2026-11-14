@@ -579,7 +579,7 @@ class _IssueButton extends StatelessWidget {
           onPressed: reason != null || busy ? null : onPressed,
           style: FilledButton.styleFrom(
             backgroundColor: AppTheme.coral,
-            disabledBackgroundColor: const Color(0x66FDA29B),
+            disabledBackgroundColor: AppTheme.pink6.withValues(alpha: 0.4),
             padding: EdgeInsets.symmetric(vertical: scale(12)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(scale(16)),

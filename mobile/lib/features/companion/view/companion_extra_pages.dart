@@ -245,7 +245,7 @@ class _CompanionNotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isUnread ? AppTheme.coralText : const Color(0xFF252B37);
+    final titleColor = isUnread ? AppTheme.pink6 : AppTheme.white10;
     final messageColor = isUnread ? AppTheme.coralText : AppTheme.muted;
 
     return Container(
@@ -643,7 +643,7 @@ class CompanionProfilePage extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.all(scale * 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFAF9),
+                      color: AppTheme.pink1,
                       borderRadius: BorderRadius.circular(scale * 32),
                     ),
                     child: Row(

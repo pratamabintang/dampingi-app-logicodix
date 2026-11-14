@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class AppCard extends StatelessWidget {
   const AppCard({
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.borderRadius = 32,
-    this.backgroundColor = Colors.white,
-    this.borderColor = const Color(0xFFFAFAFA),
+    this.backgroundColor = AppTheme.white1,
+    this.borderColor = AppTheme.white3,
     super.key,
   });
 

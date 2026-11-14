@@ -414,7 +414,7 @@ class _DoctorGuidePageState extends ConsumerState<DoctorGuidePage> {
                     padding: EdgeInsets.all(20 * scale),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border.all(color: const Color(0xFFFAFAFA)),
+                      border: Border.all(color: AppTheme.white3),
                       borderRadius: BorderRadius.circular(32 * scale),
                       boxShadow: const [
                         BoxShadow(
@@ -519,7 +519,7 @@ class _InstructionFormDialogState extends State<_InstructionFormDialog> {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
+        border: Border.all(color: AppTheme.white3),
         borderRadius: BorderRadius.circular(32 * scale),
         boxShadow: const [
           BoxShadow(
