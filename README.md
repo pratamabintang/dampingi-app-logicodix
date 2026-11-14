@@ -10,13 +10,14 @@ eksplisit oleh ibu.
 
 | | |
 |---|---|
-| Nama tim | _isi_ |
+| Nama tim | koptem (kopi tembalang) |
 
 | No | Nama anggota | Peran di tim | Akun GitHub |
 |---|---|---|---|
-| 1 | _isi_ | _isi_ | _isi_ |
-| 2 | _isi_ | _isi_ | _isi_ |
-| 3 | _isi_ | _isi_ | _isi_ |
+| 1 | Ananda Bintang | Developer | https://github.com/pratamabintang |
+| 2 | Mutiara Aisyah | Developer | https://github.com/aisyyaaa |
+| 3 | Enzokulin Samsidan | Developer | https://github.com/enzw |
+| 4 | Novia Putri | Developer | https://github.com/notvius |
 
 Repositori: <https://github.com/pratamabintang/dampingi-app-logicodix>
 
@@ -26,7 +27,9 @@ Repositori: <https://github.com/pratamabintang/dampingi-app-logicodix>
 |---|---|
 | Kategori | **Mobile** (aplikasi Android/iOS, Flutter) |
 | Nama aplikasi | **Dampingi** |
+| ID aplikasi (Android & iOS) | `id.logicodix.mobile` |
 | Versi | `1.0.0+1` (`mobile/pubspec.yaml`) |
+| Platform | Android (diuji di perangkat fisik); struktur proyek iOS tersedia (`mobile/ios/`) |
 
 **Deskripsi solusi.** Dampingi menyatukan tiga hal yang biasanya terpisah:
 pencatatan mandiri ibu (mood, jurnal, kalender harian), dukungan orang terdekat
@@ -345,7 +348,48 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000 --dart-define=USE_BA
   LAN atau URL tunnel bila diuji di perangkat fisik.
 - Tanpa `API_BASE_URL`, aplikasi berjalan di **mode pratinjau** dengan
   autentikasi tiruan dan data fixture, tanpa backend.
-- Build APK: `flutter build apk --debug` (tambahkan kedua `--dart-define` di atas).
+**Membangun APK yang langsung terhubung ke server demo.** Server demo yang
+dipakai tim saat ini:
+
+```
+https://tired-clusters-stripes-cnet.trycloudflare.com
+```
+
+Bangun APK yang sudah menunjuk ke server itu, lalu pasang ke perangkat:
+
+```sh
+cd mobile
+flutter pub get
+flutter build apk --debug \
+  --dart-define=API_BASE_URL=https://tired-clusters-stripes-cnet.trycloudflare.com \
+  --dart-define=USE_BACKEND_AUTH=true
+
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Hasil build ada di `mobile/build/app/outputs/flutter-apk/app-debug.apk`. Bila
+ingin menjalankan langsung tanpa memasang manual:
+
+```sh
+flutter run \
+  --dart-define=API_BASE_URL=https://tired-clusters-stripes-cnet.trycloudflare.com \
+  --dart-define=USE_BACKEND_AUTH=true
+```
+
+- `API_BASE_URL` ditulis **tanpa** garis miring di akhir.
+- Kedua `--dart-define` harus ikut di setiap build/run karena nilainya
+  ditanamkan ke dalam aplikasi (mobile tidak memakai berkas `.env`). APK tanpa
+  `USE_BACKEND_AUTH=true` akan berjalan di mode pratinjau dan tidak menyentuh
+  backend.
+- URL tunnel Cloudflare bersifat sementara dan **berubah setiap tunnel
+  dijalankan ulang**. Periksa lebih dulu: `curl <url>/health` harus menjawab
+  `{"status":"healthy"}`. Bila berubah, ganti nilai `API_BASE_URL` lalu build
+  ulang, atau taruh backend di host tetap agar alamatnya stabil.
+- Host backend wajib ada di `TRUSTED_HOSTS`; pola `*.trycloudflare.com` sudah
+  diizinkan sejak awal untuk keperluan demo.
+- APK `--debug` cukup untuk demo dan memakai penanda tangan debug. Untuk rilis,
+  pakai `flutter build apk --release` dengan `key.properties` sungguhan (lihat
+  `mobile/android/app/build.gradle.kts`).
 - Uji: `flutter test` dan `flutter analyze`.
 
 ### 6.6 Konfigurasi tambahan per fitur
@@ -572,3 +616,20 @@ BSD-3-Clause.
 memanfaatkannya tercantum pada bagian 4 (Supabase, gateway AI
 OpenAI-compatible, Google Gemini API, Cloudflare Tunnel, Render, Figma, GitHub)
 dan bagian 8 (penggunaan AI).
+
+## 12. Lisensi
+
+- Aplikasi mobile, backend, skema database, dan seluruh aset rancangan di
+  repositori ini adalah karya tim **koptem (kopi tembalang)** untuk keperluan
+  pengembangan dan demo produk **Dampingi**.
+- **Semua hak cipta dilindungi (all rights reserved).** Repositori ini tidak
+  menerbitkan lisensi sumber terbuka: tidak ada hak untuk menyalin,
+  memodifikasi, atau mendistribusikan ulang kode dan aset tim di luar keperluan
+  peninjauan dan penilaian, kecuali dengan izin tertulis dari tim. Belum ada
+  berkas `LICENSE` di repositori ini.
+- Komponen pihak ketiga tetap tunduk pada lisensi masing-masing seperti
+  tercantum pada bagian 4 dan bagian 11 (mis. Mona Sans di bawah SIL OFL 1.1,
+  paket Flutter/Dart dan Python sesuai lisensi paketnya, instrumen EPDS sesuai
+  ketentuan pemegang haknya).
+- Bila penyelenggara mewajibkan lisensi sumber terbuka, tambahkan berkas
+  `LICENSE` berisi teks lisensi yang dipilih dan sebutkan di bagian ini.
