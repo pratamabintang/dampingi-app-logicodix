@@ -43,6 +43,12 @@ class ConnectionRedeem(BaseModel):
 
 class CounterpartOut(BaseModel):
 
+    id: str = Field(
+        description=(
+            "The counterpart's user ID. A Companion needs the Mother's ID "
+            "to create an Observation about her."
+        )
+    )
     name: str
     role: str
 

@@ -43,7 +43,7 @@ def test_a_companion_redeems_a_mother_code(mock_client, connections_table):
     body = resp.json()
     assert body["id"]
     assert body["connected_at"]
-    assert body["counterpart"] == {"name": "Ani", "role": "mother"}
+    assert body["counterpart"] == {"id": CONNECTIONS_MOTHER, "name": "Ani", "role": "mother"}
     assert body.keys() == {"id", "connected_at", "counterpart"}, body
 
 
@@ -59,7 +59,7 @@ def test_a_mother_redeems_a_companion_code(mock_client, connections_table):
     )
     assert resp.status_code == 201, resp.text
     body = resp.json()
-    assert body["counterpart"] == {"name": "Budi", "role": "companion"}
+    assert body["counterpart"] == {"id": CONNECTIONS_COMPANION, "name": "Budi", "role": "companion"}
 
 
 def test_a_professional_redeems_a_mother_code(mock_client, connections_table):
@@ -73,7 +73,7 @@ def test_a_professional_redeems_a_mother_code(mock_client, connections_table):
         "/connections", headers=AUTH, json={"code": "EEEE-FFFF"}
     )
     assert resp.status_code == 201, resp.text
-    assert resp.json()["counterpart"] == {"name": "Ani", "role": "mother"}
+    assert resp.json()["counterpart"] == {"id": CONNECTIONS_MOTHER, "name": "Ani", "role": "mother"}
 
 
 def test_a_code_is_normalised_when_redeemed(mock_client, connections_table):
@@ -296,7 +296,7 @@ def test_a_mother_redeems_a_professional_code_after_the_first_ended(
 
     resp = client.post("/connections", headers=AUTH, json={"code": "AAAA-BBBB"})
     assert resp.status_code == 201, resp.text
-    assert resp.json()["counterpart"] == {"name": "Dr. Ratna", "role": "professional"}
+    assert resp.json()["counterpart"] == {"id": CONNECTIONS_PROFESSIONAL, "name": "Dr. Ratna", "role": "professional"}
 
 
 def test_a_deleted_redeemer_cannot_redeem(mock_client, connections_table):

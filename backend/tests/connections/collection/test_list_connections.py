@@ -43,7 +43,7 @@ def test_a_mother_sees_her_companion_and_professional(
     assert roles == {"companion", "professional"}
     for item in body["connections"]:
         assert item.keys() == {"id", "connected_at", "counterpart"}
-        assert item["counterpart"].keys() == {"name", "role"}
+        assert item["counterpart"].keys() == {"id", "name", "role"}
         assert item["id"]
         assert item["connected_at"]
 
@@ -88,7 +88,11 @@ def test_a_companion_sees_their_single_mother(mock_client, connections_table):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["count"] == 1
-    assert body["connections"][0]["counterpart"] == {"name": "Ani", "role": "mother"}
+    assert body["connections"][0]["counterpart"] == {
+          "id": CONNECTIONS_MOTHER,
+          "name": "Ani",
+          "role": "mother",
+    }
 
 
 def test_an_ended_connection_appears_in_neither_list(
@@ -129,7 +133,7 @@ def test_no_item_contains_the_counterpart_s_email(mock_client, connections_table
     assert resp.status_code == 200, resp.text
     for item in resp.json()["connections"]:
         assert item.keys() == {"id", "connected_at", "counterpart"}
-        assert item["counterpart"].keys() == {"name", "role"}
+        assert item["counterpart"].keys() == {"id", "name", "role"}
 
 
 def test_another_profile_s_connections_never_appear(

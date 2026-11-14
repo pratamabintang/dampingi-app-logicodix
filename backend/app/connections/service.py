@@ -143,6 +143,7 @@ def redeem_invite_code(user_id: str, code: str) -> dict:
         "id": conn["id"],
         "connected_at": conn["connected_at"],
         "counterpart": {
+            "id": issuer_id,
             "name": issuer_profile["name"],
             "role": issuer_profile["role"],
         },
@@ -188,8 +189,10 @@ def list_connections(
     for row in rows:
         if row["mother_id"] == user_id:
             counterpart = row["counterpart"]
+            counterpart_id = row["counterpart_id"]
         else:
             counterpart = row["mother"]
+            counterpart_id = row["mother_id"]
         if counterpart["deleted_at"]:
             continue
         items.append(
@@ -197,7 +200,9 @@ def list_connections(
                 id=row["id"],
                 connected_at=row["connected_at"],
                 counterpart=CounterpartOut(
-                    name=counterpart["name"], role=counterpart["role"]
+                    id=counterpart_id,
+                    name=counterpart["name"],
+                    role=counterpart["role"],
                 ),
             )
         )
