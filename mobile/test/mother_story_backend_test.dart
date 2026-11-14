@@ -151,6 +151,32 @@ void main() {
     expect(week.stories.single.title, 'Sabtu');
     expect(week.stories.single.mood, MotherMood.happy);
   });
+  test('today entry preloads the saved mood, feelings, and journal', () async {
+    final api = _TodayApi();
+    final container = ProviderContainer(
+      overrides: [
+        backendTokenProvider.overrideWithValue('valid-access-token'),
+        backendApiProvider.overrideWithValue(api),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final entry = await container.read(todayEntryProvider.future);
+
+    expect(entry?.mood, 4);
+    expect(entry?.feelings, ['Senang', 'Bersyukur']);
+    expect(entry?.journalTitle, 'Hari ini');
+    expect(entry?.journalContent, 'Cerita tersimpan');
+  });
+
+  test('today entry is absent without a live session', () async {
+    final container = ProviderContainer(
+      overrides: [backendTokenProvider.overrideWithValue(null)],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(todayEntryProvider.future), isNull);
+  });
 }
 
 class _JournalsApi extends BackendApi {
@@ -224,6 +250,50 @@ class _WeekApi extends BackendApi {
           'created_at': '2026-11-14',
           'title': 'Sabtu',
           'content': 'Isi',
+        },
+      ],
+      'count': 1,
+      'offset': 0,
+      'limit': 100,
+      'total': 1,
+    };
+  }
+}
+
+class _TodayApi extends BackendApi {
+  _TodayApi() : super(baseUrl: 'https://backend.example.test');
+
+  @override
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    Map<String, String>? query,
+    String? accessToken,
+  }) async {
+    if (path == '/moods') {
+      return {
+        'moods': [
+          {
+            'id': 'm-1',
+            'user_id': 'mother-1',
+            'created_at': '2026-11-14',
+            'mood': 4,
+            'description': 'Senang, Bersyukur',
+          },
+        ],
+        'count': 1,
+        'offset': 0,
+        'limit': 100,
+        'total': 1,
+      };
+    }
+    return {
+      'journals': [
+        {
+          'id': 'j-1',
+          'user_id': 'mother-1',
+          'created_at': '2026-11-14',
+          'title': 'Hari ini',
+          'content': 'Cerita tersimpan',
         },
       ],
       'count': 1,

@@ -22,7 +22,9 @@ import 'package:mobile/features/doctor/view/doctor_page.dart';
 import 'package:mobile/features/mother/view/mother_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
 import 'package:mobile/features/mother/view/mother_profile_edit_page.dart';
+import 'package:mobile/features/mother/view/mother_calendar_page.dart';
 import 'package:mobile/features/mother/view/mother_notifications_page.dart';
+import 'package:mobile/features/mother/repositories/daily_entry_repository.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/shared/view/role_picker_page.dart';
 import 'package:mobile/features/shared/view/route_error_page.dart';
@@ -1118,7 +1120,7 @@ void main() {
 
     for (final label in [
       'Isi Sekarang',
-      'Catat mood hari ini!',
+      'Catat mood hari ini',
       'Lihat Semua',
     ]) {
       expect(tester.widget<Text>(find.text(label)).style?.fontSize, 16);
@@ -1363,9 +1365,17 @@ void main() {
       find.text('Apa yang paling menggambarkan perasaanmu?'),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const Key('mother-add-feeling')));
-    await tester.pumpAndSettle();
-    expect(find.text('Bersyukur'), findsOneWidget);
+    for (final feeling in [
+      'Bersemangat',
+      'Terkejut',
+      'Lega',
+      'Bangga',
+      'Bersyukur',
+    ]) {
+      expect(find.text(feeling), findsOneWidget);
+    }
+    expect(find.byKey(const Key('mother-add-feeling')), findsNothing);
+    expect(find.text('Tambahkan +'), findsNothing);
 
     await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
     await tester.pumpAndSettle();
@@ -1399,6 +1409,80 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('mother-mood-entry-dialog')), findsNothing);
   });
+
+  testWidgets(
+    'a saved mood switches the card to Ubah and preloads the dialog',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final today = isoDate(DateTime.now());
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            motherStoriesProvider.overrideWith(
+              (ref) async => motherStoryTestData,
+            ),
+            recentMoodsProvider.overrideWith(
+              (ref) async => [
+                MoodEntry(
+                  id: 'm-today',
+                  date: today,
+                  mood: 4,
+                  description: 'Senang, Bersyukur',
+                ),
+              ],
+            ),
+            todayEntryProvider.overrideWith(
+              (ref) async => const TodayEntry(
+                mood: 4,
+                description: 'Senang, Bersyukur',
+                journalTitle: 'Judul tersimpan',
+                journalContent: 'Isi cerita tersimpan',
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: const MotherPage(showWeeklyEpds: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ubah mood hari ini'), findsOneWidget);
+      expect(find.text('Catat mood hari ini'), findsNothing);
+
+      final recordMoodButton = find.byKey(const Key('mother-record-mood'));
+      await tester.ensureVisible(recordMoodButton);
+      await tester.tap(recordMoodButton);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+      await tester.pumpAndSettle();
+      expect(find.text('Senang'), findsWidgets);
+      expect(find.text('Bersyukur'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('mother-journal-title')))
+            .controller
+            ?.text,
+        'Judul tersimpan',
+      );
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('mother-journal-story')))
+            .controller
+            ?.text,
+        'Isi cerita tersimpan',
+      );
+    },
+  );
 
   testWidgets('mother meditation list opens and controls a breathing session', (
     tester,
@@ -1704,6 +1788,24 @@ void main() {
     expect(find.byType(MotherProfilePage), findsOneWidget);
   });
 
+  testWidgets('mother "Lihat Semua" opens the calendar', (tester) async {
+    await startApp(tester);
+    await selectRoleAndOpenLogin(tester, role: 'mother');
+    await enterCredentials(
+      tester,
+      email: 'demo.mother@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Lihat Semua').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MotherCalendarPage), findsOneWidget);
+    expect(find.text('Semua cerita akan segera tersedia.'), findsNothing);
+  });
+
   testWidgets('mother can open and return from profile edit design', (
     tester,
   ) async {
@@ -1795,6 +1897,7 @@ void main() {
     expect(find.text('Dampingi'), findsOneWidget);
     expect(find.byKey(const Key('mother-chat-input')), findsOneWidget);
     expect(find.byKey(const Key('mother-chat-send')), findsOneWidget);
+    expect(find.text('Ceritakan perasaanmu hari ini'), findsOneWidget);
     expect(find.text('Hai gpt, aku hamil'), findsOneWidget);
     expect(
       find.text('Wow kamu hamil ya semoga lahiranya lancar nanti'),
@@ -1813,24 +1916,22 @@ void main() {
       tester.getSize(find.byKey(const Key('mother-chat-send'))),
       const Size(36, 36),
     );
-    final editable = tester
-        .state<EditableTextState>(find.byType(EditableText))
-        .renderEditable;
-    final caretRect = editable.getLocalRectForCaret(
-      const TextPosition(offset: 0),
+    final inputRect = tester.getRect(
+      find.byKey(const Key('mother-chat-input')),
     );
-    final caretCenter = editable.localToGlobal(caretRect.center);
-    final sendButtonRect = tester.getRect(
-      find.byKey(const Key('mother-chat-send')),
+    final hintCenter = tester.getCenter(
+      find.text('Ceritakan perasaanmu hari ini'),
     );
-    expect(
-      (caretCenter.dy - sendButtonRect.center.dy).abs(),
-      lessThanOrEqualTo(2),
-    );
+    expect((hintCenter.dy - inputRect.center.dy).abs(), lessThanOrEqualTo(2));
 
     await tester.enterText(
       find.byKey(const Key('mother-chat-input')),
       'Pesan ini tidak boleh dikirim dengan token mock.',
+    );
+    await tester.pump();
+    expect(
+      tester.getSize(find.byKey(const Key('mother-chat-composer'))).height,
+      greaterThan(53),
     );
     await tester.tap(find.byKey(const Key('mother-chat-send')));
     await tester.pumpAndSettle();
@@ -1846,6 +1947,32 @@ void main() {
       'Pesan ini tidak boleh dikirim dengan token mock.',
     );
   });
+
+  testWidgets(
+    'mother chat hides the bottom navigation while the keyboard is open',
+    (tester) async {
+      await startApp(tester);
+      await selectRoleAndOpenLogin(tester, role: 'mother');
+      await enterCredentials(
+        tester,
+        email: 'demo.mother@dampingi.test',
+        password: 'demo1234',
+      );
+      await tapLoginSubmit(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('mother-nav-chat')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('mother-nav-chat')), findsOneWidget);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('mother-nav-chat')), findsNothing);
+      expect(find.byKey(const Key('mother-chat-input')), findsOneWidget);
+    },
+  );
 
   testWidgets('failed login and mock network/server errors are friendly', (
     tester,

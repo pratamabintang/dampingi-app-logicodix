@@ -7,6 +7,7 @@ import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/mother_story.dart';
+import '../repositories/mother_story_repository.dart';
 import 'mother_page.dart';
 
 class MotherStoryDetailPage extends StatefulWidget {
@@ -115,32 +116,41 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
                         ),
                       ),
                       SizedBox(height: scaled(10)),
-                      SizedBox(
-                        height: scaled(48),
-                        child: AppSubmitButton(
-                          key: const Key('mother-story-edit-mood'),
-                          label: 'Ubah catatan mood',
-                          onPressed: () => showMotherMoodEntry(context),
-                          textStyle: TextStyle(
-                            fontSize: scaled(16),
-                            fontWeight: FontWeight.w600,
-                            height: 24 / 16,
-                          ),
-                          buttonStyle: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.coralLight,
-                            foregroundColor: AppTheme.coralText,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: scaled(20),
-                              vertical: scaled(12),
+                      if (story.day == isoDate(DateTime.now()))
+                        SizedBox(
+                          height: scaled(48),
+                          child: AppSubmitButton(
+                            key: const Key('mother-story-edit-mood'),
+                            label: 'Ubah catatan mood',
+                            onPressed: () => showMotherMoodEntry(
+                              context,
+                              initial: TodayEntry(
+                                mood: story.mood.index + 1,
+                                description: story.description,
+                                journalTitle: story.title,
+                                journalContent: story.note,
+                              ),
                             ),
-                            elevation: 1,
-                            shadowColor: const Color(0x0D101828),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(scaled(8)),
+                            textStyle: TextStyle(
+                              fontSize: scaled(16),
+                              fontWeight: FontWeight.w600,
+                              height: 24 / 16,
+                            ),
+                            buttonStyle: FilledButton.styleFrom(
+                              backgroundColor: AppTheme.coralLight,
+                              foregroundColor: AppTheme.coralText,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: scaled(20),
+                                vertical: scaled(12),
+                              ),
+                              elevation: 1,
+                              shadowColor: const Color(0x0D101828),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(scaled(8)),
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -273,6 +283,18 @@ class _StoryCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: scale(24)),
+          if (story.description.isNotEmpty) ...[
+            Text(
+              story.description,
+              key: const Key('mother-story-detail-description'),
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontSize: scale(14),
+                height: 20 / 14,
+              ),
+            ),
+            SizedBox(height: scale(24)),
+          ],
           if (story.summary.isNotEmpty) ...[
             _AiSummary(scale: scale, summary: story.summary),
             SizedBox(height: scale(24)),
@@ -352,56 +374,74 @@ class _StoryText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            color: const Color(0xFF252B37),
-            fontSize: scale(14),
-            fontWeight: FontWeight.w600,
-            height: 20 / 14,
-          ),
-        ),
-        SizedBox(height: scale(10)),
-        Text(
-          story,
-          key: const Key('mother-story-detail-text'),
-          maxLines: isExpanded ? null : 1,
-          overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-          style: TextStyle(
-            color: AppTheme.muted,
-            fontSize: scale(16),
-            height: 24 / 16,
-          ),
-        ),
-        SizedBox(height: scale(10)),
-        SizedBox(
-          width: double.infinity,
-          height: scale(32),
-          child: TextButton(
-            key: const Key('mother-story-toggle-text'),
-            onPressed: onToggleExpanded,
-            style: TextButton.styleFrom(
-              backgroundColor: AppTheme.coralLight,
-              foregroundColor: AppTheme.coralText,
-              padding: EdgeInsets.symmetric(vertical: scale(4)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(scale(8)),
-              ),
-            ),
-            child: Text(
-              isExpanded ? 'Lihat lebih sedikit' : 'Lihat lebih banyak',
+    final textStyle = TextStyle(
+      color: AppTheme.muted,
+      fontSize: scale(16),
+      height: 24 / 16,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: story, style: textStyle),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final isOverflowing = painter.didExceedMaxLines;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
               style: TextStyle(
-                fontSize: scale(16),
+                color: const Color(0xFF252B37),
+                fontSize: scale(14),
                 fontWeight: FontWeight.w600,
-                height: 24 / 16,
+                height: 20 / 14,
               ),
             ),
-          ),
-        ),
-      ],
+            SizedBox(height: scale(10)),
+            Text(
+              story,
+              key: const Key('mother-story-detail-text'),
+              maxLines: isExpanded ? null : 1,
+              overflow: isExpanded
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
+              style: textStyle,
+            ),
+            if (isOverflowing) ...[
+              SizedBox(height: scale(10)),
+              SizedBox(
+                width: double.infinity,
+                height: scale(32),
+                child: TextButton(
+                  key: const Key('mother-story-toggle-text'),
+                  onPressed: onToggleExpanded,
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppTheme.coralLight,
+                    foregroundColor: AppTheme.coralText,
+                    padding: EdgeInsets.symmetric(vertical: scale(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(scale(8)),
+                    ),
+                  ),
+                  child: Text(
+                    isExpanded ? 'Lihat lebih sedikit' : 'Lihat lebih banyak',
+                    style: TextStyle(
+                      fontSize: scale(16),
+                      fontWeight: FontWeight.w600,
+                      height: 24 / 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

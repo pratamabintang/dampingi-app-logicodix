@@ -38,6 +38,8 @@ class MotherStory {
     required this.title,
     required this.note,
     required this.summary,
+    this.description = '',
+    this.day = '',
   });
 
   final String id;
@@ -48,6 +50,12 @@ class MotherStory {
   final String title;
   final String note;
   final String summary;
+
+  /// Perasaan yang tersimpan bersama mood, dipisah koma.
+  final String description;
+
+  /// Tanggal jurnal mentah (YYYY-MM-DD), untuk membedakan hari ini.
+  final String day;
 
   factory MotherStory.fromJson(Map<String, Object?> json) {
     final id = _requiredString(json, 'id');
@@ -72,6 +80,10 @@ class MotherStory {
       title: _requiredString(json, 'title'),
       note: _requiredString(json, 'note'),
       summary: _requiredString(json, 'summary'),
+      description: json['description'] is String
+          ? json['description'] as String
+          : '',
+      day: json['day'] is String ? json['day'] as String : '',
     );
   }
 }

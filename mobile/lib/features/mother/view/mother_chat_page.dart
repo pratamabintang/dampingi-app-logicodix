@@ -58,6 +58,9 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
             ?.accessToken
             .startsWith('mock-') ??
         false;
+    // Dibaca sebelum Scaffold: body Scaffold tidak lagi membawa viewInsets
+    // bawah, jadi kunci keyboard harus dicek dari MediaQuery di atasnya.
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -108,15 +111,17 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
                         ),
                       ),
                     ),
-                    SizedBox(height: scaled(24)),
-                    MotherNavigationBar(
-                      selectedTab: MotherNavigationTab.recommendations,
-                      onHomeTap: () => context.go('/mother'),
-                      onCalendarTap: () => context.go('/mother/calendar'),
-                      onChatTap: () => context.go('/mother/chat'),
-                      onMeditationTap: () => context.go('/mother/meditation'),
-                      onProfileTap: () => context.go('/mother/profile'),
-                    ),
+                    if (!keyboardVisible) ...[
+                      SizedBox(height: scaled(24)),
+                      MotherNavigationBar(
+                        selectedTab: MotherNavigationTab.recommendations,
+                        onHomeTap: () => context.go('/mother'),
+                        onCalendarTap: () => context.go('/mother/calendar'),
+                        onChatTap: () => context.go('/mother/chat'),
+                        onMeditationTap: () => context.go('/mother/meditation'),
+                        onProfileTap: () => context.go('/mother/profile'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -180,16 +185,13 @@ class ChatConversationPanel extends StatelessWidget {
         ),
         if (chat.asData?.value.errorMessage case final error?)
           _ChatErrorBanner(message: error, scale: scale),
-        SizedBox(
+        _MessageComposer(
           key: Key('$keyPrefix-composer'),
-          height: scaled(53),
-          child: _MessageComposer(
-            controller: controller,
-            scale: scale,
-            isSending: chat.asData?.value.isSending ?? false,
-            keyPrefix: keyPrefix,
-            onSend: onSend,
-          ),
+          controller: controller,
+          scale: scale,
+          isSending: chat.asData?.value.isSending ?? false,
+          keyPrefix: keyPrefix,
+          onSend: onSend,
         ),
       ],
     );
@@ -420,6 +422,7 @@ class _MessageComposer extends StatelessWidget {
     required this.isSending,
     required this.keyPrefix,
     required this.onSend,
+    super.key,
   });
 
   final TextEditingController controller;
@@ -443,21 +446,25 @@ class _MessageComposer extends StatelessWidget {
         vertical: scaled(7.5),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: SizedBox(
-              height: scaled(36),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: scaled(36)),
               child: Center(
                 child: TextField(
                   key: Key('$keyPrefix-input'),
                   controller: controller,
                   maxLength: 2000,
-                  maxLines: 1,
+                  minLines: 1,
+                  maxLines: 5,
+                  keyboardType: TextInputType.multiline,
                   textAlignVertical: TextAlignVertical.center,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => onSend(),
                   decoration: const InputDecoration(
-                    hintText: 'Apakah saya depresi?',
+                    hintText: 'Ceritakan perasaanmu hari ini',
+                    hintMaxLines: 1,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,

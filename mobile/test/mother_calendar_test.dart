@@ -8,10 +8,11 @@ import 'package:mobile/features/mother/repositories/mother_story_repository.dart
 import 'package:mobile/features/mother/view/mother_calendar_page.dart';
 import 'package:mobile/features/mother/view/mother_meditation_pages.dart';
 import 'package:mobile/features/mother/view/mother_story_detail_page.dart';
+import 'package:mobile/services/backend_api.dart';
 
 import 'mother_story_test_data.dart';
 
-const _testStory = MotherStory(
+final _testStory = MotherStory(
   id: 'very-sad',
   weekdayIndex: 0,
   date: 'Senin, 12 Agustus 2026',
@@ -24,6 +25,8 @@ const _testStory = MotherStory(
   summary:
       'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa '
       'suami bantu aku ke belakang padahal suami lagi di luar kota.',
+  description: 'Kesepian, Lelah',
+  day: isoDate(DateTime.now()),
 );
 
 void main() {
@@ -187,7 +190,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(
+      ProviderScope(
         child: MaterialApp(home: MotherStoryDetailPage(story: _testStory)),
       ),
     );
@@ -196,6 +199,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Senin, 12 Agustus 2026'), findsOneWidget);
     expect(find.text('Anda merasa sangat sedih'), findsOneWidget);
+    expect(find.text('Kesepian, Lelah'), findsOneWidget);
     expect(find.text('Ringkasan AI'), findsOneWidget);
     expect(find.text('Hal Kecil yang berarti'), findsOneWidget);
     expect(find.text('Buka di chat AI'), findsOneWidget);
@@ -230,9 +234,112 @@ void main() {
     await tester.tap(editMoodButton);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('mother-mood-entry-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    expect(find.text('Lelah'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('mother-journal-title')))
+          .controller
+          ?.text,
+      _testStory.title,
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('mother-journal-story')))
+          .controller
+          ?.text,
+      _testStory.note,
+    );
     await tester.tap(find.byKey(const Key('mother-mood-dialog-close')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('story detail hides the expand toggle for a short note', (
+    tester,
+  ) async {
+    const shortStory = MotherStory(
+      id: 'short',
+      weekdayIndex: 0,
+      date: 'Senin, 12 Agustus 2026',
+      mood: MotherMood.neutral,
+      moodLabel: 'Anda merasa biasa saja',
+      title: 'Singkat',
+      note: 'Hari yang tenang.',
+      summary: '',
+    );
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: MotherStoryDetailPage(story: shortStory)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hari yang tenang.'), findsOneWidget);
+    expect(find.byKey(const Key('mother-story-toggle-text')), findsNothing);
+    expect(find.text('Lihat lebih banyak'), findsNothing);
+  });
+
+  testWidgets('live calendar shows the stories of the last seven days', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          backendTokenProvider.overrideWithValue('valid-access-token'),
+          backendApiProvider.overrideWithValue(_LiveWeekApi()),
+        ],
+        child: const MaterialApp(home: MotherCalendarPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('mother-calendar-story-0-row')),
+      findsOneWidget,
+    );
+    expect(find.text('Sabtu'), findsOneWidget);
+    expect(
+      find.byKey(const Key('mother-calendar-empty-stories')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('mother-calendar-day-Rab')));
+    await tester.pumpAndSettle();
+    expect(find.text('Cerita hari Rabu.'), findsOneWidget);
+  });
+
+  testWidgets('a past story hides the edit-mood button', (tester) async {
+    const pastStory = MotherStory(
+      id: 'past',
+      weekdayIndex: 2,
+      date: 'Rabu, 12 Agustus 2026',
+      mood: MotherMood.neutral,
+      moodLabel: 'Anda merasa biasa saja',
+      title: 'Kemarin',
+      note: 'Catatan hari yang sudah berlalu.',
+      summary: '',
+      day: '2026-08-12',
+    );
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: MotherStoryDetailPage(story: pastStory)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('mother-story-edit-mood')), findsNothing);
+    expect(find.text('Ubah catatan mood'), findsNothing);
+    expect(find.text('Buka di chat AI'), findsOneWidget);
   });
 
   testWidgets('story detail shows an explicit missing-note state', (
@@ -287,3 +394,54 @@ Widget _withStoryFixture(Widget child) => ProviderScope(
   ],
   child: child,
 );
+
+class _LiveWeekApi extends BackendApi {
+  _LiveWeekApi() : super(baseUrl: 'https://backend.example.test');
+
+  @override
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    Map<String, String>? query,
+    String? accessToken,
+  }) async {
+    if (path == '/moods') {
+      return {
+        'moods': [
+          {
+            'id': 'm-1',
+            'user_id': 'mother-1',
+            'created_at': '2026-11-14',
+            'mood': 4,
+            'description': null,
+          },
+        ],
+        'count': 1,
+        'offset': 0,
+        'limit': 100,
+        'total': 1,
+      };
+    }
+    return {
+      'journals': [
+        {
+          'id': 'j-1',
+          'user_id': 'mother-1',
+          'created_at': '2026-11-14',
+          'title': 'Sabtu',
+          'content': 'Cerita minggu ini.',
+        },
+        {
+          'id': 'j-2',
+          'user_id': 'mother-1',
+          'created_at': '2026-11-11',
+          'title': 'Rabu',
+          'content': 'Cerita hari Rabu.',
+        },
+      ],
+      'count': 1,
+      'offset': 0,
+      'limit': 100,
+      'total': 1,
+    };
+  }
+}

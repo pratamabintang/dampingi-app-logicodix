@@ -258,7 +258,10 @@ class _MoodCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recent = ref.watch(recentMoodsProvider);
     final isPreview = recent is AsyncData && recent.value == null;
-    final days = recentMoodDays(recent.asData?.value ?? const [], DateTime.now());
+    final days = recentMoodDays(
+      recent.asData?.value ?? const [],
+      DateTime.now(),
+    );
     final todayMood = days.firstWhere((day) => day.isToday).mood;
 
     final String status;
@@ -269,6 +272,7 @@ class _MoodCard extends ConsumerWidget {
     } else {
       status = 'Belum dicatat';
     }
+    final hasTodayMood = !isPreview && todayMood != null;
 
     return Container(
       key: const Key('mother-mood-card'),
@@ -320,13 +324,24 @@ class _MoodCard extends ConsumerWidget {
             height: context.scaled(48),
             child: FilledButton(
               key: const Key('mother-record-mood'),
-              onPressed: () => showMotherMoodEntry(context),
+              onPressed: () async {
+                TodayEntry? initial;
+                if (hasTodayMood) {
+                  try {
+                    initial = await ref.read(todayEntryProvider.future);
+                  } on Object {
+                    initial = null;
+                  }
+                }
+                if (!context.mounted) return;
+                await showMotherMoodEntry(context, initial: initial);
+              },
               style: FilledButton.styleFrom(
                 minimumSize: Size.fromHeight(context.scaled(48)),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                'Catat mood hari ini!',
+                hasTodayMood ? 'Ubah mood hari ini' : 'Catat mood hari ini',
                 style: TextStyle(fontSize: context.scaled(16)),
               ),
             ),
@@ -339,11 +354,31 @@ class _MoodCard extends ConsumerWidget {
 
 /// Contoh untuk mode preview (sama seperti desain A).
 const _sampleMoodItems = <Widget>[
-  _MoodItem(faceKey: Key('mother-mood-face-sen'), label: 'Sen', mood: MotherMood.verySad),
-  _MoodItem(faceKey: Key('mother-mood-face-sel'), label: 'Sel', mood: MotherMood.sad),
-  _MoodItem(faceKey: Key('mother-mood-face-rab'), label: 'Rab', mood: MotherMood.neutral),
-  _MoodItem(faceKey: Key('mother-mood-face-kam'), label: 'Kam', mood: MotherMood.happy),
-  _MoodItem(faceKey: Key('mother-mood-face-jum'), label: 'Jum', mood: MotherMood.veryHappy),
+  _MoodItem(
+    faceKey: Key('mother-mood-face-sen'),
+    label: 'Sen',
+    mood: MotherMood.verySad,
+  ),
+  _MoodItem(
+    faceKey: Key('mother-mood-face-sel'),
+    label: 'Sel',
+    mood: MotherMood.sad,
+  ),
+  _MoodItem(
+    faceKey: Key('mother-mood-face-rab'),
+    label: 'Rab',
+    mood: MotherMood.neutral,
+  ),
+  _MoodItem(
+    faceKey: Key('mother-mood-face-kam'),
+    label: 'Kam',
+    mood: MotherMood.happy,
+  ),
+  _MoodItem(
+    faceKey: Key('mother-mood-face-jum'),
+    label: 'Jum',
+    mood: MotherMood.veryHappy,
+  ),
 ];
 
 class _MoodItem extends StatelessWidget {
@@ -404,7 +439,7 @@ class _StoriesCard extends StatelessWidget {
           AppSectionHeader(
             title: 'Cerita terakhirmu',
             actionLabel: 'Lihat Semua',
-            onAction: () => _showFeatureNotice(context, 'Semua cerita'),
+            onAction: () => context.go('/mother/calendar'),
             scale: scale(1),
           ),
           SizedBox(height: scale(24)),
@@ -580,30 +615,27 @@ class _ActivityRow extends StatelessWidget {
   }
 }
 
-void _showFeatureNotice(BuildContext context, String feature) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$feature akan segera tersedia.')));
-}
-
-Future<void> showMotherMoodEntry(BuildContext context) {
+Future<void> showMotherMoodEntry(BuildContext context, {TodayEntry? initial}) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,
     barrierLabel: 'Catat mood',
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 180),
-    pageBuilder: (context, animation, secondaryAnimation) =>
-        _MoodEntryDialog(onClose: () => Navigator.of(context).pop()),
+    pageBuilder: (context, animation, secondaryAnimation) => _MoodEntryDialog(
+      initial: initial,
+      onClose: () => Navigator.of(context).pop(),
+    ),
     transitionBuilder: (context, animation, secondaryAnimation, child) =>
         FadeTransition(opacity: animation, child: child),
   );
 }
 
 class _MoodEntryDialog extends ConsumerStatefulWidget {
-  const _MoodEntryDialog({required this.onClose});
+  const _MoodEntryDialog({required this.onClose, this.initial});
 
   final VoidCallback onClose;
+  final TodayEntry? initial;
 
   @override
   ConsumerState<_MoodEntryDialog> createState() => _MoodEntryDialogState();
@@ -615,8 +647,28 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
   final _selectedFeelings = <String>{};
   final _additionalFeelings = <String>[];
   var _selectedLevel = 2;
+
+  /// Level yang perasaannya sedang dimuat. -1 = belum ada.
+  var _feelingsLevel = -1;
   var _step = 0;
   var _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    if (initial == null) return;
+
+    _selectedLevel = (initial.mood - 1).clamp(0, _moodLevels.length - 1);
+    _feelingsLevel = _selectedLevel;
+    _titleController.text = initial.journalTitle;
+    _storyController.text = initial.journalContent;
+    final known = _moodLevels[_selectedLevel].feelings;
+    for (final feeling in initial.feelings) {
+      if (!known.contains(feeling)) _additionalFeelings.add(feeling);
+      _selectedFeelings.add(feeling);
+    }
+  }
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -820,11 +872,14 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
           scale,
           onContinue: () {
             setState(() {
+              if (_selectedLevel != _feelingsLevel) {
+                _feelingsLevel = _selectedLevel;
+                _selectedFeelings
+                  ..clear()
+                  ..add(_moodLevels[_selectedLevel].feelings.first);
+                _additionalFeelings.clear();
+              }
               _step = 1;
-              _selectedFeelings
-                ..clear()
-                ..add(_moodLevels[_selectedLevel].feelings.first);
-              _additionalFeelings.clear();
             });
           },
           showBack: false,
@@ -886,30 +941,6 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
                     });
                   },
                 ),
-              SizedBox(
-                height: 30 * scale,
-                child: TextButton(
-                  key: const Key('mother-add-feeling'),
-                  onPressed: () {
-                    setState(() {
-                      if (!_additionalFeelings.contains('Bersyukur')) {
-                        _additionalFeelings.add('Bersyukur');
-                        _selectedFeelings.add('Bersyukur');
-                      }
-                    });
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.coralText,
-                    padding: EdgeInsets.symmetric(horizontal: 8 * scale),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    'Tambahkan +',
-                    style: TextStyle(fontSize: 16 * scale),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -1096,27 +1127,27 @@ const _moodLevels = <_MoodLevel>[
   _MoodLevel(
     title: 'Sangat Sedih',
     mood: MotherMood.verySad,
-    feelings: ['Kesepian', 'Kecewa', 'Lelah', 'Cemas'],
+    feelings: ['Kesepian', 'Kecewa', 'Lelah', 'Cemas', 'Putus asa'],
   ),
   _MoodLevel(
     title: 'Sedih',
     mood: MotherMood.sad,
-    feelings: ['Sedih', 'Cemas', 'Lelah', 'Bingung'],
+    feelings: ['Sedih', 'Cemas', 'Lelah', 'Bingung', 'Kecewa'],
   ),
   _MoodLevel(
     title: 'Biasa Saja',
     mood: MotherMood.neutral,
-    feelings: ['Tenang', 'Biasa saja', 'Lega', 'Bersyukur'],
+    feelings: ['Tenang', 'Biasa saja', 'Lega', 'Bersyukur', 'Bingung'],
   ),
   _MoodLevel(
     title: 'Senang',
     mood: MotherMood.happy,
-    feelings: ['Senang', 'Bersyukur', 'Tenang', 'Bersemangat'],
+    feelings: ['Senang', 'Bersyukur', 'Tenang', 'Bersemangat', 'Lega'],
   ),
   _MoodLevel(
     title: 'Sangat Bahagia',
     mood: MotherMood.veryHappy,
-    feelings: ['Bersemangat', 'Terkejoed', 'Lega', 'Bangga'],
+    feelings: ['Bersemangat', 'Terkejut', 'Lega', 'Bangga', 'Bersyukur'],
   ),
 ];
 

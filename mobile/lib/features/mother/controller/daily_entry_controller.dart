@@ -83,6 +83,7 @@ class DailyEntryController {
   void _refreshHome() {
     _ref.invalidate(motherStoriesProvider);
     _ref.invalidate(recentMoodsProvider);
+    _ref.invalidate(todayEntryProvider);
     _ref.invalidate(calendarWeekProvider);
   }
 

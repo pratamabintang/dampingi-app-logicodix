@@ -44,6 +44,8 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
         ? _doneTodayLocally ||
               (ref.watch(todayObservationDoneProvider).asData?.value ?? false)
         : _observationCompleted;
+    // Dibaca sebelum Scaffold: body Scaffold tidak membawa viewInsets bawah.
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -116,7 +118,7 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                           ),
                         },
                       ),
-                      if (!isDetail)
+                      if (!isDetail && !keyboardVisible)
                         MotherNavigationBar(
                           selectedTab: switch (_screen) {
                             _CompanionScreen.home => MotherNavigationTab.home,

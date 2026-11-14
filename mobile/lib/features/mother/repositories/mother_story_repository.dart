@@ -64,6 +64,8 @@ MotherStory _storyFrom(JournalEntry journal, MoodEntry? mood) {
     note: journal.content,
     // Belum ada ringkasan AI per jurnal; halaman detail menyembunyikan kotaknya.
     summary: '',
+    description: mood?.description ?? '',
+    day: journal.date,
   );
 }
 
@@ -128,6 +130,56 @@ final recentMoodsProvider = FutureProvider<List<MoodEntry>?>((ref) async {
         startDate: isoDate(today.subtract(const Duration(days: 6))),
         endDate: isoDate(today),
       );
+});
+
+/// Isi hari ini yang sudah tersimpan, dipakai untuk mengisi ulang dialog mood.
+class TodayEntry {
+  const TodayEntry({
+    required this.mood,
+    this.description,
+    this.journalTitle = '',
+    this.journalContent = '',
+  });
+
+  final int mood;
+  final String? description;
+  final String journalTitle;
+  final String journalContent;
+
+  /// Perasaan yang tersimpan di `description`, dipisah koma.
+  List<String> get feelings => (description ?? '')
+      .split(',')
+      .map((feeling) => feeling.trim())
+      .where((feeling) => feeling.isNotEmpty)
+      .toList();
+}
+
+/// Mood dan jurnal hari ini untuk mode "Ubah mood", atau null kalau belum ada.
+final todayEntryProvider = FutureProvider<TodayEntry?>((ref) async {
+  final token = ref.watch(backendTokenProvider);
+  if (token == null) return null;
+
+  final repository = ref.watch(dailyEntryRepositoryProvider);
+  final today = isoDate(DateTime.now());
+  final moods = await repository.listMoods(
+    accessToken: token,
+    startDate: today,
+    endDate: today,
+  );
+  if (moods.isEmpty) return null;
+
+  final journals = await repository.listJournals(
+    accessToken: token,
+    startDate: today,
+    endDate: today,
+  );
+  final journal = journals.isEmpty ? null : journals.first;
+  return TodayEntry(
+    mood: moods.first.mood,
+    description: moods.first.description,
+    journalTitle: journal?.title ?? '',
+    journalContent: journal?.content ?? '',
+  );
 });
 
 /// Satu kotak di kartu mood. `mood` null = hari itu belum dicatat.
