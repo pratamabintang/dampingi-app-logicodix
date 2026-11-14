@@ -920,6 +920,14 @@ void main() {
     await tapLoginSubmit(tester);
     await tester.pumpAndSettle();
 
+    expect(find.bySemanticsLabel('Observasi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Rekomendasi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Panduan'), findsOneWidget);
+    final activeHome = tester.widget<Container>(
+      find.byKey(const Key('mother-nav-item-home')),
+    );
+    expect((activeHome.decoration! as BoxDecoration).color, AppTheme.coral);
+
     await tester.tap(find.byKey(const Key('companion-notification')));
     await tester.pumpAndSettle();
     expect(find.byType(CompanionNotificationsPage), findsOneWidget);
@@ -992,8 +1000,8 @@ void main() {
                   )
                   .decoration!
               as BoxDecoration)
-          .color,
-      AppTheme.pink6,
+              .color,
+      AppTheme.coral,
     );
 
     final observationScroll = find
@@ -1018,6 +1026,27 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-nav-chat')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-chat-page')), findsOneWidget);
+    expect(find.bySemanticsLabel('Observasi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Rekomendasi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Panduan'), findsOneWidget);
+    final activeRecommendation = tester.widget<Container>(
+      find.byKey(const Key('mother-nav-item-recommendations')),
+    );
+    expect(
+      (activeRecommendation.decoration! as BoxDecoration).color,
+      AppTheme.coral,
+    );
+    final guideIcon = tester.widget<SvgPicture>(
+      find.descendant(
+        of: find.byKey(const Key('mother-nav-item-meditation')),
+        matching: find.byType(SvgPicture),
+      ),
+    );
+    expect(guideIcon.bytesLoader, isA<SvgAssetLoader>());
+    expect(
+      (guideIcon.bytesLoader as SvgAssetLoader).assetName,
+      'assets/images/navigation/doctor-book.svg',
+    );
     expect(find.text('Hai gpt, aku hamil'), findsOneWidget);
     expect(
       find.text('Wow kamu hamil ya semoga lahiranya lancar nanti'),
@@ -1038,6 +1067,21 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-nav-meditation')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-support-screen')), findsOneWidget);
+    expect(find.bySemanticsLabel('Panduan'), findsOneWidget);
+    final activeGuide = tester.widget<Container>(
+      find.byKey(const Key('mother-nav-item-meditation')),
+    );
+    expect((activeGuide.decoration! as BoxDecoration).color, AppTheme.coral);
+    final activeGuideIcon = tester.widget<SvgPicture>(
+      find.descendant(
+        of: find.byKey(const Key('mother-nav-item-meditation')),
+        matching: find.byType(SvgPicture),
+      ),
+    );
+    expect(
+      (activeGuideIcon.bytesLoader as SvgAssetLoader).assetName,
+      'assets/images/navigation/doctor-book-active.svg',
+    );
     expect(find.text('Dukungan hari ini'), findsOneWidget);
     await tester.tap(find.byKey(const Key('companion-support-prompt')));
     await tester.pumpAndSettle();
@@ -1055,6 +1099,10 @@ void main() {
     await tester.tap(find.byKey(const Key('mother-nav-profile')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('companion-profile-card')), findsOneWidget);
+    final activeProfile = tester.widget<Container>(
+      find.byKey(const Key('mother-nav-item-profile')),
+    );
+    expect((activeProfile.decoration! as BoxDecoration).color, AppTheme.coral);
     expect(find.byType(AppProfileAvatar), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('companion-profile-avatar'))),
