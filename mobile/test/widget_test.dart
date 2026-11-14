@@ -1116,6 +1116,13 @@ void main() {
       find.byKey(const Key('companion-profile-mother-card')),
       findsNothing,
     );
+    // Koneksi tidak lagi didaftarkan di profil: satu tempatnya, halaman Koneksi.
+    expect(find.text('Ibu yang anda dampingi'), findsNothing);
+    expect(
+      find.byKey(const Key('companion-profile-connections')),
+      findsOneWidget,
+    );
+    expect(find.text('Kelola Koneksi'), findsOneWidget);
     expect(find.text('Ringkasan mingguan'), findsNothing);
     expect(
       find.byKey(const Key('companion-profile-permissions')),
@@ -1186,7 +1193,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('mother-nav-profile')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('companion-profile-enter-code')));
+    await tester.tap(find.byKey(const Key('companion-profile-connections')));
     await tester.pumpAndSettle();
 
     expect(find.byType(KoneksiPage), findsOneWidget);
@@ -1814,38 +1821,21 @@ void main() {
     expect(find.byKey(const Key('mother-profile-connections')), findsOneWidget);
     expect(find.byKey(const Key('mother-profile-add-companion')), findsNothing);
     expect(find.text('Tambah Pendamping'), findsNothing);
+    expect(find.text('Ubah Profil'), findsOneWidget);
+    expect(find.text('Kelola Koneksi'), findsOneWidget);
+    // Siapa yang terhubung tidak lagi didaftarkan di profil; hanya di halaman
+    // Koneksi, supaya tidak ada dua sumber kebenaran.
     expect(
-      find.text(
-        'Pratinjau: pilih data yang boleh dilihat orang yang terhubung',
-      ),
-      findsOneWidget,
+      find.byKey(const Key('mother-profile-permissions-card')),
+      findsNothing,
     );
-    expect(
-      find.byKey(const Key('mother-profile-companion-enzokulin')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('mother-profile-companion-indra')),
-      findsOneWidget,
-    );
+    expect(find.text('Ringkasan mingguan'), findsNothing);
+    expect(find.text('Hasil EPDS'), findsNothing);
+    expect(find.text('Tn. Enzokulin'), findsNothing);
+    expect(find.text('dr. Indra Waspada'), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('mother-profile-information-card'))),
       const Size(342, 329),
-    );
-    expect(
-      tester.getSize(find.byKey(const Key('mother-profile-permissions-card'))),
-      const Size(342, 494),
-    );
-    final toggleKey = find.byKey(
-      const Key('mother-profile-toggle-enzokulin-weekly-summary'),
-    );
-    await tester.tap(toggleKey);
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(
-        const Key('mother-profile-toggle-enzokulin-weekly-summary-off'),
-      ),
-      findsOneWidget,
     );
 
     await tester.drag(

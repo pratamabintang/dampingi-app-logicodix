@@ -110,8 +110,6 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             scale: scale,
                             userName: greetingName,
                             email: user?.email ?? '',
-                            hasMother: hasMother,
-                            motherName: mother?.name ?? '',
                             onEdit: () =>
                                 context.push('/companion/profile/edit'),
                             onOpenConnections: () =>
