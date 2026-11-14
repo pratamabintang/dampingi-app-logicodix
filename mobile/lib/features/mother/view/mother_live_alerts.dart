@@ -9,7 +9,9 @@ import '../../connections/repositories/connection_repository.dart';
 import '../repositories/mother_alert_repository.dart';
 
 class MotherLiveAlerts extends ConsumerWidget {
-  const MotherLiveAlerts({super.key});
+  const MotherLiveAlerts({this.showEmptyState = true, super.key});
+
+  final bool showEmptyState;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,11 +42,13 @@ class MotherLiveAlerts extends ConsumerWidget {
             onRetry: () => ref.invalidate(motherAlertsProvider),
           ),
           data: (items) => items.isEmpty
-              ? const AppEmpty(
-                  key: Key('mother-notifications-empty'),
-                  title: 'Belum ada notifikasi',
-                  message: 'Belum ada kabar baru untuk Anda.',
-                )
+              ? showEmptyState
+                    ? const AppEmpty(
+                        key: Key('mother-notifications-empty'),
+                        title: 'Belum ada notifikasi',
+                        message: 'Belum ada kabar baru untuk Anda.',
+                      )
+                    : const SizedBox.shrink()
               : Column(
                   children: [
                     for (final item in items)
