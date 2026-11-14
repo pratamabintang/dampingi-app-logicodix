@@ -33,7 +33,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the live Profile leaves Koneksi to its own screen', (
+  testWidgets('the live Profile loads sharing controls from connections', (
     tester,
   ) async {
     final api = _ProfileApi();
@@ -41,21 +41,52 @@ void main() {
 
     expect(find.byKey(const Key('mother-profile-connections')), findsOneWidget);
     expect(
-      find.byKey(const Key('mother-profile-invite-summary')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const Key('mother-profile-connection-summary')),
-      findsNothing,
-    );
-    expect(find.byKey(const Key('mother-profile-sharing-note')), findsNothing);
-    expect(find.textContaining('Terhubung dengan'), findsNothing);
-    expect(find.textContaining('Kode Undangan'), findsNothing);
-    expect(
       find.byKey(const Key('mother-profile-permissions-card')),
-      findsNothing,
+      findsOneWidget,
     );
-    expect(api.gets, isEmpty);
+    expect(api.gets, ['/connections']);
+    expect(
+      find.byKey(const Key('mother-profile-no-professionals')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('professional sharing starts closed and can be enabled', (
+    tester,
+  ) async {
+    final api = _ProfileApi(withProfessional: true);
+    await pumpProfile(tester, api: api);
+
+    expect(find.text('dr. Demo'), findsOneWidget);
+    expect(
+      find.byKey(
+        const Key('mother-profile-toggle-connection-1-weekly-summary-off'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('mother-profile-toggle-connection-1-epds-off')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('mother-profile-toggle-connection-1-journal-off')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        const Key('mother-profile-toggle-connection-1-weekly-summary-off'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.permissionPatch, {'weekly_summary': true});
+    expect(
+      find.byKey(
+        const Key('mother-profile-toggle-connection-1-weekly-summary-on'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('preview keeps the permission toggles and fetches nothing', (
@@ -87,9 +118,18 @@ void main() {
 }
 
 class _ProfileApi extends BackendApi {
-  _ProfileApi() : super(baseUrl: 'https://backend.example.test');
+  _ProfileApi({this.withProfessional = false})
+    : super(baseUrl: 'https://backend.example.test');
 
+  final bool withProfessional;
   final gets = <String>[];
+  final permissions = <String, dynamic>{
+    'connection_id': 'connection-1',
+    'weekly_summary': false,
+    'epds': false,
+    'journal': false,
+  };
+  Map<String, Object?>? permissionPatch;
 
   @override
   Future<Map<String, dynamic>> getJson(
@@ -98,6 +138,35 @@ class _ProfileApi extends BackendApi {
     String? accessToken,
   }) async {
     gets.add(path);
-    return {};
+    if (path == '/connections') {
+      return {
+        'connections': withProfessional
+            ? [
+                {
+                  'id': 'connection-1',
+                  'counterpart': {'name': 'dr. Demo', 'role': 'professional'},
+                },
+              ]
+            : [],
+      };
+    }
+    if (path == '/connections/connection-1/sharing-permissions') {
+      return Map<String, dynamic>.from(permissions);
+    }
+    throw StateError('Unexpected GET path: $path');
+  }
+
+  @override
+  Future<Map<String, dynamic>> patchJson(
+    String path, {
+    required Map<String, Object?> body,
+    String? accessToken,
+  }) async {
+    if (path != '/connections/connection-1/sharing-permissions') {
+      throw StateError('Unexpected PATCH path: $path');
+    }
+    permissionPatch = body;
+    permissions.addAll(body);
+    return Map<String, dynamic>.from(permissions);
   }
 }

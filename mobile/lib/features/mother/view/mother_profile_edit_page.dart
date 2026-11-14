@@ -42,6 +42,15 @@ class CompanionProfileEditPage extends MotherProfileEditPage {
       );
 }
 
+class DoctorProfileEditPage extends MotherProfileEditPage {
+  const DoctorProfileEditPage({super.key})
+    : super(
+        avatarAsset: 'assets/images/doctor/doctor-avatar.png',
+        keyPrefix: 'doctor-profile-edit',
+        backLocation: '/doctor',
+      );
+}
+
 class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
   final _profileFormKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();

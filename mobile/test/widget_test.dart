@@ -16,6 +16,7 @@ import 'package:mobile/features/auth/view/login_page.dart';
 import 'package:mobile/features/auth/view/register_page.dart';
 import 'package:mobile/features/companion/view/companion_page.dart';
 import 'package:mobile/features/companion/view/companion_extra_pages.dart';
+import 'package:mobile/features/connections/repositories/connection_repository.dart';
 import 'package:mobile/features/connections/preview_invite_codes.dart';
 import 'package:mobile/features/connections/view/koneksi_page.dart';
 import 'package:mobile/features/doctor/view/doctor_page.dart';
@@ -45,6 +46,7 @@ void main() {
     Duration mockLatency = Duration.zero,
     Size viewport = const Size(390, 844),
     bool waitForRolePicker = true,
+    bool useLiveDoctorConnections = false,
   }) async {
     tester.view.physicalSize = viewport;
     tester.view.devicePixelRatio = 1;
@@ -60,6 +62,18 @@ void main() {
           motherStoriesProvider.overrideWith(
             (ref) async => motherStoryTestData,
           ),
+          if (useLiveDoctorConnections)
+            backendTokenProvider.overrideWith((ref) => 'live-access-token'),
+          if (useLiveDoctorConnections)
+            activeConnectionsProvider.overrideWith(
+              (ref) async => const [
+                ConnectionPerson(
+                  id: 'connection-1',
+                  name: 'Ibu dari database',
+                  role: 'mother',
+                ),
+              ],
+            ),
         ],
         child: const DampingiApp(),
       ),
@@ -504,7 +518,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
     expect(find.text('Halo, dr. Maya Estiyanti'), findsOneWidget);
-    expect(find.text('Senin, 28 Oktober 2026'), findsOneWidget);
+    expect(find.text(formatStoryDate(DateTime.now())), findsOneWidget);
     expect(find.byKey(const Key('doctor-home-avatar')), findsOneWidget);
     expect(find.byKey(const Key('doctor-connections-card')), findsOneWidget);
     expect(find.byKey(const Key('doctor-connections-open')), findsOneWidget);
@@ -586,6 +600,26 @@ void main() {
     await tester.tap(find.byKey(const Key('koneksi-back')));
     await tester.pumpAndSettle();
     expect(find.byType(DoctorPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('doctor home loads connected patients from the backend', (
+    tester,
+  ) async {
+    await startApp(tester, useLiveDoctorConnections: true);
+    await selectRoleAndOpenLogin(tester, role: 'professional');
+    await enterCredentials(
+      tester,
+      email: 'demo.doctor@dampingi.test',
+      password: 'demo1234',
+    );
+    await tapLoginSubmit(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ibu dari database'), findsOneWidget);
+    expect(find.text('Pasien terhubung'), findsOneWidget);
+    expect(find.text('Ny. Shopia Mudj.'), findsNothing);
+    expect(find.byKey(const Key('doctor-patients-empty')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -683,10 +717,24 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('doctor-profile-avatar')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('doctor-profile-avatar'))),
+      const Size(85, 85),
+    );
     expect(find.text('Maya Estiyanti'), findsOneWidget);
     expect(find.text('demo.doctor@dampingi.test'), findsOneWidget);
+    expect(find.text('AIS128'), findsOneWidget);
     expect(find.text('Ubah Profil'), findsOneWidget);
     expect(find.text('Tambah Pasien'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('doctor-profile-edit')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DoctorProfileEditPage), findsOneWidget);
+    expect(find.byKey(const Key('doctor-profile-edit-name')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('doctor-profile-edit-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tambah Pasien'), findsOneWidget);
+
     await tester.tap(find.byKey(const Key('doctor-profile-add-patient')));
     await tester.pumpAndSettle();
     expect(find.byType(KoneksiPage), findsOneWidget);
