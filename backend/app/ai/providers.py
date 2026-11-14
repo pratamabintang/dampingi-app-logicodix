@@ -3,6 +3,7 @@ import json
 import logging
 from typing import Any
 
+import httpx
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
@@ -86,3 +87,72 @@ class GeminiProvider:
         if not text:  # misalnya diblokir filter keamanan Gemini
             raise AIBadOutput()
         return text
+
+
+def _with_schema(system: str, schema: dict[str, Any]) -> str:
+    """Skema JSON dititipkan di instruksi sistem.
+
+    Protokol OpenAI tidak punya parameter skema yang seragam antar gateway, jadi
+    bentuk jawaban diminta lewat prompt; validasinya tetap di AIGateway.
+    """
+    return (
+        f"{system}\n\n"
+        "Balas HANYA JSON yang memenuhi skema berikut, tanpa penjelasan dan tanpa pagar kode:\n"
+        f"{json.dumps(schema, ensure_ascii=False, separators=(',', ':'))}"
+    )
+
+
+def _first_content(payload: Any) -> str:
+    try:
+        content = payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise AIBadOutput() from exc
+    if isinstance(content, list):  # sebagian gateway mengirim potongan
+        content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+    if not isinstance(content, str) or not content.strip():
+        raise AIBadOutput()
+    return content
+
+
+class OpenAICompatProvider:
+    """Provider pihak ketiga yang bicara protokol OpenAI `/chat/completions`.
+
+    Cukup OpenAI-compatible: base URL, kunci, dan nama model datang dari .env.
+    """
+
+    def __init__(self, client: httpx.AsyncClient, model: str, temperature: float = 0.4):
+        self.client = client
+        self.model = model
+        self.temperature = temperature
+
+    async def complete(self, system: str, turns: list[Turn], schema: dict[str, Any]) -> str:
+        body = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": _with_schema(system, schema)},
+                *({"role": turn.role, "content": turn.content} for turn in turns),
+            ],
+            "response_format": {"type": "json_object"},  # tanpa ini jawaban dibungkus ```json
+            "temperature": self.temperature,
+        }
+        try:
+            resp = await self.client.post("chat/completions", json=body)
+            resp.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise AITimeout() from exc
+        except httpx.HTTPStatusError as exc:
+            # Catat kode saja. Pesan error gateway bisa memuat isi request.
+            logger.warning("Provider AI menolak permintaan: %s", exc.response.status_code)
+            if exc.response.status_code == 429:  # kuota / rate limit habis
+                raise AIBusy() from exc
+            if exc.response.status_code == 504:  # gateway kehabisan waktu di sisinya
+                raise AITimeout() from exc
+            raise AIUnavailable() from exc
+        except httpx.HTTPError as exc:
+            logger.warning("Provider AI tidak bisa dihubungi: %s", type(exc).__name__)
+            raise AIUnavailable() from exc
+        try:
+            payload = resp.json()
+        except ValueError as exc:  # gateway membalas bukan JSON
+            raise AIBadOutput() from exc
+        return _first_content(payload)

@@ -57,13 +57,19 @@ def main() -> int:
     code, out = run([py, "backend/scripts/check_secrets.py", "--history"])
     record("Rahasia di repo + riwayat", code, out)
 
-    if env_value("AI_PROVIDER") == "gemini":
+    provider = env_value("AI_PROVIDER")
+    if provider in ("gemini", "openai_compatible"):
         code, out = run([py, "scripts/ai_smoke.py"], cwd=BACKEND)
         ok = len(re.findall(r"^\[OK\]", out, re.M))
         total = len(re.findall(r"^\[(OK|CEK|GAGAL)\]", out, re.M))
-        record("Smoke test Gemini (perilaku model)", code, out, f"{ok}/{total} OK")
+        record(f"Smoke test {provider} (perilaku model)", code, out, f"{ok}/{total} OK")
     else:
-        record("Smoke test Gemini (perilaku model)", None, "", "AI_PROVIDER di backend/.env bukan gemini")
+        record(
+            "Smoke test provider AI (perilaku model)",
+            None,
+            "",
+            f"AI_PROVIDER di backend/.env = {provider or '(kosong)'}, bukan provider sungguhan",
+        )
 
     if os.getenv("CHAT_CHECK_URL"):
         code, out = run([py, "backend/scripts/chat_live_check.py"])
@@ -81,7 +87,7 @@ def main() -> int:
         "",
         f"- Commit: `{commit}`" + (" (ada perubahan belum di-commit)" if dirty else ""),
         f"- Python: {platform.python_version()}",
-        f"- Model: `{env_value('GEMINI_MODEL') or '(tidak diisi)'}`",
+        f"- Model: `{env_value('GEMINI_MODEL') or env_value('AI_MODEL') or '(tidak diisi)'}`",
         f"- Versi prompt: {', '.join(f'`{v}`' for v in versions)}",
         "",
         "| Langkah | Status | Ringkasan |",

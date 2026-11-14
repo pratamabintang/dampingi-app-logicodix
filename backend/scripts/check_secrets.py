@@ -20,7 +20,7 @@ PATTERNS = {
     "Supabase secret key": re.compile(r"\bsb_secret_[A-Za-z0-9_\-]{10,}"),
 }
 JWT = re.compile(r"eyJ[A-Za-z0-9_\-]{10,}\.(eyJ[A-Za-z0-9_\-]{10,})\.[A-Za-z0-9_\-]{10,}")
-SECRET_ENV_NAMES = ("GEMINI_API_KEY", "OPENAI_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY")
+SECRET_ENV_NAMES = ("GEMINI_API_KEY", "OPENAI_API_KEY", "AI_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY")
 
 
 def _mask(value: str) -> str:
