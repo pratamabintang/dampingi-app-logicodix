@@ -205,7 +205,6 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
                         key: const Key('koneksi-redeem'),
                         onPressed: _busy ? null : _redeem,
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppTheme.coral,
                           padding: EdgeInsets.symmetric(vertical: scaled(12)),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(scaled(16)),
@@ -215,7 +214,6 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
                           'Tukar Kode',
                           style: TextStyle(
                             fontFamily: AppTheme.fontFamily,
-                            color: Colors.white,
                             fontSize: scaled(16),
                             fontWeight: FontWeight.w600,
                             height: 24 / 16,
@@ -578,8 +576,6 @@ class _IssueButton extends StatelessWidget {
           key: const Key('koneksi-issue'),
           onPressed: reason != null || busy ? null : onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.coral,
-            disabledBackgroundColor: AppTheme.pink6.withValues(alpha: 0.4),
             padding: EdgeInsets.symmetric(vertical: scale(12)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(scale(16)),
@@ -589,7 +585,6 @@ class _IssueButton extends StatelessWidget {
             'Buat Kode Undangan',
             style: TextStyle(
               fontFamily: AppTheme.fontFamily,
-              color: Colors.white,
               fontSize: scale(16),
               fontWeight: FontWeight.w600,
               height: 24 / 16,

@@ -5,6 +5,8 @@ abstract final class AppTheme {
   static const pink1 = Color(0xFFFFFAFA);
   static const pink2 = Color(0xFFFEF3F2);
   static const pink3 = Color(0xFFFEE4E2);
+  static const pink4 = Color(0xFFFECDCA);
+  static const pink5 = Color(0xFFFDA29B);
   static const pink6 = Color(0xFFF97066);
   static const white1 = Color(0xFFFDFDFD);
   static const white2 = Color(0xFFFAFAFA);
@@ -90,21 +92,7 @@ abstract final class AppTheme {
         borderSide: const BorderSide(color: Color(0xFFD92D20), width: 1.5),
       ),
     ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: pink6,
-        foregroundColor: white1,
-        minimumSize: const Size.fromHeight(48),
-        elevation: 1,
-        shadowColor: const Color(0x0D101828),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
+    filledButtonTheme: FilledButtonThemeData(style: AppButtonStyles.primary),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: pink6,
@@ -115,4 +103,75 @@ abstract final class AppTheme {
       ),
     ),
   );
+}
+
+enum AppButtonType { primary, secondary }
+
+class AppButtonColors {
+  const AppButtonColors({required this.background, required this.foreground});
+
+  final Color background;
+  final Color foreground;
+}
+
+abstract final class AppButtonStyles {
+  static const tombolPrimerNormal = AppButtonColors(
+    background: AppTheme.pink6,
+    foreground: Colors.white,
+  );
+  static const tombolPrimerDisable = AppButtonColors(
+    background: AppTheme.pink4,
+    foreground: AppTheme.pink3,
+  );
+  static const tombolSekunderNormal = AppButtonColors(
+    background: AppTheme.pink3,
+    foreground: AppTheme.pink6,
+  );
+  static const tombolSekunderDisable = AppButtonColors(
+    background: AppTheme.pink3,
+    foreground: AppTheme.pink5,
+  );
+
+  static final primary = _style(tombolPrimerNormal, tombolPrimerDisable);
+  static final secondary = _style(tombolSekunderNormal, tombolSekunderDisable);
+  static final secondaryText = TextButton.styleFrom(
+    backgroundColor: tombolSekunderNormal.background,
+    foregroundColor: tombolSekunderNormal.foreground,
+    disabledBackgroundColor: tombolSekunderDisable.background,
+    disabledForegroundColor: tombolSekunderDisable.foreground,
+  );
+  static final secondaryIcon = IconButton.styleFrom(
+    backgroundColor: tombolSekunderNormal.background,
+    foregroundColor: tombolSekunderNormal.foreground,
+    disabledBackgroundColor: tombolSekunderDisable.background,
+    disabledForegroundColor: tombolSekunderDisable.foreground,
+  );
+
+  static ButtonStyle forType(AppButtonType type) => switch (type) {
+    AppButtonType.primary => primary,
+    AppButtonType.secondary => secondary,
+  };
+
+  static Color disabledForeground(AppButtonType type) => switch (type) {
+    AppButtonType.primary => tombolPrimerDisable.foreground,
+    AppButtonType.secondary => tombolSekunderDisable.foreground,
+  };
+
+  static ButtonStyle _style(AppButtonColors normal, AppButtonColors disabled) {
+    return FilledButton.styleFrom(
+      backgroundColor: normal.background,
+      foregroundColor: normal.foreground,
+      disabledBackgroundColor: disabled.background,
+      disabledForegroundColor: disabled.foreground,
+      minimumSize: const Size.fromHeight(48),
+      elevation: 1,
+      shadowColor: const Color(0x0D101828),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      textStyle: const TextStyle(
+        fontFamily: AppTheme.fontFamily,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
 }

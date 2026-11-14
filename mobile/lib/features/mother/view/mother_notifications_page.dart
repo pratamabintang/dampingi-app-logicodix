@@ -501,16 +501,14 @@ class _RedemptionDialogButton extends StatelessWidget {
       child: AppSubmitButton(
         label: label,
         onPressed: onPressed,
+        type: secondary ? AppButtonType.secondary : AppButtonType.primary,
         textStyle: TextStyle(
           fontFamily: AppTheme.fontFamily,
-          color: secondary ? AppTheme.coralText : Colors.white,
           fontSize: scale(16),
           fontWeight: FontWeight.w600,
           height: 24 / 16,
         ),
         buttonStyle: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.coralLight : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
           padding: EdgeInsets.symmetric(
             horizontal: scale(20),
             vertical: scale(12),

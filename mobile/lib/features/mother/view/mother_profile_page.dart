@@ -112,8 +112,6 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                                   height: 24 / 16,
                                 ),
                                 buttonStyle: FilledButton.styleFrom(
-                                  backgroundColor: AppTheme.coral,
-                                  foregroundColor: Colors.white,
                                   padding: EdgeInsets.symmetric(
                                     horizontal: scaled(20),
                                     vertical: scaled(12),
@@ -264,14 +262,11 @@ class _ProfileActionButton extends StatelessWidget {
         onPressed: onPressed,
         textStyle: TextStyle(
           fontFamily: AppTheme.fontFamily,
-          color: Colors.white,
           fontSize: scale(16),
           fontWeight: FontWeight.w600,
           height: 24 / 16,
         ),
         buttonStyle: FilledButton.styleFrom(
-          backgroundColor: AppTheme.coral,
-          foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(
             horizontal: scale(20),
             vertical: scale(12),

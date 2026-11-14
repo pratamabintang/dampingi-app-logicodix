@@ -449,8 +449,6 @@ class _UnassignedMotherCard extends StatelessWidget {
               key: const Key('companion-enter-mother-code'),
               onPressed: onTap,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.coral,
-                foregroundColor: Colors.white,
                 padding: EdgeInsets.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
@@ -521,8 +519,6 @@ class _ObservationCard extends StatelessWidget {
               key: const Key('companion-observation-start'),
               onPressed: onTap,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.coral,
-                foregroundColor: Colors.white,
                 padding: EdgeInsets.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
@@ -1207,18 +1203,20 @@ class _CompanionDialogButton extends StatelessWidget {
       height: scale * 48,
       child: FilledButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.pink2 : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(scale * 8),
-          ),
-          textStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: scale * 16,
-            fontWeight: FontWeight.w600,
+        style: AppButtonStyles.forType(
+          secondary ? AppButtonType.secondary : AppButtonType.primary,
+        ).merge(
+          FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(scale * 8),
+            ),
+            textStyle: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: scale * 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         child: Text(label),
@@ -1365,11 +1363,11 @@ class _WeekButton extends StatelessWidget {
       height: 56 * scale,
       child: IconButton(
         onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: AppTheme.pink2,
-          foregroundColor: AppTheme.coralText,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12 * scale),
+        style: AppButtonStyles.secondaryIcon.merge(
+          IconButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12 * scale),
+            ),
           ),
         ),
         icon: Icon(icon, size: 24 * scale),

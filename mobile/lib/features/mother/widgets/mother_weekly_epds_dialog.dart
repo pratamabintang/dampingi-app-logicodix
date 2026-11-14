@@ -297,19 +297,19 @@ class _MotherWeeklyEpdsDialogState
           child: FilledButton(
             key: const Key('mother-weekly-epds-back'),
             onPressed: _back,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.coralLight,
-              foregroundColor: AppTheme.coralText,
-              elevation: 1,
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8 * scale),
-              ),
-              textStyle: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                fontSize: 16 * scale,
-                fontWeight: FontWeight.w600,
+            style: AppButtonStyles.secondary.merge(
+              FilledButton.styleFrom(
+                elevation: 1,
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8 * scale),
+                ),
+                textStyle: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: 16 * scale,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             child: const Text('Kembali'),
@@ -531,8 +531,6 @@ class _MotherWeeklyEpdsDialogState
         key: key,
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: AppTheme.coral,
-          foregroundColor: Colors.white,
           elevation: 1,
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

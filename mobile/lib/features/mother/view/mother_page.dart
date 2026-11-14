@@ -1057,11 +1057,12 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
           child: FilledButton(
             key: const Key('mother-mood-dialog-continue'),
             onPressed: onContinue,
-            style: FilledButton.styleFrom(
-              minimumSize: Size.fromHeight(48 * scale),
-              backgroundColor: AppTheme.coral,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8 * scale),
+            style: AppButtonStyles.primary.merge(
+              FilledButton.styleFrom(
+                minimumSize: Size.fromHeight(48 * scale),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8 * scale),
+                ),
               ),
             ),
             child: Text(continueLabel, style: TextStyle(fontSize: 16 * scale)),
@@ -1075,13 +1076,13 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
             child: FilledButton(
               key: const Key('mother-mood-dialog-back'),
               onPressed: onBack ?? widget.onClose,
-              style: FilledButton.styleFrom(
-                minimumSize: Size.fromHeight(48 * scale),
-                backgroundColor: AppTheme.coralLight,
-                foregroundColor: AppTheme.coralText,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8 * scale),
+              style: AppButtonStyles.secondary.merge(
+                FilledButton.styleFrom(
+                  minimumSize: Size.fromHeight(48 * scale),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8 * scale),
+                  ),
                 ),
               ),
               child: Text('Kembali', style: TextStyle(fontSize: 16 * scale)),

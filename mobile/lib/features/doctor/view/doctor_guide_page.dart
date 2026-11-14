@@ -856,19 +856,21 @@ class _GuideButton extends StatelessWidget {
       height: 48 * scale,
       child: FilledButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.coralLight : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8 * scale),
-          ),
-          textStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: 16 * scale,
-            fontWeight: FontWeight.w600,
-            height: 24 / 16,
+        style: AppButtonStyles.forType(
+          secondary ? AppButtonType.secondary : AppButtonType.primary,
+        ).merge(
+          FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8 * scale),
+            ),
+            textStyle: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: 16 * scale,
+              fontWeight: FontWeight.w600,
+              height: 24 / 16,
+            ),
           ),
         ),
         child: Text(label),

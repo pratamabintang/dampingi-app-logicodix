@@ -331,8 +331,6 @@ class _ConnectionCard extends StatelessWidget {
               key: const Key('doctor-connections-open'),
               onPressed: onOpenConnections,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.coral,
-                foregroundColor: Colors.white,
                 minimumSize: Size.fromHeight(48 * scale),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(

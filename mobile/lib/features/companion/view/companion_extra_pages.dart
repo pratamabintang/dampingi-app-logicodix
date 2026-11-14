@@ -727,18 +727,20 @@ class _CompanionProfileButton extends StatelessWidget {
       height: scale * 48,
       child: FilledButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.pink2 : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(scale * 8),
-          ),
-          textStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: scale * 16,
-            fontWeight: FontWeight.w600,
+        style: AppButtonStyles.forType(
+          secondary ? AppButtonType.secondary : AppButtonType.primary,
+        ).merge(
+          FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(scale * 8),
+            ),
+            textStyle: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: scale * 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         child: Text(label),
