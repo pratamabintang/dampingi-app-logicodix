@@ -6,9 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../connections/repositories/connection_repository.dart';
 import 'mother_navigation.dart';
 
 class MotherProfilePage extends ConsumerStatefulWidget {
@@ -87,6 +90,11 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                                 companions: _companions,
                                 permissions: _permissions,
                                 onPermissionChanged: _setPermission,
+                              ),
+                              SizedBox(height: scaled(36)),
+                            ] else ...[
+                              _ProfessionalSharingPermissionsSection(
+                                scale: scaled,
                               ),
                               SizedBox(height: scaled(36)),
                             ],
@@ -442,6 +450,7 @@ class _CompanionPermissionCard extends StatelessWidget {
               permission: companion.permissions[index],
               scale: scale,
               value: permissions[companion.permissions[index].id] ?? false,
+              displayName: companion.name,
               onChanged: (value) =>
                   onPermissionChanged(companion.permissions[index].id, value),
             ),
@@ -461,6 +470,7 @@ class _PermissionRow extends StatelessWidget {
     required this.scale,
     required this.value,
     required this.onChanged,
+    this.displayName,
   });
 
   final String companionId;
@@ -468,6 +478,7 @@ class _PermissionRow extends StatelessWidget {
   final double Function(double) scale;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final String? displayName;
 
   @override
   Widget build(BuildContext context) {
@@ -489,7 +500,8 @@ class _PermissionRow extends StatelessWidget {
           Semantics(
             button: true,
             toggled: value,
-            label: '${permission.label} untuk ${_companionName(companionId)}',
+            label:
+                '${permission.label} untuk ${displayName ?? _companionName(companionId)}',
             child: InkWell(
               key: Key('mother-profile-toggle-$companionId-${permission.id}'),
               onTap: () => onChanged(!value),
@@ -563,3 +575,242 @@ const _defaultCompanions = <_CompanionProfile>[
     ],
   ),
 ];
+
+const _professionalPermissions = <_PrivacyPermission>[
+  _PrivacyPermission(id: 'weekly-summary', label: 'Ringkasan mingguan'),
+  _PrivacyPermission(id: 'epds', label: 'Hasil EPDS'),
+  _PrivacyPermission(id: 'journal', label: 'Jurnal pribadi'),
+];
+
+class _ProfessionalSharingPermissionsSection extends ConsumerWidget {
+  const _ProfessionalSharingPermissionsSection({required this.scale});
+
+  final double Function(double) scale;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connections = ref.watch(activeConnectionsProvider);
+    return AppCard(
+      key: const Key('mother-profile-permissions-card'),
+      padding: EdgeInsets.all(scale(20)),
+      borderRadius: scale(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Bagikan data kepada tenaga kesehatan',
+            style: TextStyle(
+              color: const Color(0xFF252B37),
+              fontSize: scale(16),
+              fontWeight: FontWeight.w600,
+              height: 24 / 16,
+            ),
+          ),
+          SizedBox(height: scale(8)),
+          Text(
+            'Izin berlaku hanya untuk tenaga kesehatan yang terhubung dan '
+            'dapat dicabut kapan saja.',
+            key: const Key('mother-profile-sharing-rule'),
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontSize: scale(14),
+              height: 20 / 14,
+            ),
+          ),
+          SizedBox(height: scale(24)),
+          connections.when(
+            data: (items) {
+              final professionals = (items ?? const <ConnectionPerson>[])
+                  .where((connection) => connection.role == 'professional')
+                  .toList();
+              if (professionals.isEmpty) {
+                return Text(
+                  'Belum ada tenaga kesehatan yang terhubung.',
+                  key: const Key('mother-profile-no-professionals'),
+                  style: TextStyle(
+                    color: AppTheme.muted,
+                    fontSize: scale(14),
+                    height: 20 / 14,
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (
+                    var index = 0;
+                    index < professionals.length;
+                    index++
+                  ) ...[
+                    _ProfessionalSharingEditor(
+                      connection: professionals[index],
+                      scale: scale,
+                    ),
+                    if (index < professionals.length - 1)
+                      SizedBox(height: scale(20)),
+                  ],
+                ],
+              );
+            },
+            loading: () => SizedBox(
+              height: scale(100),
+              child: const AppLoading(message: 'Memuat koneksi...'),
+            ),
+            error: (error, stackTrace) => AppError(
+              message: connectionFailureMessage(error),
+              onRetry: () => ref.invalidate(activeConnectionsProvider),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfessionalSharingEditor extends ConsumerStatefulWidget {
+  const _ProfessionalSharingEditor({
+    required this.connection,
+    required this.scale,
+  });
+
+  final ConnectionPerson connection;
+  final double Function(double) scale;
+
+  @override
+  ConsumerState<_ProfessionalSharingEditor> createState() =>
+      _ProfessionalSharingEditorState();
+}
+
+class _ProfessionalSharingEditorState
+    extends ConsumerState<_ProfessionalSharingEditor> {
+  bool _isSaving = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final permissions = ref.watch(
+      professionalSharingPermissionsProvider(widget.connection.id),
+    );
+    return Container(
+      key: Key('mother-profile-professional-${widget.connection.id}'),
+      padding: EdgeInsets.all(widget.scale(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFFAFAFA)),
+        borderRadius: BorderRadius.circular(widget.scale(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              ClipOval(
+                child: Image.asset(
+                  'assets/images/doctor/doctor-avatar.png',
+                  width: widget.scale(56),
+                  height: widget.scale(56),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              SizedBox(width: widget.scale(16)),
+              Expanded(
+                child: Text(
+                  widget.connection.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.coralText,
+                    fontSize: widget.scale(16),
+                    fontWeight: FontWeight.w600,
+                    height: 24 / 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: widget.scale(16)),
+          permissions.when(
+            data: (value) {
+              if (value == null) {
+                return const AppError(
+                  message: 'Izin berbagi data tidak dapat dimuat.',
+                );
+              }
+              return Column(
+                children: [
+                  for (
+                    var index = 0;
+                    index < _professionalPermissions.length;
+                    index++
+                  ) ...[
+                    _PermissionRow(
+                      companionId: widget.connection.id,
+                      displayName: widget.connection.name,
+                      permission: _professionalPermissions[index],
+                      scale: widget.scale,
+                      value: switch (_professionalPermissions[index].id) {
+                        'weekly-summary' => value.weeklySummary,
+                        'epds' => value.epds,
+                        'journal' => value.journal,
+                        _ => false,
+                      },
+                      onChanged: _isSaving
+                          ? (_) {}
+                          : (enabled) => _updatePermission(
+                              _professionalPermissions[index].id,
+                              enabled,
+                            ),
+                    ),
+                    if (index < _professionalPermissions.length - 1)
+                      SizedBox(height: widget.scale(16)),
+                  ],
+                ],
+              );
+            },
+            loading: () => SizedBox(
+              height: widget.scale(100),
+              child: const AppLoading(message: 'Memuat izin berbagi...'),
+            ),
+            error: (error, stackTrace) => AppError(
+              message: connectionFailureMessage(error),
+              onRetry: () => ref.invalidate(
+                professionalSharingPermissionsProvider(widget.connection.id),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updatePermission(String permission, bool enabled) async {
+    final token = ref.read(backendTokenProvider);
+    if (token == null) return;
+    final field = switch (permission) {
+      'weekly-summary' => 'weekly_summary',
+      'epds' => 'epds',
+      'journal' => 'journal',
+      _ => throw ArgumentError.value(permission, 'permission'),
+    };
+    setState(() => _isSaving = true);
+    try {
+      await ref
+          .read(connectionRepositoryProvider)
+          .updateProfessionalSharingPermissions(
+            connectionId: widget.connection.id,
+            changes: {field: enabled},
+          );
+      ref.invalidate(
+        professionalSharingPermissionsProvider(widget.connection.id),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text(connectionFailureMessage(error))),
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+}

@@ -13,6 +13,7 @@ import '../../../core/widgets/mother_story_list_tile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/mother_story.dart';
 import '../repositories/mother_story_repository.dart';
+import '../repositories/weekly_summary_repository.dart';
 import 'mother_navigation.dart';
 import '../../auth/controller/auth_controller.dart';
 
@@ -147,11 +148,19 @@ class _MotherCalendarPageState extends ConsumerState<MotherCalendarPage> {
                                 },
                               ),
                               SizedBox(height: context.calendarScale(36)),
-                              // Ringkasan EPDS masih teks contoh: hanya di mode preview.
+                              // Preview: teks contoh desain.
                               if (!live &&
                                   _selectedDay == null &&
                                   _isSampleWeek) ...[
                                 const _EpdsSummaryCard(),
+                                SizedBox(height: context.calendarScale(36)),
+                              ],
+                              // Login sungguhan: ringkasan minggu Senin–Minggu dari backend.
+                              if (live && _selectedDay == null) ...[
+                                _WeeklySummaryCard(
+                                  key: ValueKey(isoDate(mondayOf(liveEnd))),
+                                  periodStart: mondayOf(liveEnd),
+                                ),
                                 SizedBox(height: context.calendarScale(36)),
                               ],
                               _StoriesCard(
@@ -492,6 +501,155 @@ class _EpdsSummaryCard extends StatelessWidget {
               fontSize: scale(14),
               height: 20 / 14,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ringkasan AI untuk minggu Senin–Minggu yang dimulai [periodStart].
+class _WeeklySummaryCard extends ConsumerStatefulWidget {
+  const _WeeklySummaryCard({required this.periodStart, super.key});
+
+  final DateTime periodStart;
+
+  @override
+  ConsumerState<_WeeklySummaryCard> createState() => _WeeklySummaryCardState();
+}
+
+class _WeeklySummaryCardState extends ConsumerState<_WeeklySummaryCard> {
+  bool _creating = false;
+  String? _error;
+
+  String get _period => isoDate(widget.periodStart);
+
+  Future<void> _create() async {
+    if (ref.read(backendTokenProvider) == null || _creating) return;
+    setState(() {
+      _creating = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(weeklySummaryRepositoryProvider)
+          .create(periodStart: _period);
+    } catch (error) {
+      if (mounted) setState(() => _error = weeklySummaryFailureMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() => _creating = false);
+        ref.invalidate(weeklySummaryProvider(_period));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = context.calendarScale;
+    final summaryAsync = ref.watch(weeklySummaryProvider(_period));
+    final summary = summaryAsync.asData?.value;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final periodEnd = widget.periodStart.add(const Duration(days: 6));
+    final isCurrentWeek = !today.isAfter(periodEnd);
+
+    final String body;
+    if (summaryAsync.hasError && summary == null) {
+      body = 'Ringkasan belum dapat dimuat.';
+    } else if (summaryAsync.isLoading && summary == null) {
+      body = 'Memuat ringkasan...';
+    } else if (summary == null) {
+      body = 'Belum ada ringkasan untuk minggu ini.';
+    } else {
+      body =
+          summary.overview ?? 'Ringkasan AI belum tersedia untuk minggu ini.';
+    }
+
+    // Minggu yang sudah lewat cukup dibuat sekali; minggu ini boleh diperbarui.
+    final canCreate =
+        !summaryAsync.isLoading && (summary == null || isCurrentWeek);
+
+    final textStyle = TextStyle(
+      color: AppTheme.coralText,
+      fontSize: scale(14),
+      height: 20 / 14,
+    );
+    final noteStyle = TextStyle(
+      color: AppTheme.muted,
+      fontSize: scale(12),
+      height: 18 / 12,
+    );
+
+    return Container(
+      key: const Key('mother-calendar-weekly-summary'),
+      width: double.infinity,
+      padding: EdgeInsets.all(scale(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.selectedSurface,
+        border: Border.all(color: AppTheme.coral),
+        borderRadius: BorderRadius.circular(scale(32)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Ringkasan minggu ${_weekLabel(widget.periodStart)}',
+            style: textStyle.copyWith(fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: scale(10)),
+          Text(
+            body,
+            key: const Key('mother-calendar-weekly-summary-text'),
+            style: textStyle,
+          ),
+          if (summary != null && summary.limitations.isNotEmpty) ...[
+            SizedBox(height: scale(10)),
+            for (final limitation in summary.limitations)
+              Text('• $limitation', style: noteStyle),
+          ],
+          if (_error case final error?) ...[
+            SizedBox(height: scale(10)),
+            Text(
+              error,
+              key: const Key('mother-calendar-weekly-summary-error'),
+              style: textStyle.copyWith(color: const Color(0xFFB42318)),
+            ),
+          ],
+          if (canCreate) ...[
+            SizedBox(height: scale(16)),
+            SizedBox(
+              width: double.infinity,
+              height: scale(40),
+              child: FilledButton(
+                key: const Key('mother-calendar-weekly-summary-create'),
+                onPressed: _creating ? null : _create,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.coral,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(scale(8)),
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: scale(14),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: Text(
+                  _creating
+                      ? 'Membuat ringkasan...'
+                      : summary == null
+                      ? 'Buat ringkasan'
+                      : 'Perbarui ringkasan',
+                ),
+              ),
+            ),
+          ],
+          SizedBox(height: scale(10)),
+          Text(
+            'Dibuat AI dari mood dan jurnalmu minggu ini. Bukan penilaian klinis.',
+            style: noteStyle,
           ),
         ],
       ),

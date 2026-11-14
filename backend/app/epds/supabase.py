@@ -48,13 +48,22 @@ def list_assessments(
     mother_id: str,
     offset: int = 0,
     limit: int = 20,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> tuple[list, int]:
+    date_filters = []
+    if start_date is not None:
+        date_filters.append(("created_at", f"gte.{start_date}T00:00:00Z"))
+    if end_date is not None:
+        date_filters.append(("created_at", f"lt.{end_date}T00:00:00Z"))
+
     count_resp = _request(
         _client().get,
         f"{_base_url()}/rest/v1/epds_assessments",
         params=[
             ("mother_id", f"eq.{mother_id}"),
             ("select", "count"),
+            *date_filters,
         ],
         headers={
             **supabase_service_http(),
@@ -78,6 +87,7 @@ def list_assessments(
             ("order", "created_at.desc"),
             ("limit", str(limit)),
             ("offset", str(offset)),
+            *date_filters,
         ],
         headers=supabase_service_http(),
         timeout=TIMEOUT,

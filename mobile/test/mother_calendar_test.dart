@@ -313,6 +313,11 @@ void main() {
       find.byKey(const Key('mother-calendar-empty-stories')),
       findsNothing,
     );
+    expect(
+      find.byKey(const Key('mother-calendar-weekly-summary')),
+      findsOneWidget,
+    );
+    expect(find.text('Belum ada ringkasan untuk minggu ini.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('mother-calendar-day-Rab')));
     await tester.pumpAndSettle();
@@ -405,6 +410,12 @@ class _LiveWeekApi extends BackendApi {
     Map<String, String>? query,
     String? accessToken,
   }) async {
+    if (path == '/summaries/weekly') {
+      throw const BackendApiException(
+        statusCode: 404,
+        message: 'Weekly summary not found',
+      );
+    }
     if (path == '/moods') {
       return {
         'moods': [

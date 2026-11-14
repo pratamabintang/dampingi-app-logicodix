@@ -1,34 +1,67 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/mother_story_list_tile.dart';
+import '../../connections/repositories/connection_repository.dart';
+import '../../doctor/repositories/doctor_patient_summary_repository.dart';
+import '../../mother/repositories/daily_entry_repository.dart';
 import '../../mother/models/mother_story.dart';
+import '../../auth/controller/auth_controller.dart';
+import '../../mother/repositories/mother_story_repository.dart';
 import 'doctor_patient_picker.dart';
 import 'doctor_patient_story_page.dart';
 
-class DoctorPatientSummaryPage extends StatefulWidget {
+class DoctorPatientSummaryPage extends ConsumerStatefulWidget {
   const DoctorPatientSummaryPage({required this.bottomNavigation, super.key});
 
   final Widget bottomNavigation;
 
   @override
-  State<DoctorPatientSummaryPage> createState() =>
+  ConsumerState<DoctorPatientSummaryPage> createState() =>
       _DoctorPatientSummaryPageState();
 }
 
-class _DoctorPatientSummaryPageState extends State<DoctorPatientSummaryPage> {
+class _DoctorPatientSummaryPageState
+    extends ConsumerState<DoctorPatientSummaryPage> {
   static final _sampleWeek = DateTime(2026, 8, 1);
   int _weekOffset = 0;
-  String _selectedPatient = 'Ny. Shopia Mudj.';
-
-  DateTime get _weekStart => _sampleWeek.add(Duration(days: 7 * _weekOffset));
+  String? _selectedConnectionId;
 
   @override
   Widget build(BuildContext context) {
+    final backendSession = ref.watch(backendTokenProvider) != null;
+    final connections = ref.watch(activeConnectionsProvider);
+    final patients = (connections.asData?.value ?? const <ConnectionPerson>[])
+        .where((connection) => connection.role == 'mother')
+        .toList();
+    final selectedPatient =
+        patients
+            .where((patient) => patient.id == _selectedConnectionId)
+            .firstOrNull ??
+        patients.firstOrNull;
+    final currentMonday = DateTime.now().subtract(
+      Duration(days: DateTime.now().weekday - 1),
+    );
+    final weekStart = (backendSession ? currentMonday : _sampleWeek).add(
+      Duration(days: 7 * _weekOffset),
+    );
+    final summaryAsync = backendSession && selectedPatient != null
+        ? ref.watch(
+            doctorPatientSummaryProvider((
+              connectionId: selectedPatient.id,
+              periodStart: isoDate(weekStart),
+            )),
+          )
+        : null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -71,24 +104,27 @@ class _DoctorPatientSummaryPageState extends State<DoctorPatientSummaryPage> {
                             ),
                           ),
                           SizedBox(height: 36 * scale),
-                          DoctorPatientPicker(
-                            keyPrefix: 'doctor-patient-summary',
-                            value: _selectedPatient,
-                            onChanged: (value) =>
-                                setState(() => _selectedPatient = value),
+                          _buildPatientPicker(
+                            backendSession: backendSession,
+                            connections: connections,
+                            patients: patients,
+                            selectedPatient: selectedPatient,
                           ),
                           SizedBox(height: 36 * scale),
                           _WeekSelector(
-                            label: _weekLabel(_weekStart),
+                            label: _weekLabel(weekStart),
                             onPrevious: () => _changeWeek(-1),
                             onNext: () => _changeWeek(1),
                           ),
                           SizedBox(height: 36 * scale),
-                          const _MoodWeek(),
-                          SizedBox(height: 36 * scale),
-                          _EpdsSummaryCard(label: _weekLabel(_weekStart)),
-                          SizedBox(height: 36 * scale),
-                          _StoriesCard(onStoryTap: _openStory),
+                          ..._buildSummarySections(
+                            backendSession: backendSession,
+                            connections: connections,
+                            selectedPatient: selectedPatient,
+                            summary: summaryAsync,
+                            weekStart: weekStart,
+                            weekLabel: _weekLabel(weekStart),
+                          ),
                         ],
                       ),
                     ),
@@ -100,6 +136,149 @@ class _DoctorPatientSummaryPageState extends State<DoctorPatientSummaryPage> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildPatientPicker({
+    required bool backendSession,
+    required AsyncValue<List<ConnectionPerson>?> connections,
+    required List<ConnectionPerson> patients,
+    required ConnectionPerson? selectedPatient,
+  }) {
+    if (!backendSession) {
+      return DoctorPatientPicker(
+        keyPrefix: 'doctor-patient-summary',
+        value: 'Ny. Shopia Mudj.',
+        onChanged: (_) {},
+      );
+    }
+
+    return connections.when(
+      data: (_) => patients.isEmpty
+          ? const AppEmpty(
+              key: Key('doctor-patient-summary-no-patients'),
+              title: 'Belum ada pasien terhubung',
+              message: 'Ibu yang terhubung akan muncul di sini.',
+            )
+          : DoctorPatientPicker(
+              keyPrefix: 'doctor-patient-summary',
+              value: selectedPatient?.id ?? patients.first.id,
+              patients: patients,
+              onChanged: (value) =>
+                  setState(() => _selectedConnectionId = value),
+            ),
+      loading: () => const SizedBox(
+        key: Key('doctor-patient-summary-patients-loading'),
+        height: 100,
+        child: AppLoading(message: 'Memuat pasien...'),
+      ),
+      error: (error, stackTrace) => AppError(
+        key: const Key('doctor-patient-summary-patients-error'),
+        message: connectionFailureMessage(error),
+        onRetry: () => ref.invalidate(activeConnectionsProvider),
+      ),
+    );
+  }
+
+  List<Widget> _buildSummarySections({
+    required bool backendSession,
+    required AsyncValue<List<ConnectionPerson>?> connections,
+    required ConnectionPerson? selectedPatient,
+    required AsyncValue<DoctorPatientSummary>? summary,
+    required DateTime weekStart,
+    required String weekLabel,
+  }) {
+    if (!backendSession) {
+      return [
+        const _MoodWeek(),
+        const SizedBox(height: 36),
+        _EpdsSummaryCard(label: weekLabel, isPreview: true),
+        const SizedBox(height: 36),
+        _StoriesCard(stories: _sampleStories, onStoryTap: _openStory),
+      ];
+    }
+
+    if (connections.isLoading) {
+      return const [
+        SizedBox(
+          key: Key('doctor-patient-summary-data-loading'),
+          height: 180,
+          child: AppLoading(message: 'Memuat ringkasan pasien...'),
+        ),
+      ];
+    }
+    if (connections.hasError) {
+      return [
+        SizedBox(
+          key: const Key('doctor-patient-summary-data-error'),
+          height: 160,
+          child: AppError(
+            message: connectionFailureMessage(connections.error!),
+            onRetry: () => ref.invalidate(activeConnectionsProvider),
+          ),
+        ),
+      ];
+    }
+    if (selectedPatient == null || summary == null) return const [];
+
+    return summary.when(
+      data: (data) => [
+        if (data.permissions.weeklySummary)
+          _MoodWeek(weekStart: weekStart, moods: data.moods)
+        else
+          const _SharingNotice(
+            key: Key('doctor-patient-summary-mood-private'),
+            message: 'Ibu belum membagikan ringkasan mingguan.',
+          ),
+        const SizedBox(height: 36),
+        _EpdsSummaryCard(
+          label: weekLabel,
+          assessments: data.epds,
+          isShared: data.permissions.epds,
+        ),
+        const SizedBox(height: 36),
+        _StoriesCard(
+          stories: data.permissions.journal
+              ? storiesFromEntries(
+                  journals: data.journals,
+                  moods: [
+                    for (final mood in data.moods)
+                      MoodEntry(
+                        id: mood.date,
+                        date: mood.date,
+                        mood: mood.mood,
+                      ),
+                  ],
+                )
+              : const [],
+          isShared: data.permissions.journal,
+          onStoryTap: _openStory,
+        ),
+      ],
+      loading: () => const [
+        SizedBox(
+          key: Key('doctor-patient-summary-data-loading'),
+          height: 180,
+          child: AppLoading(message: 'Memuat ringkasan pasien...'),
+        ),
+      ],
+      error: (error, stackTrace) => [
+        SizedBox(
+          key: const Key('doctor-patient-summary-data-error'),
+          height: 160,
+          child: AppError(
+            message: connectionFailureMessage(error),
+            onRetry: () {
+              ref.invalidate(
+                doctorPatientSummaryProvider((
+                  connectionId: selectedPatient.id,
+                  periodStart: isoDate(weekStart),
+                )),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -218,21 +397,37 @@ class _WeekButton extends StatelessWidget {
 }
 
 class _MoodWeek extends StatelessWidget {
-  const _MoodWeek();
+  const _MoodWeek({this.weekStart, this.moods});
+
+  final DateTime? weekStart;
+  final List<PatientMoodEntry>? moods;
 
   @override
   Widget build(BuildContext context) {
     final scale = _scaleFor(context);
+    final moodsByDate = {
+      for (final mood in moods ?? const <PatientMoodEntry>[])
+        mood.date: mood.mood,
+    };
     return SizedBox(
       height: 144 * scale,
       child: Row(
         children: [
-          for (var index = 0; index < _weekDays.length; index++) ...[
+          for (var index = 0; index < 7; index++) ...[
             if (index > 0) SizedBox(width: 4 * scale),
             Expanded(
               child: _MoodDay(
-                day: _weekDays[index],
-                mood: _weekMoods[index],
+                day: weekStart == null
+                    ? _weekDays[index]
+                    : _weekDays[weekStart!.add(Duration(days: index)).weekday -
+                          1],
+                mood: weekStart == null
+                    ? _weekMoods[index]
+                    : _MoodPreview.fromValue(
+                        moodsByDate[isoDate(
+                          weekStart!.add(Duration(days: index)),
+                        )],
+                      ),
                 scale: scale,
               ),
             ),
@@ -247,7 +442,7 @@ class _MoodDay extends StatelessWidget {
   const _MoodDay({required this.day, required this.mood, required this.scale});
 
   final String day;
-  final _MoodPreview mood;
+  final _MoodPreview? mood;
   final double scale;
 
   @override
@@ -256,7 +451,7 @@ class _MoodDay extends StatelessWidget {
       key: Key('doctor-patient-summary-day-$day'),
       height: 144 * scale,
       decoration: BoxDecoration(
-        color: mood.color,
+        color: mood?.color ?? const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(12 * scale),
       ),
       child: Stack(
@@ -264,7 +459,7 @@ class _MoodDay extends StatelessWidget {
         children: [
           Positioned(
             top: 14 * scale,
-            child: mood.neutralEyes
+            child: mood?.neutralEyes == true
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -283,9 +478,11 @@ class _MoodDay extends StatelessWidget {
                       ),
                     ],
                   )
-                : SvgPicture.asset(
-                    'assets/images/mother_calendar/${mood.asset}',
-                  ),
+                : mood?.asset != null
+                ? SvgPicture.asset(
+                    'assets/images/mother_calendar/${mood!.asset}',
+                  )
+                : const SizedBox.shrink(),
           ),
           Positioned(
             bottom: 10 * scale,
@@ -307,9 +504,17 @@ class _MoodDay extends StatelessWidget {
 }
 
 class _EpdsSummaryCard extends StatelessWidget {
-  const _EpdsSummaryCard({required this.label});
+  const _EpdsSummaryCard({
+    required this.label,
+    this.assessments = const [],
+    this.isShared = true,
+    this.isPreview = false,
+  });
 
   final String label;
+  final List<PatientEPDSAssessment> assessments;
+  final bool isShared;
+  final bool isPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -338,7 +543,15 @@ class _EpdsSummaryCard extends StatelessWidget {
           ),
           SizedBox(height: 10 * scale),
           Text(
-            'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa suami bantu aku ke belakang padahal suami lagi di luar kota.',
+            !isShared
+                ? 'Ibu belum membagikan hasil EPDS.'
+                : isPreview
+                ? 'Senang karena ada suami yang bantu aku untuk ke belakang, kok bisa suami bantu aku ke belakang padahal suami lagi di luar kota.'
+                : assessments.isEmpty
+                ? 'Belum ada hasil EPDS pada periode ini.'
+                : 'Skor EPDS: ${assessments.first.totalScore}\n'
+                      '${assessments.first.disclaimer}',
+            key: const Key('doctor-patient-summary-epds-content'),
             style: TextStyle(
               color: AppTheme.coralText,
               fontFamily: AppTheme.fontFamily,
@@ -353,8 +566,14 @@ class _EpdsSummaryCard extends StatelessWidget {
 }
 
 class _StoriesCard extends StatelessWidget {
-  const _StoriesCard({required this.onStoryTap});
+  const _StoriesCard({
+    required this.stories,
+    required this.onStoryTap,
+    this.isShared = true,
+  });
 
+  final List<MotherStory> stories;
+  final bool isShared;
   final ValueChanged<MotherStory> onStoryTap;
 
   @override
@@ -368,17 +587,39 @@ class _StoriesCard extends StatelessWidget {
         children: [
           AppSectionHeader(title: 'Cerita terakhir pasien', scale: scale),
           SizedBox(height: 24 * scale),
-          for (var index = 0; index < _sampleStories.length; index++) ...[
+          if (!isShared)
+            Text(
+              'Ibu belum membagikan jurnal pribadi.',
+              key: const Key('doctor-patient-summary-journal-private'),
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontFamily: AppTheme.fontFamily,
+                fontSize: 14 * scale,
+                height: 20 / 14,
+              ),
+            )
+          else if (stories.isEmpty)
+            Text(
+              'Belum ada cerita pada periode ini.',
+              key: const Key('doctor-patient-summary-no-stories'),
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontFamily: AppTheme.fontFamily,
+                fontSize: 14 * scale,
+                height: 20 / 14,
+              ),
+            ),
+          for (var index = 0; isShared && index < stories.length; index++) ...[
             MotherStoryListTile(
-              story: _sampleStories[index],
+              story: stories[index],
               scale: scale,
               keyPrefix: 'doctor-patient-summary-story-$index',
               arrowAsset: 'assets/images/mother_calendar/story-arrow-right.svg',
               snippetFontSize: 16,
               centerFace: true,
-              onTap: () => onStoryTap(_sampleStories[index]),
+              onTap: () => onStoryTap(stories[index]),
             ),
-            if (index < _sampleStories.length - 1)
+            if (index < stories.length - 1)
               SizedBox(
                 height: 20 * scale,
                 child: Center(
@@ -406,6 +647,37 @@ class _MoodPreview {
   final Color color;
   final String? asset;
   final bool neutralEyes;
+
+  factory _MoodPreview.fromValue(int? value) {
+    if (value == null) return const _MoodPreview(color: Color(0xFFF5F5F5));
+    final mood = MotherMood.values[value - 1];
+    return _MoodPreview(color: mood.color, asset: mood.asset);
+  }
+}
+
+class _SharingNotice extends StatelessWidget {
+  const _SharingNotice({required this.message, super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = _scaleFor(context);
+    return AppCard(
+      key: key,
+      padding: EdgeInsets.all(20 * scale),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: AppTheme.muted,
+          fontFamily: AppTheme.fontFamily,
+          fontSize: 14 * scale,
+          height: 20 / 14,
+        ),
+      ),
+    );
+  }
 }
 
 double _scaleFor(BuildContext context) {
