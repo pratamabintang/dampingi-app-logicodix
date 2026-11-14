@@ -33,22 +33,38 @@ void main() {
     'submitting creates a draft then completes it with server ids',
     () async {
       final api = _ObservationApi();
+      final answers = List<int>.filled(observationQuestions.length, 2);
 
       await ObservationRepository(authenticatedApiFor(api, token: 'token'))
           .submit(
             motherId: 'mother-1',
-            selectedOption: 2,
+            selectedOptions: answers,
             day: DateTime(2026, 11, 14),
           );
 
       expect(api.posts.single.$1, '/observations');
       expect(api.posts.single.$2['mother_id'], 'mother-1');
       final questions = api.posts.single.$2['questions'] as List;
-      expect((questions.single as Map)['prompt'], observationPrompt);
+      expect(questions.length, observationQuestions.length);
+      expect(
+        [for (final question in questions) (question as Map)['prompt']],
+        [for (final question in observationQuestions) question.prompt],
+      );
+      // Tiap soal membawa pilihannya sendiri, bukan satu daftar bersama.
+      expect(
+        [for (final question in questions) (question as Map)['options']],
+        [
+          for (final question in observationQuestions)
+            [
+              for (final label in question.options) {'label': label},
+            ],
+        ],
+      );
       expect(api.patches.single.$1, '/observations/obs-1');
       expect(api.patches.single.$2, {
         'answers': [
-          {'question_id': 'q1', 'option_id': 'q1o3'},
+          for (var index = 0; index < observationQuestions.length; index++)
+            {'question_id': 'q${index + 1}', 'option_id': 'q${index + 1}o3'},
         ],
         'day': '2026-11-14',
       });
@@ -162,14 +178,22 @@ class _ObservationApi extends BackendApi {
     return {
       'id': 'obs-1',
       'questions': [
-        {
-          'id': 'q1',
-          'prompt': observationPrompt,
-          'options': [
-            for (var i = 0; i < observationOptions.length; i++)
-              {'id': 'q1o${i + 1}', 'label': observationOptions[i]},
-          ],
-        },
+        for (var index = 0; index < observationQuestions.length; index++)
+          {
+            'id': 'q${index + 1}',
+            'prompt': observationQuestions[index].prompt,
+            'options': [
+              for (
+                var option = 0;
+                option < observationQuestions[index].options.length;
+                option++
+              )
+                {
+                  'id': 'q${index + 1}o${option + 1}',
+                  'label': observationQuestions[index].options[option],
+                },
+            ],
+          },
       ],
     };
   }

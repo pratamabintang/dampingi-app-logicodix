@@ -240,22 +240,23 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
       await _submitLiveObservation(scale);
       return;
     }
-    var selectedAnswer = 0;
+    var answers = <int>[];
     var title = '';
     var note = '';
 
     while (true) {
       if (!mounted) return;
-      final answer = await showDialog<int>(
+      final picked = await showDialog<List<int>>(
         context: context,
         builder: (dialogContext) => _ObservationQuestionDialog(
           scale: scale,
-          initialAnswer: selectedAnswer,
+          questions: [observationQuestions.first],
+          initialAnswers: answers,
         ),
       );
       if (!mounted) return;
-      if (answer == null) return;
-      selectedAnswer = answer;
+      if (picked == null) return;
+      answers = picked;
 
       final draft = await showDialog<_ObservationDraft>(
         context: context,
@@ -314,16 +315,20 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
         return;
       }
 
-      final answer = await showDialog<int>(
+      // Sepuluh pertanyaan prototipe, satu per layar; jawabannya dikirim
+      // sekaligus setelah pertanyaan terakhir.
+      final answers = await showDialog<List<int>>(
         context: context,
-        builder: (dialogContext) =>
-            _ObservationQuestionDialog(scale: scale, initialAnswer: 0),
+        builder: (dialogContext) => _ObservationQuestionDialog(
+          scale: scale,
+          questions: observationQuestions,
+        ),
       );
-      if (!mounted || answer == null) return;
+      if (!mounted || answers == null) return;
 
       await repository.submit(
         motherId: motherId,
-        selectedOption: answer,
+        selectedOptions: answers,
         day: DateTime.now(),
       );
       if (!mounted) return;
@@ -771,16 +776,18 @@ class _CompanionNoteRow extends StatelessWidget {
   }
 }
 
-const _observationOptions = observationOptions;
-
+/// Satu pertanyaan per layar dialog. [questions] diisi sepuluh pertanyaan
+/// prototipe saat live, dan satu pertanyaan desain saat pratinjau.
 class _ObservationQuestionDialog extends StatefulWidget {
   const _ObservationQuestionDialog({
     required this.scale,
-    required this.initialAnswer,
+    required this.questions,
+    this.initialAnswers,
   });
 
   final double scale;
-  final int initialAnswer;
+  final List<ObservationQuestion> questions;
+  final List<int>? initialAnswers;
 
   @override
   State<_ObservationQuestionDialog> createState() =>
@@ -789,11 +796,34 @@ class _ObservationQuestionDialog extends StatefulWidget {
 
 class _ObservationQuestionDialogState
     extends State<_ObservationQuestionDialog> {
-  late int _selectedAnswer = widget.initialAnswer;
+  var _index = 0;
+  late final List<int> _answers = List<int>.of(
+    widget.initialAnswers ??
+        List<int>.filled(widget.questions.length, 0, growable: false),
+  );
+
+  bool get _isLast => _index == widget.questions.length - 1;
+
+  void _next() {
+    if (_isLast) {
+      Navigator.of(context).pop(_answers);
+      return;
+    }
+    setState(() => _index += 1);
+  }
+
+  void _back() {
+    if (_index == 0) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _index -= 1);
+  }
 
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final question = widget.questions[_index];
     return Dialog(
       key: const Key('companion-observation-question-dialog'),
       backgroundColor: Colors.transparent,
@@ -840,7 +870,19 @@ class _ObservationQuestionDialogState
             ),
             SizedBox(height: scale * 12),
             Text(
-              '1. $observationPrompt',
+              'Pertanyaan ${_index + 1} dari ${widget.questions.length}',
+              key: const Key('companion-observation-question-progress'),
+              textAlign: TextAlign.left,
+              style: TextStyle(
+                color: AppTheme.muted,
+                fontFamily: AppTheme.fontFamily,
+                fontSize: scale * 14,
+                height: 20 / 14,
+              ),
+            ),
+            SizedBox(height: scale * 8),
+            Text(
+              '${_index + 1}. ${question.prompt}',
               textAlign: TextAlign.left,
               style: TextStyle(
                 color: AppTheme.ink,
@@ -851,34 +893,30 @@ class _ObservationQuestionDialogState
               ),
             ),
             SizedBox(height: scale * 20),
-            for (
-              var index = 0;
-              index < _observationOptions.length;
-              index++
-            ) ...[
+            for (var index = 0; index < question.options.length; index++) ...[
               _ObservationAnswerOption(
                 key: Key('companion-observation-answer-$index'),
-                label: _observationOptions[index],
-                selected: index == _selectedAnswer,
+                label: question.options[index],
+                selected: index == _answers[_index],
                 scale: scale,
-                onTap: () => setState(() => _selectedAnswer = index),
+                onTap: () => setState(() => _answers[_index] = index),
               ),
-              if (index < _observationOptions.length - 1)
+              if (index < question.options.length - 1)
                 SizedBox(height: scale * 8),
             ],
             SizedBox(height: scale * 24),
             _CompanionDialogButton(
               key: const Key('companion-observation-question-continue'),
-              label: 'Lanjut',
+              label: _isLast ? 'Kirim' : 'Lanjut',
               scale: scale,
-              onPressed: () => Navigator.of(context).pop(_selectedAnswer),
+              onPressed: _next,
             ),
             SizedBox(height: scale * 10),
             _CompanionDialogButton(
               key: const Key('companion-observation-question-back'),
               label: 'Kembali',
               scale: scale,
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: _back,
               secondary: true,
             ),
           ],
@@ -1278,22 +1316,23 @@ class _CompanionDialogButton extends StatelessWidget {
       height: scale * 48,
       child: FilledButton(
         onPressed: onPressed,
-        style: AppButtonStyles.forType(
-          secondary ? AppButtonType.secondary : AppButtonType.primary,
-        ).merge(
-          FilledButton.styleFrom(
-            padding: EdgeInsets.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(scale * 8),
+        style:
+            AppButtonStyles.forType(
+              secondary ? AppButtonType.secondary : AppButtonType.primary,
+            ).merge(
+              FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(scale * 8),
+                ),
+                textStyle: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: scale * 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-            textStyle: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: scale * 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
         child: Text(label),
       ),
     );
