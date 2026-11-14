@@ -10,16 +10,23 @@ import '../models/mother_story.dart';
 import '../repositories/mother_story_repository.dart';
 import 'mother_page.dart';
 
-class MotherStoryDetailPage extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../repositories/daily_summary_repository.dart';
+import '../../auth/controller/auth_controller.dart';
+
+class MotherStoryDetailPage extends ConsumerStatefulWidget {
   const MotherStoryDetailPage({this.story, super.key});
 
   final MotherStory? story;
 
   @override
-  State<MotherStoryDetailPage> createState() => _MotherStoryDetailPageState();
+  ConsumerState<MotherStoryDetailPage> createState() =>
+    _MotherStoryDetailPageState();
 }
 
-class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
+class _MotherStoryDetailPageState
+    extends ConsumerState<MotherStoryDetailPage> {
   bool _isExpanded = false;
 
   @override
@@ -202,7 +209,7 @@ class _MotherStoryDetailPageState extends State<MotherStoryDetailPage> {
   }
 }
 
-class _StoryCard extends StatelessWidget {
+class _StoryCard extends ConsumerWidget {
   const _StoryCard({
     required this.scale,
     required this.story,
@@ -216,7 +223,29 @@ class _StoryCard extends StatelessWidget {
   final VoidCallback onToggleExpanded;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final token = ref.watch(backendTokenProvider);
+    final dailySummaryAsync = story.day.isEmpty || token == null
+        ? null
+        : ref.watch(dailySummaryProvider(story.day));
+    final String summaryText;
+
+    if (token == null) {
+      summaryText = story.summary.isNotEmpty
+          ? story.summary
+          : 'Ringkasan AI belum tersedia.';
+    } else if (story.day.isEmpty) {
+      summaryText = 'Tanggal ringkasan tidak tersedia.';
+    } else if (dailySummaryAsync!.isLoading) {
+      summaryText = 'Memuat ringkasan...';
+    } else if (dailySummaryAsync.hasError) {
+      summaryText = dailySummaryFailureMessage(dailySummaryAsync.error!);
+    } else {
+      final summary = dailySummaryAsync.value;
+      summaryText = summary?.overview?.trim().isNotEmpty == true
+          ? summary!.overview!.trim()
+          : 'Belum ada ringkasan untuk tanggal ini.';
+    }
     return AppCard(
       key: const Key('mother-story-detail-card'),
       padding: EdgeInsets.all(scale(20)),
@@ -292,10 +321,11 @@ class _StoryCard extends StatelessWidget {
             ),
             SizedBox(height: scale(24)),
           ],
-          if (story.summary.isNotEmpty) ...[
-            _AiSummary(scale: scale, summary: story.summary),
-            SizedBox(height: scale(24)),
-          ],
+          _AiSummary(
+            scale: scale,
+            summary: summaryText,
+          ),
+          SizedBox(height: scale(24)),
           _StoryText(
             scale: scale,
             title: story.title,
