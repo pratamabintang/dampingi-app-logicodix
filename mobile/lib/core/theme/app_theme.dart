@@ -34,6 +34,7 @@ abstract final class AppTheme {
   ];
 
   static final light = ThemeData(
+    fontFamily: fontFamily,
     colorScheme: ColorScheme.fromSeed(
       seedColor: pink6,
       primary: pink6,
@@ -42,34 +43,20 @@ abstract final class AppTheme {
     useMaterial3: true,
     scaffoldBackgroundColor: white1,
     textTheme: TextTheme(
-      titleLarge: TextStyle(
-        color: ink,
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        height: 32 / 24,
-      ),
-      titleMedium: TextStyle(
-        color: body,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        height: 24 / 16,
-      ),
-      bodyLarge: TextStyle(color: body, fontSize: 16, height: 24 / 16),
-      bodyMedium: TextStyle(color: secondary, fontSize: 14, height: 20 / 14),
-      labelLarge: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        height: 24 / 16,
-      ),
-    ).apply(fontFamily: fontFamily),
+      titleLarge: AppTypography.headingLargeSemibold.copyWith(color: ink),
+      titleMedium: AppTypography.headingMediumSemibold.copyWith(color: ink),
+      titleSmall: AppTypography.headingSmallSemibold.copyWith(color: ink),
+      bodyLarge: AppTypography.bodyDefaultRegular.copyWith(color: body),
+      bodyMedium: AppTypography.bodyDefaultRegular.copyWith(color: body),
+      bodySmall: AppTypography.bodySmallRegular.copyWith(color: secondary),
+      labelLarge: AppTypography.labelStrongSemibold.copyWith(color: ink),
+      labelMedium: AppTypography.labelSmallMedium.copyWith(color: body),
+      labelSmall: AppTypography.captionRegular.copyWith(color: secondary),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: white1,
-      hintStyle: TextStyle(
-        fontFamily: fontFamily,
-        color: secondary,
-        fontSize: 16,
-      ),
+      hintStyle: AppTypography.bodyDefaultRegular.copyWith(color: secondary),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -96,18 +83,11 @@ abstract final class AppTheme {
       backgroundColor: white1,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-      titleTextStyle: const TextStyle(
-        fontFamily: fontFamily,
+      titleTextStyle: AppTypography.headingMediumSemibold.copyWith(
         color: pink6,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        height: 30 / 20,
       ),
-      contentTextStyle: const TextStyle(
-        fontFamily: fontFamily,
+      contentTextStyle: AppTypography.bodyDefaultRegular.copyWith(
         color: white10,
-        fontSize: 16,
-        height: 24 / 16,
       ),
       actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
     ),
@@ -115,12 +95,73 @@ abstract final class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: pink6,
-        textStyle: const TextStyle(
-          fontFamily: fontFamily,
-          fontWeight: FontWeight.w600,
-        ),
+        disabledForegroundColor: white6,
+        textStyle: AppTypography.labelStrongSemibold,
       ),
     ),
+  );
+}
+
+abstract final class AppTypography {
+  static const headingLargeSemibold = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 24,
+    fontWeight: FontWeight.w600,
+    height: 32 / 24,
+  );
+  static const headingMediumSemibold = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    height: 30 / 20,
+  );
+  static const headingSmallSemibold = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    height: 28 / 18,
+  );
+  static const bodyDefaultRegular = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    height: 24 / 16,
+  );
+  static const labelStrongSemibold = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    height: 24 / 16,
+  );
+  static const bodySmallRegular = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 20 / 14,
+  );
+  static const labelSmallMedium = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 20 / 14,
+  );
+  static const captionRegular = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 18 / 12,
+  );
+  static const captionMedium = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 18 / 12,
+  );
+  static const labelStrongBold = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    height: 24 / 16,
   );
 }
 
@@ -186,11 +227,7 @@ abstract final class AppButtonStyles {
       elevation: 1,
       shadowColor: const Color(0x0D101828),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      textStyle: const TextStyle(
-        fontFamily: AppTheme.fontFamily,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-      ),
+      textStyle: AppTypography.labelStrongSemibold,
     );
   }
 }

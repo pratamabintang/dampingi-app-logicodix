@@ -31,12 +31,8 @@ class AppPopupTitle extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style:
                     Theme.of(context).dialogTheme.titleTextStyle ??
-                    const TextStyle(
-                      fontFamily: AppTheme.fontFamily,
+                    AppTypography.headingMediumSemibold.copyWith(
                       color: AppTheme.pink6,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      height: 30 / 20,
                     ),
               ),
             ),

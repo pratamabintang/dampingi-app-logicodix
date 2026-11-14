@@ -54,7 +54,7 @@ class AppTextField extends StatelessWidget {
       softWrap: !fitLabelToWidth,
       style:
           labelStyle ??
-          Theme.of(context).textTheme.bodyMedium
+          Theme.of(context).textTheme.labelMedium
               ?.copyWith(color: AppTheme.body),
     );
 
@@ -84,7 +84,11 @@ class AppTextField extends StatelessWidget {
             height: inputHeight,
             child: TextFormField(
               controller: controller,
-              style: textStyle,
+              style:
+                  textStyle ??
+                  AppTypography.bodyDefaultRegular.copyWith(
+                    color: AppTheme.white10,
+                  ),
               focusNode: focusNode,
               validator: validator,
               obscureText: obscureText,

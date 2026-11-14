@@ -125,7 +125,7 @@ class _RolePickerContent extends StatelessWidget {
                         ),
                         child: const Text(
                           'Masuk',
-                          style: TextStyle(fontFamily: 'Mona Sans'),
+                          style: TextStyle(fontFamily: AppTheme.fontFamily),
                         ),
                       ),
                     ],
@@ -151,7 +151,7 @@ class _RolePickerHeader extends StatelessWidget {
           'Pilih Peranmu di Dampingi',
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'Mona Sans',
+            fontFamily: AppTheme.fontFamily,
             color: AppTheme.coral,
             fontSize: 24,
             fontWeight: FontWeight.w600,
