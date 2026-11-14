@@ -10,6 +10,8 @@ import '../../auth/controller/auth_controller.dart';
 import '../repositories/observation_repository.dart';
 import '../../mother/view/mother_navigation.dart';
 import 'companion_extra_pages.dart';
+import '../repositories/companion_history_repository.dart';
+import 'companion_live_history.dart';
 
 class CompanionPage extends ConsumerStatefulWidget {
   const CompanionPage({super.key});
@@ -80,13 +82,19 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             observationDone: observationDone,
                           ),
                           _CompanionScreen.observations =>
-                            _CompanionObservationPage(
-                              onStartObservation: () =>
-                                  _startObservationFlow(scale),
-                              onNoteTap: () => setState(
-                                () => _screen = _CompanionScreen.noteDetail,
-                              ),
-                            ),
+                            live
+                                ? CompanionLiveObservationPage(
+                                    onStartObservation: () =>
+                                        _startObservationFlow(scale),
+                                  )
+                                : _CompanionObservationPage(
+                                    onStartObservation: () =>
+                                        _startObservationFlow(scale),
+                                    onNoteTap: () => setState(
+                                      () =>
+                                          _screen = _CompanionScreen.noteDetail,
+                                    ),
+                                  ),
                           _CompanionScreen.noteDetail =>
                             _CompanionNoteDetailPage(
                               onBack: () => setState(
@@ -221,14 +229,19 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
           onTap: () => _startObservationFlow(scale),
         ),
         SizedBox(height: scale * 24),
-        _CompanionStoriesCard(
-          // Catatan di kartu ini masih contoh; disambungkan di UI-11.
-          showNotes: hasMother && !live,
-          onSeeAll: () =>
-              setState(() => _screen = _CompanionScreen.observations),
-          onNoteTap: () =>
-              setState(() => _screen = _CompanionScreen.noteDetail),
-        ),
+        if (live)
+          CompanionRecentNotesCard(
+            onSeeAll: () =>
+                setState(() => _screen = _CompanionScreen.observations),
+          )
+        else
+          _CompanionStoriesCard(
+            showNotes: hasMother,
+            onSeeAll: () =>
+                setState(() => _screen = _CompanionScreen.observations),
+            onNoteTap: () =>
+                setState(() => _screen = _CompanionScreen.noteDetail),
+          ),
         SizedBox(height: scale * 24),
         _SupportCard(
           onSeeAll: () => setState(() => _screen = _CompanionScreen.support),
@@ -330,6 +343,7 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
       );
       if (!mounted) return;
       setState(() => _doneTodayLocally = true);
+      ref.invalidate(companionWeekProvider);
 
       await showDialog<void>(
         context: context,

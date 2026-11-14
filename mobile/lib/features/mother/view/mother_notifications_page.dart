@@ -7,18 +7,15 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_empty.dart';
+import 'mother_live_alerts.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../auth/controller/auth_controller.dart';
 
 /// Notifikasi ibu. Desainnya masih berlanjut, jadi layar ini tetap ada dan
 /// tetap dapat dibuka dari header rumah.
 ///
-/// Kontrak backend belum punya notifikasi: kode undangan menyebut Peran, bukan
-/// orang tertentu, dan yang menghubungkan diri adalah penukar kode, bukan
-/// pihak yang menerima permintaan. Karena itu, saat aplikasi benar-benar bicara
-/// dengan backend, layar ini mengatakan
-/// sejujurnya bahwa belum ada apa-apa. Mock desain hanya muncul di mode preview.
+/// Login: tampilkan alert simulasi dari backend.
+/// Preview: pertahankan kartu desain contoh.
 class MotherNotificationsPage extends ConsumerStatefulWidget {
   const MotherNotificationsPage({super.key});
 
@@ -99,11 +96,7 @@ class _MotherNotificationsPageState
                     ),
                     SizedBox(height: scaled(36)),
                     if (live)
-                      const AppEmpty(
-                        key: Key('mother-notifications-empty'),
-                        title: 'Belum ada notifikasi',
-                        message: 'Belum ada kabar baru untuk Anda.',
-                      )
+                      const MotherLiveAlerts()
                     else ...[
                       _NotificationCard(
                         id: 'companion-code',
@@ -176,7 +169,7 @@ class _MotherNotificationsPageState
                         onClose: () => Navigator.of(dialogContext).pop(),
                         onRedeem: () {
                           Navigator.of(dialogContext).pop();
-                          _showUnavailableNotice('Tukar kode belum tersedia.');
+                          context.push('/mother/connections');
                         },
                       ),
                     ),
@@ -191,12 +184,6 @@ class _MotherNotificationsPageState
       transitionBuilder: (context, animation, secondaryAnimation, child) =>
           FadeTransition(opacity: animation, child: child),
     );
-  }
-
-  void _showUnavailableNotice(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
