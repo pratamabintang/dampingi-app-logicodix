@@ -46,11 +46,17 @@ class ConnectionPerson {
     required this.id,
     required this.name,
     required this.role,
+    this.userId,
   });
 
+  /// ID Koneksi (dipakai untuk memutus koneksi).
   final String id;
   final String name;
   final String role;
+
+  /// ID akun orang tersebut. Pendamping butuh ID Ibu untuk membuat observasi.
+  /// null kalau backend belum mengirimnya.
+  final String? userId;
 
   String get roleLabel => connectionRoleLabel(role);
 
@@ -63,10 +69,12 @@ class ConnectionPerson {
         counterpart['role'] is! String) {
       throw const FormatException('Connection has an invalid shape.');
     }
+    final userId = counterpart['id'];
     return ConnectionPerson(
       id: id,
       name: counterpart['name'] as String,
       role: counterpart['role'] as String,
+      userId: userId is String ? userId : null,
     );
   }
 }
