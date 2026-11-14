@@ -5,7 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_error.dart';
+import '../../../core/widgets/app_loading.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../connections/repositories/connection_repository.dart';
+import '../../mother/repositories/mother_story_repository.dart';
 import '../../shared/view/app_bottom_navigation_bar.dart';
 import 'doctor_guide_page.dart';
 import 'doctor_profile_page.dart';
@@ -47,14 +51,26 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
     final greetingName = name.toLowerCase().startsWith('dr.')
         ? name
         : 'dr. $name';
-    final query = _searchQuery.trim().toLowerCase();
-    final patients = _doctorPatients
-        .where(
-          (patient) =>
-              patient.name.toLowerCase().contains(query) ||
-              patient.status.toLowerCase().contains(query),
+    final backendSession = ref.watch(backendTokenProvider) != null;
+    final connections = ref.watch(activeConnectionsProvider);
+    final connectedPatients = connections.asData?.value
+        ?.where((connection) => connection.role == 'mother')
+        .map(
+          (connection) =>
+              _DoctorPatient(name: connection.name, status: 'Pasien terhubung'),
         )
         .toList();
+    final query = _searchQuery.trim().toLowerCase();
+    final patients =
+        (backendSession
+                ? connectedPatients ?? const <_DoctorPatient>[]
+                : _doctorPatients)
+            .where(
+              (patient) =>
+                  patient.name.toLowerCase().contains(query) ||
+                  patient.status.toLowerCase().contains(query),
+            )
+            .toList();
 
     if (_selectedTab == DoctorNavigationTab.patients) {
       return DoctorPatientSummaryPage(
@@ -153,7 +169,7 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                           ),
                           SizedBox(height: 4 * scale),
                           Text(
-                            'Senin, 28 Oktober 2026',
+                            formatStoryDate(DateTime.now()),
                             key: const Key('doctor-home-date'),
                             style: TextStyle(
                               fontFamily: AppTheme.fontFamily,
@@ -174,6 +190,12 @@ class _DoctorPageState extends ConsumerState<DoctorPage> {
                             searchController: _searchController,
                             searchFocusNode: _searchFocusNode,
                             patients: patients,
+                            isLoading: backendSession && connections.isLoading,
+                            errorMessage: backendSession && connections.hasError
+                                ? connectionFailureMessage(connections.error!)
+                                : null,
+                            onRetry: () =>
+                                ref.invalidate(activeConnectionsProvider),
                             onSearch: _searchPatients,
                             onSearchChanged: (value) {
                               setState(() => _searchQuery = value);
@@ -338,6 +360,9 @@ class _PatientsCard extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.patients,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onRetry,
     required this.onSearch,
     required this.onSearchChanged,
   });
@@ -346,6 +371,9 @@ class _PatientsCard extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final List<_DoctorPatient> patients;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onRetry;
   final VoidCallback onSearch;
   final ValueChanged<String> onSearchChanged;
 
@@ -455,7 +483,19 @@ class _PatientsCard extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16 * scale),
-          if (patients.isEmpty)
+          if (isLoading)
+            const SizedBox(
+              key: Key('doctor-patients-loading'),
+              height: 120,
+              child: AppLoading(message: 'Memuat daftar pasien...'),
+            )
+          else if (errorMessage != null)
+            SizedBox(
+              key: const Key('doctor-patients-error'),
+              height: 120,
+              child: AppError(message: errorMessage!, onRetry: onRetry),
+            )
+          else if (patients.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: 16 * scale),
               child: Text(
