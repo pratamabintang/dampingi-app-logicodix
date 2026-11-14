@@ -38,6 +38,8 @@ class MotherStory {
     required this.title,
     required this.note,
     required this.summary,
+    this.day,
+    this.description = '',
   });
 
   final String id;
@@ -48,6 +50,8 @@ class MotherStory {
   final String title;
   final String note;
   final String summary;
+  final String? day;
+  final String description;
 
   factory MotherStory.fromJson(Map<String, Object?> json) {
     final id = _requiredString(json, 'id');
@@ -63,6 +67,12 @@ class MotherStory {
     if (mood == null) {
       throw FormatException('Invalid mood "$moodName" for story "$id".');
     }
+    final day = json['day'];
+    final description = json['description'];
+    if ((day != null && day is! String) ||
+        (description != null && description is! String)) {
+      throw FormatException('Invalid entry details for story "$id".');
+    }
     return MotherStory(
       id: id,
       weekdayIndex: weekdayIndex,
@@ -72,6 +82,8 @@ class MotherStory {
       title: _requiredString(json, 'title'),
       note: _requiredString(json, 'note'),
       summary: _requiredString(json, 'summary'),
+      day: day as String?,
+      description: description as String? ?? '',
     );
   }
 }

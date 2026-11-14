@@ -199,7 +199,7 @@ void main() {
     expect(find.text('Ringkasan AI'), findsOneWidget);
     expect(find.text('Hal Kecil yang berarti'), findsOneWidget);
     expect(find.text('Buka di chat AI'), findsOneWidget);
-    expect(find.text('Ubah catatan mood'), findsOneWidget);
+    expect(find.byKey(const Key('mother-story-edit-mood')), findsNothing);
 
     final storyText = tester.widget<Text>(
       find.byKey(const Key('mother-story-detail-text')),
@@ -216,6 +216,34 @@ void main() {
     );
     expect(find.text('Lihat lebih sedikit'), findsOneWidget);
 
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('today story opens mood editor with existing entry values', (
+    tester,
+  ) async {
+    final today = DateTime.now();
+    final todayStory = MotherStory(
+      id: 'today-story',
+      weekdayIndex: today.weekday - 1,
+      date: formatStoryDate(today),
+      mood: MotherMood.happy,
+      moodLabel: 'Anda merasa bahagia',
+      title: 'Hari yang ringan',
+      note: 'Tenang.',
+      summary: '',
+      day: isoDate(today),
+      description: 'Bersemangat, Tenang',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(home: MotherStoryDetailPage(story: todayStory)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mother-story-toggle-text')), findsNothing);
+
     final editMoodButton = find.byKey(const Key('mother-story-edit-mood'));
     await tester.scrollUntilVisible(
       editMoodButton,
@@ -230,6 +258,28 @@ void main() {
     await tester.tap(editMoodButton);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('mother-mood-entry-dialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+    expect(find.text('Bersemangat'), findsOneWidget);
+    expect(find.text('Tenang'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mother-mood-dialog-continue')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('mother-journal-title')))
+          .controller
+          ?.text,
+      'Hari yang ringan',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('mother-journal-story')))
+          .controller
+          ?.text,
+      'Tenang.',
+    );
     await tester.tap(find.byKey(const Key('mother-mood-dialog-close')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

@@ -24,7 +24,12 @@ void main() {
         ),
       ],
       moods: const [
-        MoodEntry(id: 'm-1', date: '2026-11-13', mood: 5),
+        MoodEntry(
+          id: 'm-1',
+          date: '2026-11-13',
+          mood: 5,
+          description: 'Bersemangat, Tenang',
+        ),
         MoodEntry(id: 'm-2', date: '2026-11-10', mood: 1),
       ],
     );
@@ -37,8 +42,11 @@ void main() {
     expect(newest.moodLabel, 'Anda merasa sangat bahagia');
     expect(newest.title, 'Jumat');
     expect(newest.note, 'Cerita baru');
+    expect(newest.day, '2026-11-13');
+    expect(newest.description, 'Bersemangat, Tenang');
     expect(newest.summary, isEmpty);
     expect(stories.last.mood, MotherMood.verySad);
+    expect(stories.last.description, isEmpty);
   });
 
   test('a journal without a mood that day is shown as neutral', () {

@@ -587,24 +587,41 @@ void _showFeatureNotice(BuildContext context, String feature) {
     ..showSnackBar(SnackBar(content: Text('$feature akan segera tersedia.')));
 }
 
-Future<void> showMotherMoodEntry(BuildContext context) {
+class TodayEntry {
+  const TodayEntry({
+    required this.mood,
+    required this.description,
+    required this.journalTitle,
+    required this.journalContent,
+  }) : assert(mood >= 1 && mood <= 5);
+
+  final int mood;
+  final String description;
+  final String journalTitle;
+  final String journalContent;
+}
+
+Future<void> showMotherMoodEntry(BuildContext context, {TodayEntry? initial}) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,
     barrierLabel: 'Catat mood',
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 180),
-    pageBuilder: (context, animation, secondaryAnimation) =>
-        _MoodEntryDialog(onClose: () => Navigator.of(context).pop()),
+    pageBuilder: (context, animation, secondaryAnimation) => _MoodEntryDialog(
+      onClose: () => Navigator.of(context).pop(),
+      initial: initial,
+    ),
     transitionBuilder: (context, animation, secondaryAnimation, child) =>
         FadeTransition(opacity: animation, child: child),
   );
 }
 
 class _MoodEntryDialog extends ConsumerStatefulWidget {
-  const _MoodEntryDialog({required this.onClose});
+  const _MoodEntryDialog({required this.onClose, this.initial});
 
   final VoidCallback onClose;
+  final TodayEntry? initial;
 
   @override
   ConsumerState<_MoodEntryDialog> createState() => _MoodEntryDialogState();
@@ -618,6 +635,40 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
   var _selectedLevel = 2;
   var _step = 0;
   var _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    if (initial == null) return;
+
+    _selectedLevel = initial.mood - 1;
+    _titleController.text = initial.journalTitle;
+    _storyController.text = initial.journalContent;
+    final availableFeelings = _moodLevels[_selectedLevel].feelings;
+    for (final feeling
+        in initial.description
+            .split(',')
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)) {
+      _selectedFeelings.add(feeling);
+      if (!availableFeelings.contains(feeling)) {
+        _additionalFeelings.add(feeling);
+      }
+    }
+  }
+
+  void _selectLevel(int value) {
+    setState(() {
+      if (widget.initial != null && value != _selectedLevel) {
+        _selectedFeelings
+          ..clear()
+          ..add(_moodLevels[value].feelings.first);
+        _additionalFeelings.clear();
+      }
+      _selectedLevel = value;
+    });
+  }
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -767,7 +818,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
                 index: index,
                 scale: scale,
                 selected: _selectedLevel == index,
-                onTap: () => setState(() => _selectedLevel = index),
+                onTap: () => _selectLevel(index),
               ),
           ],
         ),
@@ -775,7 +826,7 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
         _MoodLevelSlider(
           value: _selectedLevel,
           scale: scale,
-          onChanged: (value) => setState(() => _selectedLevel = value),
+          onChanged: _selectLevel,
         ),
         SizedBox(height: 24 * scale),
         Row(
@@ -822,10 +873,9 @@ class _MoodEntryDialogState extends ConsumerState<_MoodEntryDialog> {
           onContinue: () {
             setState(() {
               _step = 1;
-              _selectedFeelings
-                ..clear()
-                ..add(_moodLevels[_selectedLevel].feelings.first);
-              _additionalFeelings.clear();
+              if (_selectedFeelings.isEmpty) {
+                _selectedFeelings.add(_moodLevels[_selectedLevel].feelings.first);
+              }
             });
           },
           showBack: false,
