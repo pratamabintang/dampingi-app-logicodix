@@ -7,6 +7,27 @@ final epdsRepositoryProvider = Provider<EpdsRepository>(
   (ref) => EpdsRepository(ref.watch(authenticatedApiProvider)),
 );
 
+final epdsWeekStatusProvider = FutureProvider.autoDispose<EpdsWeekStatus?>((ref) async {
+  if (ref.watch(backendTokenProvider) == null) return null;
+  return ref.watch(epdsRepositoryProvider).weekStatus();
+});
+
+class EpdsWeekStatus {
+  const EpdsWeekStatus({required this.filled, required this.canSubmit, required this.nextAvailableDate});
+  final bool filled;
+  final bool canSubmit;
+  final String nextAvailableDate;
+
+  factory EpdsWeekStatus.fromJson(Map<String, dynamic> json) {
+    final filled = json['filled'];
+    final allowed = json['can_submit'];
+    if (filled is! bool || allowed is! bool || json['next_available_date'] is! String) {
+      throw const FormatException('Status EPDS tidak sesuai.');
+    }
+    return EpdsWeekStatus(filled: filled, canSubmit: allowed, nextAvailableDate: json['next_available_date'] as String);
+  }
+}
+
 /// EPDS terakhir milik ibu yang login. null = belum pernah mengisi, atau
 /// mode preview.
 final latestEpdsProvider = FutureProvider.autoDispose<EpdsResult?>((ref) async {
@@ -74,6 +95,10 @@ class EpdsRepository {
   EpdsRepository(this._api);
 
   final AuthenticatedApi _api;
+
+  Future<EpdsWeekStatus> weekStatus() async => EpdsWeekStatus.fromJson(
+    await _api.getJson('/v1/me/epds-status'),
+  );
 
   /// Menghitung **dan menyimpan** EPDS.
   /// `answers[i]` = indeks pilihan (0–3) untuk pertanyaan ke-(i + 1).

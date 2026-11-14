@@ -1,3 +1,4 @@
+import 'epds_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/authenticated_api.dart';
@@ -31,6 +32,8 @@ class WeeklySummary {
     required this.status,
     required this.overview,
     required this.limitations,
+    this.epds,
+    this.epdsIncluded = false,
   });
 
   final DateTime periodStart;
@@ -44,6 +47,8 @@ class WeeklySummary {
 
   /// Keterbatasan data, mis. "Catatan mood tersedia pada 3 dari 7 hari."
   final List<String> limitations;
+  final EpdsResult? epds;
+  final bool epdsIncluded;
 
   factory WeeklySummary.fromJson(Map<String, dynamic> json) {
     final start = json['period_start'];
@@ -51,6 +56,11 @@ class WeeklySummary {
     final status = json['status'];
     final overview = json['overview'];
     final limitations = json['limitations'];
+    final epds = json['epds_assessment'];
+    final refs = json['source_refs'];
+    if (epds != null && epds is! Map<String, dynamic>) {
+      throw const FormatException('EPDS summary has an invalid shape.');
+    }
     if (start is! String ||
         end is! String ||
         status is! String ||
@@ -63,6 +73,11 @@ class WeeklySummary {
       periodEnd: DateTime.parse(end),
       status: status,
       overview: overview as String?,
+      epds: epds is Map<String, dynamic> ? EpdsResult.fromJson(epds) : null,
+      epdsIncluded: epds is Map<String, dynamic> && refs is List && refs.any(
+        (item) => item is Map<String, dynamic> &&
+            item['source_type'] == 'epds_assessment' && item['source_id'] == epds['id'],
+      ),
       limitations: [
         for (final item in limitations)
           if (item is String) item,

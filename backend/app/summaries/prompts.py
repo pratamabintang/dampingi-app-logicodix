@@ -43,6 +43,11 @@ Rules:
 11. Never invent events, sources, dates, or information.
 12. Follow the specified audience. Do not reveal information
     outside the permitted input for that audience.
+13. If epds_assessment is present, its score and flags are already computed
+    by deterministic backend rules. Never recalculate, change, or diagnose from them.
+    Clearly label EPDS as demo-only and not a validated clinical screening result.
+14. Missing epds_assessment means unavailable, never a score of zero.
+15. EPDS describes its assessment period; do not invent daily EPDS scores or trends.
 
 Output requirements:
 - Return a JSON object with exactly two fields:

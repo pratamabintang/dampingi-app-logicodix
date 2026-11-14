@@ -7,6 +7,7 @@ import logging
 
 from app.ai import AIGateway, AIError, Turn
 from app.ai.config import build_gateway
+from app.epds.weekly import assessment_for_week
 from app.journals import service as journal_service
 from app.journals.extraction import extract_journal_themes
 from app.journals.extraction_schemas import JournalExtractionInput
@@ -20,6 +21,7 @@ from app.summaries.schemas import (
     MoodSummaryOut,
     MoodSummaryRequest,
     SummarySourceRef,
+    SummaryEPDS,
     WeeklySummaryAIOut,
     WeeklySummaryResponse,
 )
@@ -106,7 +108,8 @@ def _persist_weekly_summary(
 ) -> dict:
     """Persist a weekly summary for the authenticated mother."""
 
-    payload = summary.model_dump(mode="json")
+    # EPDS is attached from its authoritative table when read; no duplicate score storage.
+    payload = summary.model_dump(mode="json", exclude={"epds_assessment"})
     payload["mother_id"] = user_id
 
     return summary_supabase.save_summary(payload)
@@ -137,7 +140,17 @@ def get_weekly_summary(
         for key, value in row.items()
         if key in WeeklySummaryResponse.model_fields
     }
+    epds_row = assessment_for_week(user_id, period_start)
+    public["epds_assessment"] = _summary_epds(epds_row)
     return WeeklySummaryResponse.model_validate(public)
+
+
+def _summary_epds(row: dict | None) -> SummaryEPDS | None:
+    if row is None:
+        return None
+    return SummaryEPDS.model_validate({
+        key: row[key] for key in SummaryEPDS.model_fields
+    })
 
 
 async def create_weekly_summary_v2(
@@ -152,6 +165,9 @@ async def create_weekly_summary_v2(
     period_end = period_start + timedelta(days=6)
     start_date = period_start.isoformat()
     end_date = period_end.isoformat()
+
+    epds_row = await asyncio.to_thread(assessment_for_week, user_id, period_start)
+    epds = _summary_epds(epds_row)
 
     # Retrieve the authenticated mother's own records.
     mood_result = await asyncio.to_thread(
@@ -245,7 +261,9 @@ async def create_weekly_summary_v2(
         audience=Audience.MOTHER,
         mood_entries=mood_entries,
         journal_items=summary_journal_items,
+        epds_available=epds is not None,
     )
+    summary_input.epds_assessment = epds
 
     mood_source_refs = [
         SummarySourceRef(
@@ -256,6 +274,10 @@ async def create_weekly_summary_v2(
     ]
 
     source_refs = mood_source_refs + journal_source_refs
+    if epds is not None:
+        source_refs.append(SummarySourceRef(source_type="epds_assessment", source_id=epds.id))
+    else:
+        limitations.append("EPDS belum diisi pada periode ini.")
 
     if summary_input.coverage.mood_days < 7:
         limitations.append(
@@ -264,7 +286,7 @@ async def create_weekly_summary_v2(
         )
 
     # Do not call AI when there is no usable source.
-    if not mood_entries and not summary_journal_items:
+    if not mood_entries and not summary_journal_items and epds is None:
         limitations.append(
             "Tidak ada catatan mood atau tema jurnal "
             "yang dapat digunakan pada periode ini."
@@ -278,7 +300,8 @@ async def create_weekly_summary_v2(
             overview=None,
             limitations=limitations,
             source_refs=source_refs,
-            prompt_version="weekly-summary-v2",
+            prompt_version="weekly-summary-v3-epds",
+            epds_assessment=epds,
         )
 
         _persist_weekly_summary(user_id, summary)
@@ -312,7 +335,8 @@ async def create_weekly_summary_v2(
                 "Ringkasan AI tidak tersedia saat ini."
             ],
             source_refs=source_refs,
-            prompt_version="weekly-summary-v2",
+            prompt_version="weekly-summary-v3-epds",
+            epds_assessment=epds,
         )
 
         _persist_weekly_summary(user_id, summary)
@@ -328,7 +352,8 @@ async def create_weekly_summary_v2(
         overview=result.overview,
         limitations=limitations,
         source_refs=source_refs,
-        prompt_version="weekly-summary-v2",
+        prompt_version="weekly-summary-v3-epds",
+        epds_assessment=epds,
     )
 
     _persist_weekly_summary(user_id, summary)
