@@ -168,7 +168,6 @@ class ChatConversationPanel extends StatelessWidget {
                 summary: showDesignPreview ? previewSummary : null,
                 contextUsed: value.contextUsed,
                 urgent: value.urgent,
-                isSending: value.isSending,
                 scale: scale,
                 keyPrefix: keyPrefix,
               );
@@ -196,7 +195,6 @@ class _ConversationList extends StatelessWidget {
     required this.summary,
     required this.contextUsed,
     required this.urgent,
-    required this.isSending,
     required this.scale,
     required this.keyPrefix,
   });
@@ -205,7 +203,6 @@ class _ConversationList extends StatelessWidget {
   final String? summary;
   final List<String> contextUsed;
   final bool urgent;
-  final bool isSending;
   final double scale;
   final String keyPrefix;
 
@@ -227,7 +224,6 @@ class _ConversationList extends StatelessWidget {
         const _ChatNotice(
           text: 'Konteks suasana hati 7 hari digunakan dalam respons ini.',
         ),
-      if (isSending) const _TypingIndicator(),
       ...messages.reversed.map((message) => _MessageBubble(message: message)),
     ];
 
@@ -236,7 +232,10 @@ class _ConversationList extends StatelessWidget {
       reverse: true,
       padding: EdgeInsets.only(bottom: scaled(10)),
       itemCount: entries.length,
-      separatorBuilder: (context, index) => SizedBox(height: scaled(10)),
+      separatorBuilder: (context, index) => SizedBox(
+        key: Key('$keyPrefix-message-gap-$index'),
+        height: scaled(16),
+      ),
       itemBuilder: (context, index) => entries[index],
     );
   }
@@ -302,50 +301,30 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: FractionallySizedBox(
-        widthFactor: 0.85,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isUser ? AppTheme.pink2 : const Color(0xFFFAFAFA),
-            border: Border.all(
-              color: isUser ? AppTheme.coralLight : const Color(0xFFF5F5F5),
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.85),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isUser ? AppTheme.pink2 : const Color(0xFFFAFAFA),
+              border: Border.all(
+                color: isUser ? AppTheme.coralLight : const Color(0xFFF5F5F5),
+              ),
+              borderRadius: BorderRadius.circular(32),
             ),
-            borderRadius: BorderRadius.circular(32),
-          ),
-          child: Text(
-            message.content,
-            style: TextStyle(
-              color: isUser ? AppTheme.coralText : AppTheme.gray500,
-              fontSize: 16,
-              height: 24 / 16,
-              fontWeight: FontWeight.w400,
-              fontFamily: AppTheme.fontFamily,
+            child: Text(
+              message.content,
+              style: TextStyle(
+                color: isUser ? AppTheme.coralText : AppTheme.gray500,
+                fontSize: 16,
+                height: 24 / 16,
+                fontWeight: FontWeight.w400,
+                fontFamily: AppTheme.fontFamily,
+              ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TypingIndicator extends StatelessWidget {
-  const _TypingIndicator();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: AppTheme.coral,
           ),
         ),
       ),
