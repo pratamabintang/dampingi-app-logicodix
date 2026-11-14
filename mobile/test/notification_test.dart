@@ -1,111 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:mobile/features/companion/view/companion_extra_pages.dart';
 import 'package:mobile/features/mother/view/mother_notifications_page.dart';
+import 'package:mobile/features/mother/repositories/mother_alert_repository.dart';
 import 'package:mobile/features/auth/controller/auth_controller.dart';
 
 void main() {
-  Future<void> pumpNotifications(
+  Future<void> pumpPage(
     WidgetTester tester,
     Widget page, {
     String? token,
+    List<MotherAlert> alerts = const [],
   }) async {
     tester.view.physicalSize = const Size(390, 891);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, state) => page),
+        GoRoute(
+          path: '/mother/connections',
+          builder: (_, state) =>
+              const Scaffold(body: Text('Layar Koneksi tujuan')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [backendTokenProvider.overrideWith((ref) => token)],
-        child: MaterialApp(
-          // Test environment ships no shaders, so the Android ink-sparkle
-          // splash cannot render; the ripple keeps tap behaviour identical.
+        overrides: [
+          backendTokenProvider.overrideWith((ref) => token),
+          motherAlertsProvider.overrideWith((ref) async => alerts),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
           theme: ThemeData(splashFactory: InkRipple.splashFactory),
-          home: page,
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('a live Mother is told there is nothing, not shown mock people', (
-    tester,
-  ) async {
-    await pumpNotifications(
+  testWidgets('live ibu kosong jika API mengembalikan kosong', (tester) async {
+    await pumpPage(tester, const MotherNotificationsPage(), token: 'token');
+    expect(find.byKey(const Key('mother-notifications-empty')), findsOneWidget);
+    expect(find.text('Kode Undangan dari Sdr. Enzokulin'), findsNothing);
+    await tester.tap(find.byKey(const Key('mother-notifications-connections')));
+    await tester.pumpAndSettle();
+    expect(find.text('Layar Koneksi tujuan'), findsOneWidget);
+  });
+
+  testWidgets('live ibu menampilkan alert dari provider', (tester) async {
+    await pumpPage(
       tester,
       const MotherNotificationsPage(),
-      token: 'real-access-token',
+      token: 'token',
+      alerts: [MotherAlert(id: 'a1', createdAt: DateTime.utc(2026, 11, 14))],
     );
-
-    expect(find.byKey(const Key('mother-notifications-empty')), findsOneWidget);
-    expect(find.text('Notifikasi anda'), findsOneWidget);
-    expect(
-      find.byKey(const Key('mother-notification-companion-code')),
-      findsNothing,
-    );
-    expect(find.textContaining('Mengundang'), findsNothing);
-    expect(find.textContaining('samsidan@gmail.com'), findsNothing);
-  });
-
-  testWidgets(
-    'a live Companion is told there is nothing, not shown mock cards',
-    (tester) async {
-      await pumpNotifications(
-        tester,
-        const CompanionNotificationsPage(),
-        token: 'real-access-token',
-      );
-
-      expect(
-        find.byKey(const Key('companion-notifications-empty')),
-        findsOneWidget,
-      );
-      expect(find.text('Ibu membagikan catatan baru'), findsNothing);
-    },
-  );
-
-  testWidgets('preview keeps the design mock, worded as a redemption', (
-    tester,
-  ) async {
-    await pumpNotifications(tester, const MotherNotificationsPage());
-
+    expect(find.byKey(const ValueKey('mother-alert-a1')), findsOneWidget);
+    expect(find.text('Pembaruan simulasi demo'), findsOneWidget);
     expect(find.byKey(const Key('mother-notifications-empty')), findsNothing);
-    expect(find.text('Kode Undangan dari Sdr. Enzokulin'), findsOneWidget);
-    expect(
-      find.text('Kode Undangan dari Dr. Aisyah Salsabila'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Mengundang'), findsNothing);
-    expect(find.textContaining('diundang'), findsNothing);
-    expect(find.textContaining('pendampingan'), findsNothing);
+  });
 
+  testWidgets('preview Tukar menuju Koneksi', (tester) async {
+    await pumpPage(tester, const MotherNotificationsPage());
+    expect(find.text('Kode Undangan dari Sdr. Enzokulin'), findsOneWidget);
     await tester.tap(
       find.byKey(const Key('mother-notification-companion-code')),
     );
     await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(const Key('mother-notification-confirm-redeem')),
-      findsOneWidget,
-    );
-    expect(find.text('Tukar'), findsOneWidget);
-
     await tester.tap(
       find.byKey(const Key('mother-notification-confirm-redeem')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Tukar kode belum tersedia.'), findsOneWidget);
+    expect(find.text('Layar Koneksi tujuan'), findsOneWidget);
+    expect(find.text('Tukar kode belum tersedia.'), findsNothing);
   });
 
-  testWidgets('preview keeps the Companion design mock', (tester) async {
-    await pumpNotifications(tester, const CompanionNotificationsPage());
-
+  testWidgets('notifikasi pendamping live tetap kosong', (tester) async {
+    await pumpPage(tester, const CompanionNotificationsPage(), token: 'token');
     expect(
       find.byKey(const Key('companion-notifications-empty')),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(find.text('Ibu membagikan catatan baru'), findsNothing);
+  });
+
+  testWidgets('preview pendamping tetap tersedia', (tester) async {
+    await pumpPage(tester, const CompanionNotificationsPage());
     expect(find.text('Ibu membagikan catatan baru'), findsOneWidget);
     expect(find.text('Tips dukungan baru tersedia'), findsOneWidget);
   });

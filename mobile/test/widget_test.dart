@@ -1292,7 +1292,10 @@ void main() {
         find.byKey(const Key('mother-notification-confirm-redeem')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Tukar kode belum tersedia.'), findsOneWidget);
+      expect(find.byType(KoneksiPage), findsOneWidget);
+      await tester.tap(find.byKey(const Key('koneksi-back')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MotherNotificationsPage), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('mother-notifications-back')));
       await tester.pumpAndSettle();
