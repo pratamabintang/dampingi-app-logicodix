@@ -130,7 +130,14 @@ def get_weekly_summary(
     if row is None:
         return None
 
-    return WeeklySummaryResponse.model_validate(row)
+    # Baris tabel juga memuat id, mother_id, dan created_at. Kolom itu bukan
+    # bagian dari respons publik, dan schema-nya menolak field tambahan.
+    public = {
+        key: value
+        for key, value in row.items()
+        if key in WeeklySummaryResponse.model_fields
+    }
+    return WeeklySummaryResponse.model_validate(public)
 
 
 async def create_weekly_summary_v2(
