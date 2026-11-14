@@ -14,7 +14,6 @@ import '../../auth/controller/auth_controller.dart';
 import '../../auth/validation/auth_form_validators.dart';
 import '../../../services/backend_api.dart';
 import '../../auth/repositories/profile_repository.dart';
-import '../repositories/mother_story_repository.dart';
 
 class MotherProfileEditPage extends ConsumerStatefulWidget {
   const MotherProfileEditPage({
@@ -359,8 +358,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
 
   Future<void> _saveProfile() async {
     if (_savingProfile || !_profileFormKey.currentState!.validate()) return;
-    final token = ref.read(backendTokenProvider);
-    if (token == null) {
+    if (ref.read(backendTokenProvider) == null) {
       _notify('Mode pratinjau: perubahan profil tidak disimpan.');
       return;
     }
@@ -370,7 +368,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
     try {
       final user = await ref
           .read(profileRepositoryProvider)
-          .updateName(accessToken: token, name: name);
+          .updateName(name: name);
       ref
           .read(authControllerProvider.notifier)
           .updateUserName(user.name ?? name);
@@ -386,8 +384,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
     if (_changingPassword || !_passwordFormKey.currentState!.validate()) {
       return;
     }
-    final token = ref.read(backendTokenProvider);
-    if (token == null) {
+    if (ref.read(backendTokenProvider) == null) {
       _notify('Mode pratinjau: kata sandi tidak diubah.');
       return;
     }
@@ -397,7 +394,6 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
       await ref
           .read(profileRepositoryProvider)
           .changePassword(
-            accessToken: token,
             currentPassword: _currentPasswordController.text,
             newPassword: _passwordController.text,
           );
@@ -405,7 +401,7 @@ class _MotherProfileEditPageState extends ConsumerState<MotherProfileEditPage> {
         'Kata sandi diubah. Silakan masuk kembali dengan kata sandi baru.',
       );
       // Backend mencabut semua sesi, jadi token ini sudah tidak berlaku.
-      ref.read(authControllerProvider.notifier).logout();
+      await ref.read(authControllerProvider.notifier).logout();
     } on Exception catch (error) {
       _notify(_messageFor(error));
     } finally {

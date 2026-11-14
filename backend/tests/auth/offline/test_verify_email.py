@@ -50,6 +50,8 @@ def test_a_good_code_is_200_and_logs_the_caller_in(mock_client, upstream):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["access_token"] == "OFFLINE-ACCESS-TOKEN"
+    assert body["refresh_token"] == "OFFLINE-REFRESH-TOKEN"
+    assert body["expires_in"] == 3600
     assert body["user"]["email"] == "offline@gmail.com"
     assert body["user"]["name"] == "Capture User"
 

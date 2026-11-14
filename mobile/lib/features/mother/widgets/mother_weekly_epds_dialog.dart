@@ -9,7 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../services/backend_api.dart';
 import '../models/epds_questions.dart';
 import '../repositories/epds_repository.dart';
-import '../repositories/mother_story_repository.dart';
+import '../../auth/controller/auth_controller.dart';
 
 Future<void> showMotherWeeklyEpds(BuildContext context) {
   return showGeneralDialog<void>(
@@ -59,8 +59,7 @@ class _MotherWeeklyEpdsDialogState
       return;
     }
 
-    final token = ref.read(backendTokenProvider);
-    if (token == null) {
+    if (ref.read(backendTokenProvider) == null) {
       // Mode preview: tidak dikirim ke server.
       setState(() => _step = 2);
       return;
@@ -73,10 +72,7 @@ class _MotherWeeklyEpdsDialogState
     try {
       final result = await ref
           .read(epdsRepositoryProvider)
-          .evaluate(
-            accessToken: token,
-            answers: [for (final answer in _answers) answer!],
-          );
+          .evaluate(answers: [for (final answer in _answers) answer!]);
       if (!mounted) return;
       setState(() {
         _result = result;

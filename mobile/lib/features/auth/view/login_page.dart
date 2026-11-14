@@ -37,9 +37,13 @@ class LoginPage extends ConsumerWidget {
           data: (value) => _LoginContent(
             state: value,
             onClearError: ref.read(authControllerProvider.notifier).clearError,
-            onLogin: (email, password) => ref
+            onLogin: (email, password, rememberMe) => ref
                 .read(authControllerProvider.notifier)
-                .login(email: email, password: password),
+                .login(
+                  email: email,
+                  password: password,
+                  rememberMe: rememberMe,
+                ),
           ),
         ),
       ),
@@ -56,7 +60,12 @@ class _LoginContent extends StatefulWidget {
 
   final AuthState state;
   final VoidCallback onClearError;
-  final Future<LoginResponse?> Function(String email, String password) onLogin;
+  final Future<LoginResponse?> Function(
+    String email,
+    String password,
+    bool rememberMe,
+  )
+  onLogin;
 
   @override
   State<_LoginContent> createState() => _LoginContentState();
@@ -67,6 +76,16 @@ class _LoginContentState extends State<_LoginContent> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final remembered = widget.state.rememberedEmail;
+    if (remembered != null) {
+      _emailController.text = remembered;
+      _rememberMe = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -80,6 +99,7 @@ class _LoginContentState extends State<_LoginContent> {
     final response = await widget.onLogin(
       _emailController.text,
       _passwordController.text,
+      _rememberMe,
     );
     if (response != null && mounted) {
       final role = response.user.role;

@@ -13,6 +13,8 @@ WINDOW_SECONDS = 15 * 60
 LOGIN_PER_ADDRESS = 30
 LOGIN_PER_ACCOUNT = 10
 
+REFRESH_PER_ADDRESS = 30
+
 REGISTER_PER_ADDRESS = 10
 REGISTER_PER_ACCOUNT = 5
 
@@ -108,6 +110,14 @@ def record_login(request: Request, email: str) -> Optional[int]:
         if retry is not None:
             return retry
     return None
+
+
+def record_refresh(request: Request) -> None:
+    retry = _hit(
+        "refresh:address", f"refresh:address:{caller_address(request)}", REFRESH_PER_ADDRESS
+    )
+    if retry is not None:
+        raise RateLimited(retry)
 
 
 def record_registration(request: Request, email: str) -> None:

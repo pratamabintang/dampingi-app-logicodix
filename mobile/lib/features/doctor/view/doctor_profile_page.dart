@@ -119,9 +119,9 @@ class _DoctorProfilePageState extends ConsumerState<DoctorProfilePage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _logout() {
-    ref.read(authControllerProvider.notifier).logout();
-    context.go('/roles');
+  Future<void> _logout() async {
+    await ref.read(authControllerProvider.notifier).logout();
+    if (mounted) context.go('/roles');
   }
 }
 

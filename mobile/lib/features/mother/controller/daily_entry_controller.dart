@@ -33,9 +33,7 @@ class DailyEntryController {
     required String title,
     required String story,
   }) async {
-    final session = _ref.read(authControllerProvider).asData?.value.session;
-    final token = session?.accessToken;
-    if (token == null || token.startsWith('mock-')) {
+    if (_ref.read(backendTokenProvider) == null) {
       return const DailyEntryResult(
         DailyEntryStatus.preview,
         'Mode pratinjau aktif. Mood belum disimpan ke server.',
@@ -47,11 +45,7 @@ class DailyEntryController {
         ? null
         : _limit(feelings.join(', '), 500);
     try {
-      await repository.saveMoodToday(
-        accessToken: token,
-        mood: mood,
-        description: description,
-      );
+      await repository.saveMoodToday(mood: mood, description: description);
     } catch (error) {
       return DailyEntryResult(DailyEntryStatus.failed, _messageFor(error));
     }
@@ -64,7 +58,6 @@ class DailyEntryController {
     final heading = title.trim().isEmpty ? 'Catatan harian' : title.trim();
     try {
       await repository.saveJournalToday(
-        accessToken: token,
         title: _limit(heading, 255),
         content: _limit(content, 10000),
       );

@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../services/authenticated_api.dart';
 import '../../../services/backend_api.dart';
 
 final dailyEntryRepositoryProvider = Provider<DailyEntryRepository>(
-  (ref) => DailyEntryRepository(ref.watch(backendApiProvider)),
+  (ref) => DailyEntryRepository(ref.watch(authenticatedApiProvider)),
 );
 
 class MoodEntry {
@@ -59,7 +60,10 @@ class JournalEntry {
     final date = json['created_at'];
     final title = json['title'];
     final content = json['content'];
-    if (id is! String || date is! String || title is! String || content is! String) {
+    if (id is! String ||
+        date is! String ||
+        title is! String ||
+        content is! String) {
       throw const FormatException('Journal entry has an invalid shape.');
     }
     return JournalEntry(id: id, date: date, title: title, content: content);
@@ -73,46 +77,34 @@ class JournalEntry {
 class DailyEntryRepository {
   DailyEntryRepository(this._api);
 
-  final BackendApi _api;
+  final AuthenticatedApi _api;
 
   Future<MoodEntry> saveMoodToday({
-    required String accessToken,
     required int mood,
     String? description,
   }) async {
-    final body = <String, Object?>{
-      'mood': mood,
-      'description': ?description,
-    };
+    final body = <String, Object?>{'mood': mood, 'description': ?description};
     try {
-      return MoodEntry.fromJson(
-        await _api.postJson('/moods', body: body, accessToken: accessToken),
-      );
+      return MoodEntry.fromJson(await _api.postJson('/moods', body: body));
     } on BackendApiException catch (error) {
       if (error.statusCode != 409) rethrow;
     }
-    final latest = await listMoods(accessToken: accessToken, limit: 1);
+    final latest = await listMoods(limit: 1);
     if (latest.isEmpty) {
       throw const FormatException('Mood hari ini tidak ditemukan.');
     }
     return MoodEntry.fromJson(
-      await _api.patchJson(
-        '/moods/${latest.first.id}',
-        body: body,
-        accessToken: accessToken,
-      ),
+      await _api.patchJson('/moods/${latest.first.id}', body: body),
     );
   }
 
   Future<List<MoodEntry>> listMoods({
-    required String accessToken,
     String? startDate,
     String? endDate,
     int? limit,
   }) async {
     final json = await _api.getJson(
       '/moods',
-      accessToken: accessToken,
       query: {
         'start_date': ?startDate,
         'end_date': ?endDate,
@@ -134,13 +126,11 @@ class DailyEntryRepository {
   }
 
   Future<List<JournalEntry>> listJournals({
-    required String accessToken,
     required String startDate,
     required String endDate,
   }) async {
     final json = await _api.getJson(
       '/journals',
-      accessToken: accessToken,
       query: {'start_date': startDate, 'end_date': endDate},
     );
     final journals = json['journals'];
@@ -158,22 +148,17 @@ class DailyEntryRepository {
   }
 
   Future<void> saveJournalToday({
-    required String accessToken,
     required String title,
     required String content,
   }) async {
     final body = <String, Object?>{'title': title, 'content': content};
     try {
-      await _api.postJson('/journals', body: body, accessToken: accessToken);
+      await _api.postJson('/journals', body: body);
       return;
     } on BackendApiException catch (error) {
       if (error.statusCode != 409) rethrow;
     }
-    final json = await _api.getJson(
-      '/journals',
-      accessToken: accessToken,
-      query: const {'limit': '1'},
-    );
+    final json = await _api.getJson('/journals', query: const {'limit': '1'});
     final journals = json['journals'];
     if (journals is! List ||
         journals.isEmpty ||
@@ -182,6 +167,6 @@ class DailyEntryRepository {
       throw const FormatException('Jurnal hari ini tidak ditemukan.');
     }
     final id = (journals.first as Map<String, dynamic>)['id'] as String;
-    await _api.patchJson('/journals/$id', body: body, accessToken: accessToken);
+    await _api.patchJson('/journals/$id', body: body);
   }
 }

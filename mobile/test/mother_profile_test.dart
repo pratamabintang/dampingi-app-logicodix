@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/features/mother/view/mother_profile_page.dart';
 import 'package:mobile/services/backend_api.dart';
+import 'package:mobile/features/auth/controller/auth_controller.dart';
 
 void main() {
   Future<void> pumpProfile(

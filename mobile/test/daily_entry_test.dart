@@ -134,6 +134,7 @@ Future<DailyEntryController> _loggedIn(_RecordingBackendApi api) async {
       roleRepositoryProvider.overrideWithValue(_MotherRoleRepository()),
       authRepositoryProvider.overrideWithValue(_ValidAuthRepository()),
       backendApiProvider.overrideWithValue(api),
+      backendTokenProvider.overrideWithValue('valid-access-token'),
     ],
   );
   addTearDown(container.dispose);

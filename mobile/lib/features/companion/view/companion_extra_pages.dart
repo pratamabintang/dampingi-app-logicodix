@@ -11,7 +11,6 @@ import '../../../core/widgets/app_profile_avatar.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../mother/controller/chat_controller.dart';
 import '../../mother/models/chat_models.dart';
-import '../../mother/repositories/mother_story_repository.dart';
 import '../../mother/view/mother_chat_page.dart';
 
 class CompanionChatPage extends ConsumerStatefulWidget {
@@ -54,15 +53,7 @@ class _CompanionChatPageState extends ConsumerState<CompanionChatPage> {
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatControllerProvider);
-    final previewMode =
-        ref
-            .watch(authControllerProvider)
-            .asData
-            ?.value
-            .session
-            ?.accessToken
-            .startsWith('mock-') ??
-        false;
+    final previewMode = ref.watch(backendTokenProvider) == null;
     final scale = widget.scale;
 
     return Column(

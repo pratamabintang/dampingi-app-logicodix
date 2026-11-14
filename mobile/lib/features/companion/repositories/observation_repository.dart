@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../services/authenticated_api.dart';
 import '../../../services/backend_api.dart';
 import '../../connections/repositories/connection_repository.dart';
+import '../../auth/controller/auth_controller.dart';
 import '../../mother/repositories/mother_story_repository.dart';
 
 final observationRepositoryProvider = Provider<ObservationRepository>(
-  (ref) => ObservationRepository(ref.watch(backendApiProvider)),
+  (ref) => ObservationRepository(ref.watch(authenticatedApiProvider)),
 );
 
 /// Pertanyaan observasi harian pendamping. Backend menyimpan teks pertanyaan
@@ -41,21 +43,16 @@ final todayObservationDoneProvider = FutureProvider.autoDispose<bool?>((
   if (mother == null) return false;
   return ref
       .watch(observationRepositoryProvider)
-      .hasCompletedFor(
-        accessToken: token,
-        connectionId: mother.id,
-        day: DateTime.now(),
-      );
+      .hasCompletedFor(connectionId: mother.id, day: DateTime.now());
 });
 
 class ObservationRepository {
   ObservationRepository(this._api);
 
-  final BackendApi _api;
+  final AuthenticatedApi _api;
 
   /// Ada observasi selesai untuk hari ini di koneksi ini?
   Future<bool> hasCompletedFor({
-    required String accessToken,
     required String connectionId,
     required DateTime day,
   }) async {
@@ -66,7 +63,6 @@ class ObservationRepository {
         'day': isoDate(day),
         'status': 'completed',
       },
-      accessToken: accessToken,
     );
     final total = body['total'];
     if (total is! int) {
@@ -78,7 +74,6 @@ class ObservationRepository {
   /// Backend memakai dua langkah: buat draf (server memberi ID pertanyaan dan
   /// pilihan), lalu kirim jawaban + tanggal untuk menyelesaikannya.
   Future<void> submit({
-    required String accessToken,
     required String motherId,
     required int selectedOption,
     required DateTime day,
@@ -96,7 +91,6 @@ class ObservationRepository {
           },
         ],
       },
-      accessToken: accessToken,
     );
 
     final id = draft['id'];
@@ -129,7 +123,6 @@ class ObservationRepository {
         ],
         'day': isoDate(day),
       },
-      accessToken: accessToken,
     );
   }
 }

@@ -13,6 +13,8 @@ from app.auth.schemas import (
     LoginRequest,
     LoginResponse,
     PASSWORD_RULE,
+    RefreshRequest,
+    RefreshResponse,
     RegisterRequest,
     RegisterResponse,
     ResendConfirmationRequest,
@@ -181,7 +183,42 @@ def login(request: Request, payload: LoginRequest) -> LoginResponse:
         if exc.status == 503:
             raise
         raise _invalid_credentials() from exc
-    return LoginResponse(access_token=account.token, user=service.user_out(account))
+    return LoginResponse(
+        access_token=account.token,
+        refresh_token=account.refresh_token or None,
+        expires_in=account.expires_in,
+        user=service.user_out(account),
+    )
+
+
+@router.post(
+    "/auth/refresh",
+    response_model=RefreshResponse,
+    summary="Exchange a refresh token for a new Session pair",
+    description=(
+        "Rotates the refresh token: the caller must replace its stored pair "
+        "with the one returned here. A token Supabase no longer accepts ends "
+        "the Session with `401`; the client must log in again."
+    ),
+)
+def refresh(request: Request, payload: RefreshRequest) -> RefreshResponse:
+    throttle.record_refresh(request)
+    try:
+        session = service.refresh_session(payload.refresh_token)
+    except supabase.SupabaseError as exc:
+        if exc.status == 429:
+            raise _upstream_cooldown() from exc
+        if exc.status >= 500:
+            raise
+        raise HTTPException(
+            status_code=401,
+            detail="Sesi tidak valid. Silakan masuk kembali.",
+        ) from exc
+    return RefreshResponse(
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        expires_in=session.expires_in,
+    )
 
 
 @router.post(
@@ -210,7 +247,12 @@ def verify_email(request: Request, payload: VerifyEmailRequest) -> LoginResponse
             status_code=400,
             detail="Kode verifikasi salah atau sudah kedaluwarsa.",
         ) from exc
-    return LoginResponse(access_token=account.token, user=service.user_out(account))
+    return LoginResponse(
+        access_token=account.token,
+        refresh_token=account.refresh_token or None,
+        expires_in=account.expires_in,
+        user=service.user_out(account),
+    )
 
 
 @router.post(

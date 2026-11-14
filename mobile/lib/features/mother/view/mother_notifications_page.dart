@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_submit_button.dart';
-import '../../mother/repositories/mother_story_repository.dart';
+import '../../auth/controller/auth_controller.dart';
 
 /// Notifikasi ibu. Desainnya masih berlanjut, jadi layar ini tetap ada dan
 /// tetap dapat dibuka dari header rumah.
@@ -176,9 +176,7 @@ class _MotherNotificationsPageState
                         onClose: () => Navigator.of(dialogContext).pop(),
                         onRedeem: () {
                           Navigator.of(dialogContext).pop();
-                          _showUnavailableNotice(
-                            'Tukar kode belum tersedia.',
-                          );
+                          _showUnavailableNotice('Tukar kode belum tersedia.');
                         },
                       ),
                     ),
@@ -355,8 +353,7 @@ class _CodeRedemptionDialog extends StatelessWidget {
           ),
           SizedBox(height: scale(24)),
           Semantics(
-            label:
-                'Apakah anda ingin menukar Kode Undangan dari pengguna ini?',
+            label: 'Apakah anda ingin menukar Kode Undangan dari pengguna ini?',
             child: SizedBox(
               key: const Key('mother-notification-confirm-title'),
               width: double.infinity,

@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile/features/companion/repositories/observation_repository.dart';
 import 'package:mobile/features/connections/repositories/connection_repository.dart';
-import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/services/backend_api.dart';
+
+import 'support/authenticated_api.dart';
+
+import 'package:mobile/features/auth/controller/auth_controller.dart';
 
 const _motherConnection = {
   'id': 'conn-1',
@@ -31,12 +34,12 @@ void main() {
     () async {
       final api = _ObservationApi();
 
-      await ObservationRepository(api).submit(
-        accessToken: 'token',
-        motherId: 'mother-1',
-        selectedOption: 2,
-        day: DateTime(2026, 11, 14),
-      );
+      await ObservationRepository(authenticatedApiFor(api, token: 'token'))
+          .submit(
+            motherId: 'mother-1',
+            selectedOption: 2,
+            day: DateTime(2026, 11, 14),
+          );
 
       expect(api.posts.single.$1, '/observations');
       expect(api.posts.single.$2['mother_id'], 'mother-1');
@@ -57,11 +60,9 @@ void main() {
     () async {
       final api = _ObservationApi(total: 1);
 
-      final done = await ObservationRepository(api).hasCompletedFor(
-        accessToken: 'token',
-        connectionId: 'conn-1',
-        day: DateTime(2026, 11, 14),
-      );
+      final done = await ObservationRepository(
+        authenticatedApiFor(api, token: 'token'),
+      ).hasCompletedFor(connectionId: 'conn-1', day: DateTime(2026, 11, 14));
 
       expect(done, isTrue);
       expect(api.queries.single, {

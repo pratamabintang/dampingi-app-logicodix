@@ -13,13 +13,7 @@ final motherStoryRepositoryProvider = Provider<MotherStoryRepository>(
 
 /// Cerita ibu: dari backend kalau login sungguhan, dari file contoh kalau mode preview.
 final motherStoriesProvider = FutureProvider<List<MotherStory>>((ref) async {
-  final token = ref
-      .watch(authControllerProvider)
-      .asData
-      ?.value
-      .session
-      ?.accessToken;
-  if (token == null || token.startsWith('mock-')) {
+  if (ref.watch(backendTokenProvider) == null) {
     return ref.watch(motherStoryRepositoryProvider).loadStories();
   }
 
@@ -28,12 +22,10 @@ final motherStoriesProvider = FutureProvider<List<MotherStory>>((ref) async {
   final startDate = isoDate(today.subtract(const Duration(days: 30)));
   final endDate = isoDate(today);
   final journals = await repository.listJournals(
-    accessToken: token,
     startDate: startDate,
     endDate: endDate,
   );
   final moods = await repository.listMoods(
-    accessToken: token,
     startDate: startDate,
     endDate: endDate,
   );
@@ -114,19 +106,12 @@ String isoDate(DateTime day) =>
 
 /// Mood beberapa hari terakhir untuk kartu "Mood hari ini".
 final recentMoodsProvider = FutureProvider<List<MoodEntry>?>((ref) async {
-  final token = ref
-      .watch(authControllerProvider)
-      .asData
-      ?.value
-      .session
-      ?.accessToken;
-  if (token == null || token.startsWith('mock-')) return null;
+  if (ref.watch(backendTokenProvider) == null) return null;
 
   final today = DateTime.now();
   return ref
       .watch(dailyEntryRepositoryProvider)
       .listMoods(
-        accessToken: token,
         startDate: isoDate(today.subtract(const Duration(days: 6))),
         endDate: isoDate(today),
       );
@@ -156,20 +141,14 @@ class TodayEntry {
 
 /// Mood dan jurnal hari ini untuk mode "Ubah mood", atau null kalau belum ada.
 final todayEntryProvider = FutureProvider<TodayEntry?>((ref) async {
-  final token = ref.watch(backendTokenProvider);
-  if (token == null) return null;
+  if (ref.watch(backendTokenProvider) == null) return null;
 
   final repository = ref.watch(dailyEntryRepositoryProvider);
   final today = isoDate(DateTime.now());
-  final moods = await repository.listMoods(
-    accessToken: token,
-    startDate: today,
-    endDate: today,
-  );
+  final moods = await repository.listMoods(startDate: today, endDate: today);
   if (moods.isEmpty) return null;
 
   final journals = await repository.listJournals(
-    accessToken: token,
     startDate: today,
     endDate: today,
   );
@@ -243,18 +222,6 @@ const _moodTitles = [
 /// Nama mood, sama dengan pilihan di dialog "Catat mood".
 String moodTitle(MotherMood mood) => _moodTitles[mood.index];
 
-/// Token login sungguhan, atau null untuk mode preview (belum login / token `mock-`).
-final backendTokenProvider = Provider<String?>((ref) {
-  final token = ref
-      .watch(authControllerProvider)
-      .asData
-      ?.value
-      .session
-      ?.accessToken;
-  if (token == null || token.startsWith('mock-')) return null;
-  return token;
-});
-
 /// Satu minggu di kalender: 7 kotak mood dan cerita (jurnal) minggu itu.
 class CalendarWeek {
   const CalendarWeek({required this.days, required this.stories});
@@ -268,20 +235,17 @@ final calendarWeekProvider = FutureProvider.family<CalendarWeek, String>((
   ref,
   endDate,
 ) async {
-  final token = ref.watch(backendTokenProvider);
-  if (token == null) {
+  if (ref.watch(backendTokenProvider) == null) {
     throw StateError('Kalender dari backend hanya untuk login sungguhan.');
   }
   final end = DateTime.parse(endDate);
   final startDate = isoDate(DateTime(end.year, end.month, end.day - 6));
   final repository = ref.watch(dailyEntryRepositoryProvider);
   final moods = await repository.listMoods(
-    accessToken: token,
     startDate: startDate,
     endDate: endDate,
   );
   final journals = await repository.listJournals(
-    accessToken: token,
     startDate: startDate,
     endDate: endDate,
   );

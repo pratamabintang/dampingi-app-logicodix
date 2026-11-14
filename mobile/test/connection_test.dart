@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/connections/repositories/connection_repository.dart';
 import 'package:mobile/services/backend_api.dart';
 
+import 'support/authenticated_api.dart';
+
 const _liveCode = {
   'id': 'code-1',
   'code': 'KDMN-PRTG',
@@ -13,8 +15,8 @@ const _liveCode = {
 void main() {
   test('lists connected people with an Indonesian role label', () async {
     final api = _ConnectionsApi();
-    final people = await ConnectionRepository(api)
-        .listConnections(accessToken: 'valid-access-token');
+    final people = await ConnectionRepository(authenticatedApiFor(api))
+        .listConnections();
 
     expect(api.gets, ['/connections']);
     expect(people.single.name, 'Pendamping Seed');
@@ -23,8 +25,8 @@ void main() {
 
   test('listing live Invite codes asks for them and creates nothing', () async {
     final api = _ConnectionsApi(liveCodes: [_liveCode]);
-    final codes = await ConnectionRepository(api)
-        .listInviteCodes(accessToken: 'valid-access-token');
+    final codes = await ConnectionRepository(authenticatedApiFor(api))
+        .listInviteCodes();
 
     expect(api.gets, ['/connections/invite-codes']);
     expect(api.posts, isEmpty);
@@ -36,16 +38,16 @@ void main() {
 
   test('an empty Invite code list is an empty list, not a failure', () async {
     final api = _ConnectionsApi();
-    final codes = await ConnectionRepository(api)
-        .listInviteCodes(accessToken: 'valid-access-token');
+    final codes = await ConnectionRepository(authenticatedApiFor(api))
+        .listInviteCodes();
 
     expect(codes, isEmpty);
   });
 
   test('redeeming trims and upper-cases the typed code', () async {
     final api = _ConnectionsApi();
-    final person = await ConnectionRepository(api)
-        .redeem(accessToken: 'valid-access-token', code: '  kdmn-prtg  ');
+    final person = await ConnectionRepository(authenticatedApiFor(api))
+        .redeem(code: '  kdmn-prtg  ');
 
     expect(api.posts, ['/connections']);
     expect(api.bodies.single, {'code': 'KDMN-PRTG'});
@@ -56,8 +58,7 @@ void main() {
     'a malformed code still becomes a request, not a local refusal',
     () async {
       final api = _ConnectionsApi();
-      await ConnectionRepository(api)
-          .redeem(accessToken: 'valid-access-token', code: 'ab');
+      await ConnectionRepository(authenticatedApiFor(api)).redeem(code: 'ab');
 
       expect(api.posts, ['/connections']);
       expect(api.bodies.single, {'code': 'AB'});
@@ -66,10 +67,8 @@ void main() {
 
   test('issuing sends the chosen target Role and nothing else', () async {
     final api = _ConnectionsApi();
-    final code = await ConnectionRepository(api).issueInviteCode(
-      accessToken: 'valid-access-token',
-      targetRole: 'professional',
-    );
+    final code = await ConnectionRepository(authenticatedApiFor(api))
+        .issueInviteCode(targetRole: 'professional');
 
     expect(api.posts, ['/connections/invite-codes']);
     expect(api.bodies.single, {'target_role': 'professional'});
@@ -84,8 +83,9 @@ void main() {
       'professional-access-token',
     ]) {
       final api = _ConnectionsApi();
-      final code = await ConnectionRepository(api)
-          .issueInviteCode(accessToken: token, targetRole: 'mother');
+      final code = await ConnectionRepository(
+        authenticatedApiFor(api, token: token),
+      ).issueInviteCode(targetRole: 'mother');
 
       expect(api.posts, ['/connections/invite-codes']);
       expect(api.bodies.single, {'target_role': 'mother'});
@@ -116,8 +116,8 @@ void main() {
               message: entry.value,
             );
           try {
-            await ConnectionRepository(api)
-                .issueInviteCode(accessToken: token, targetRole: 'mother');
+            await ConnectionRepository(authenticatedApiFor(api, token: token))
+                .issueInviteCode(targetRole: 'mother');
             fail('Penerbitan ${entry.key} seharusnya ditolak.');
           } on Exception catch (error) {
             messages.add(connectionFailureMessage(error));
@@ -131,8 +131,8 @@ void main() {
 
   test('revoking addresses the code the caller chose', () async {
     final api = _ConnectionsApi();
-    await ConnectionRepository(api)
-        .revokeInviteCode(accessToken: 'valid-access-token', id: 'code-7');
+    await ConnectionRepository(authenticatedApiFor(api))
+        .revokeInviteCode(id: 'code-7');
 
     expect(api.deletes, ['/connections/invite-codes/code-7']);
     expect(api.tokens, ['valid-access-token']);
@@ -140,8 +140,8 @@ void main() {
 
   test('ending addresses the Connection the caller chose', () async {
     final api = _ConnectionsApi();
-    await ConnectionRepository(api)
-        .endConnection(accessToken: 'valid-access-token', id: 'conn-7');
+    await ConnectionRepository(authenticatedApiFor(api))
+        .endConnection(id: 'conn-7');
 
     expect(api.deletes, ['/connections/conn-7']);
     expect(api.tokens, ['valid-access-token']);
@@ -165,8 +165,8 @@ void main() {
           message: entry.value,
         );
       try {
-        await ConnectionRepository(api)
-            .redeem(accessToken: 'valid-access-token', code: 'KDMN-PRTG');
+        await ConnectionRepository(authenticatedApiFor(api))
+            .redeem(code: 'KDMN-PRTG');
         fail('Penukaran ${entry.key} seharusnya ditolak.');
       } on Exception catch (error) {
         messages.add(connectionFailureMessage(error));
@@ -184,8 +184,8 @@ void main() {
         message: 'Not authenticated',
       );
     try {
-      await ConnectionRepository(api)
-          .redeem(accessToken: 'valid-access-token', code: 'KDMN-PRTG');
+      await ConnectionRepository(authenticatedApiFor(api))
+          .redeem(code: 'KDMN-PRTG');
       fail('Penukaran tanpa sesi seharusnya ditolak.');
     } on Exception catch (error) {
       expect(
@@ -203,10 +203,8 @@ void main() {
           message: detail,
         );
       try {
-        await ConnectionRepository(api).issueInviteCode(
-          accessToken: 'valid-access-token',
-          targetRole: 'professional',
-        );
+        await ConnectionRepository(authenticatedApiFor(api))
+            .issueInviteCode(targetRole: 'professional');
       } on Exception catch (error) {
         return connectionFailureMessage(error);
       }

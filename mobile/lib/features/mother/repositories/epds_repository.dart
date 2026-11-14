@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../services/backend_api.dart';
+import '../../../services/authenticated_api.dart';
 
 final epdsRepositoryProvider = Provider<EpdsRepository>(
-  (ref) => EpdsRepository(ref.watch(backendApiProvider)),
+  (ref) => EpdsRepository(ref.watch(authenticatedApiProvider)),
 );
 
 /// Hasil `POST /epds/evaluate` (mode demo).
@@ -43,13 +43,10 @@ class EpdsResult {
 class EpdsRepository {
   EpdsRepository(this._api);
 
-  final BackendApi _api;
+  final AuthenticatedApi _api;
 
   /// `answers[i]` = indeks pilihan (0–3) untuk pertanyaan ke-(i + 1).
-  Future<EpdsResult> evaluate({
-    required String accessToken,
-    required List<int> answers,
-  }) async {
+  Future<EpdsResult> evaluate({required List<int> answers}) async {
     if (answers.length != 10) {
       throw ArgumentError.value(
         answers.length,
@@ -59,7 +56,6 @@ class EpdsRepository {
     }
     final json = await _api.postJson(
       '/epds/evaluate',
-      accessToken: accessToken,
       body: {
         'answers': [
           for (var index = 0; index < answers.length; index++)

@@ -5,6 +5,9 @@ import 'package:mobile/features/mother/models/mother_story.dart';
 import 'package:mobile/features/mother/repositories/daily_entry_repository.dart';
 import 'package:mobile/features/mother/repositories/mother_story_repository.dart';
 import 'package:mobile/services/backend_api.dart';
+import 'package:mobile/features/auth/controller/auth_controller.dart';
+
+import 'support/authenticated_api.dart';
 
 void main() {
   test('joins each journal with the mood of the same day, newest first', () {
@@ -60,11 +63,8 @@ void main() {
 
   test('lists journals for a date range with the access token', () async {
     final api = _JournalsApi();
-    final journals = await DailyEntryRepository(api).listJournals(
-      accessToken: 'valid-access-token',
-      startDate: '2026-10-14',
-      endDate: '2026-11-13',
-    );
+    final journals = await DailyEntryRepository(authenticatedApiFor(api))
+        .listJournals(startDate: '2026-10-14', endDate: '2026-11-13');
 
     expect(api.calls, ['GET /journals']);
     expect(api.queries.single, {

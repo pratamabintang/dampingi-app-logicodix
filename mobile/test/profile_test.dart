@@ -4,11 +4,13 @@ import 'package:mobile/features/auth/repositories/profile_repository.dart';
 import 'package:mobile/models/app_role.dart';
 import 'package:mobile/services/backend_api.dart';
 
+import 'support/authenticated_api.dart';
+
 void main() {
   test('saving the profile sends only the name', () async {
     final api = _ProfileApi();
-    final user = await ProfileRepository(api)
-        .updateName(accessToken: 'valid-access-token', name: 'Ibu Sari');
+    final user = await ProfileRepository(authenticatedApiFor(api))
+        .updateName(name: 'Ibu Sari');
 
     expect(api.calls, ['PATCH /me']);
     expect(api.bodies.single, {'name': 'Ibu Sari'});
@@ -19,11 +21,8 @@ void main() {
 
   test('changing the password sends the current and new password', () async {
     final api = _ProfileApi();
-    await ProfileRepository(api).changePassword(
-      accessToken: 'valid-access-token',
-      currentPassword: 'lama12345',
-      newPassword: 'baru12345',
-    );
+    await ProfileRepository(authenticatedApiFor(api))
+        .changePassword(currentPassword: 'lama12345', newPassword: 'baru12345');
 
     expect(api.calls, ['POST /auth/password']);
     expect(api.bodies.single, {
@@ -41,11 +40,8 @@ void main() {
     );
 
     await expectLater(
-      ProfileRepository(api).changePassword(
-        accessToken: 'valid-access-token',
-        currentPassword: 'salah',
-        newPassword: 'baru12345',
-      ),
+      ProfileRepository(authenticatedApiFor(api))
+          .changePassword(currentPassword: 'salah', newPassword: 'baru12345'),
       throwsA(
         isA<BackendApiException>().having(
           (error) => error.statusCode,

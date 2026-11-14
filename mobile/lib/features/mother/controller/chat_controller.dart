@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/app_role.dart';
+import '../../../services/authenticated_api.dart';
 import '../../../services/backend_api.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../models/chat_models.dart';
@@ -18,15 +19,14 @@ class ChatController extends AsyncNotifier<ChatState> {
   Future<ChatState> build() async {
     final session = ref.watch(authControllerProvider).asData?.value.session;
     final userId = session?.user.id;
-    final token = session?.accessToken;
     final empty = ChatState(userId: userId);
-    if (token == null ||
-        token.startsWith('mock-') ||
-        !_canChat(session?.user.role)) {
+    if (ref.watch(backendTokenProvider) == null ||
+        session == null ||
+        !_canChat(session.user.role)) {
       return empty;
     }
     try {
-      return await _loadLatest(token, userId);
+      return await _loadLatest(userId);
     } on Exception {
       // Riwayat hanya pelengkap: kalau gagal dimuat, tetap bisa mulai percakapan baru.
       return empty;
@@ -34,12 +34,9 @@ class ChatController extends AsyncNotifier<ChatState> {
   }
 
   /// Percakapan terakhir (sesi yang paling baru diperbarui) beserta pesannya.
-  Future<ChatState> _loadLatest(String token, String? userId) async {
-    final api = ref.watch(backendApiProvider);
-    final sessions = (await api.getJson(
-      '/chat/sessions',
-      accessToken: token,
-    ))['sessions'];
+  Future<ChatState> _loadLatest(String? userId) async {
+    final api = ref.watch(authenticatedApiProvider);
+    final sessions = (await api.getJson('/chat/sessions'))['sessions'];
     if (sessions is! List) {
       throw const FormatException('Chat session list has an invalid shape.');
     }
@@ -52,7 +49,6 @@ class ChatController extends AsyncNotifier<ChatState> {
     final sessionId = latest['id'] as String;
     final items = (await api.getJson(
       '/chat/sessions/$sessionId/messages',
-      accessToken: token,
     ))['messages'];
     if (items is! List) {
       throw const FormatException('Chat messages have an invalid shape.');
@@ -79,13 +75,12 @@ class ChatController extends AsyncNotifier<ChatState> {
     }
 
     final auth = ref.read(authControllerProvider).asData?.value;
-    final token = auth?.session?.accessToken;
     final userId = auth?.session?.user.id;
-    if (token?.startsWith('mock-') ?? false) {
+    if (ref.read(backendTokenProvider) == null) {
       _setFailure('Mode pratinjau aktif. Pesan belum dikirim ke layanan AI.');
       return false;
     }
-    if (token == null || userId == null) {
+    if (userId == null) {
       _setFailure(
         'Sesi login tidak valid untuk percakapan. Silakan masuk kembali.',
       );
@@ -110,11 +105,10 @@ class ChatController extends AsyncNotifier<ChatState> {
     try {
       final response = ChatResponse.fromJson(
         await ref
-            .read(backendApiProvider)
+            .read(authenticatedApiProvider)
             .postJson(
               '/chat',
               body: {'message': text, 'session_id': active.sessionId},
-              accessToken: token,
             ),
       );
       state = AsyncData(

@@ -72,10 +72,21 @@ class AuthUser {
 }
 
 class LoginResponse {
-  const LoginResponse({required this.accessToken, required this.user});
+  const LoginResponse({
+    required this.accessToken,
+    required this.user,
+    this.refreshToken,
+    this.expiresIn,
+    this.expiresAt,
+  });
 
   final String accessToken;
   final AuthUser user;
+  final String? refreshToken;
+  final int? expiresIn;
+
+  /// Absolute expiry of [accessToken]; null when the server did not say.
+  final DateTime? expiresAt;
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     final token = json['access_token'];
@@ -85,11 +96,27 @@ class LoginResponse {
         'Login response requires access_token and user.',
       );
     }
-    return LoginResponse(accessToken: token, user: AuthUser.fromJson(user));
+    final refreshToken = json['refresh_token'];
+    final expiresIn = json['expires_in'];
+    final expiresAt = json['expires_at'];
+    return LoginResponse(
+      accessToken: token,
+      user: AuthUser.fromJson(user),
+      refreshToken: refreshToken is String && refreshToken.isNotEmpty
+          ? refreshToken
+          : null,
+      expiresIn: expiresIn is int ? expiresIn : null,
+      expiresAt: expiresAt is String
+          ? DateTime.tryParse(expiresAt)?.toUtc()
+          : null,
+    );
   }
 
   Map<String, Object?> toJson() => {
     'access_token': accessToken,
+    'refresh_token': refreshToken,
+    'expires_in': expiresIn,
+    'expires_at': expiresAt?.toIso8601String(),
     'user': user.toJson(),
   };
 }
@@ -98,12 +125,14 @@ class AuthState {
   const AuthState({
     required this.selectedRole,
     this.session,
+    this.rememberedEmail,
     this.isSubmitting = false,
     this.errorMessage,
   });
 
   final AppRole? selectedRole;
   final LoginResponse? session;
+  final String? rememberedEmail;
   final bool isSubmitting;
   final String? errorMessage;
 
@@ -111,6 +140,8 @@ class AuthState {
     AppRole? selectedRole,
     LoginResponse? session,
     bool clearSession = false,
+    String? rememberedEmail,
+    bool clearRememberedEmail = false,
     bool? isSubmitting,
     String? errorMessage,
     bool clearError = false,
@@ -118,6 +149,9 @@ class AuthState {
     return AuthState(
       selectedRole: selectedRole ?? this.selectedRole,
       session: clearSession ? null : session ?? this.session,
+      rememberedEmail: clearRememberedEmail
+          ? null
+          : rememberedEmail ?? this.rememberedEmail,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );

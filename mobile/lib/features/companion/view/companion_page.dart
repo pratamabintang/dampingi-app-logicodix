@@ -7,7 +7,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../auth/controller/auth_controller.dart';
-import '../../mother/repositories/mother_story_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../../mother/view/mother_navigation.dart';
 import 'companion_extra_pages.dart';
@@ -288,8 +287,7 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
 
   Future<void> _submitLiveObservation(double scale) async {
     if (_submittingObservation) return;
-    final token = ref.read(backendTokenProvider);
-    if (token == null) return;
+    if (ref.read(backendTokenProvider) == null) return;
     final mother = ref.read(companionMotherProvider).asData?.value;
     if (mother == null) {
       _showMessage('Hubungkan dengan Ibu dulu lewat kode undangan.');
@@ -308,7 +306,6 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
 
       // Tanya backend langsung; status di layar bisa belum diperbarui.
       final alreadyDone = await repository.hasCompletedFor(
-        accessToken: token,
         connectionId: mother.id,
         day: DateTime.now(),
       );
@@ -327,7 +324,6 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
       if (!mounted || answer == null) return;
 
       await repository.submit(
-        accessToken: token,
         motherId: motherId,
         selectedOption: answer,
         day: DateTime.now(),
@@ -359,9 +355,9 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _logout() {
-    ref.read(authControllerProvider.notifier).logout();
-    context.go('/roles');
+  Future<void> _logout() async {
+    await ref.read(authControllerProvider.notifier).logout();
+    if (mounted) context.go('/roles');
   }
 }
 

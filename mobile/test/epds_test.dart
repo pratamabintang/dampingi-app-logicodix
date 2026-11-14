@@ -4,6 +4,8 @@ import 'package:mobile/features/mother/models/epds_questions.dart';
 import 'package:mobile/features/mother/repositories/epds_repository.dart';
 import 'package:mobile/services/backend_api.dart';
 
+import 'support/authenticated_api.dart';
+
 void main() {
   test('EPDS has 10 questions with 4 options each', () {
     expect(epdsQuestions, hasLength(10));
@@ -15,10 +17,8 @@ void main() {
 
   test('sends all 10 answers to the backend in order', () async {
     final api = _EpdsApi();
-    final result = await EpdsRepository(api).evaluate(
-      accessToken: 'valid-access-token',
-      answers: [0, 1, 2, 3, 0, 1, 2, 3, 0, 3],
-    );
+    final result = await EpdsRepository(authenticatedApiFor(api))
+        .evaluate(answers: [0, 1, 2, 3, 0, 1, 2, 3, 0, 3]);
 
     expect(api.path, '/epds/evaluate');
     expect(api.token, 'valid-access-token');
@@ -35,8 +35,7 @@ void main() {
   test('refuses to send an incomplete questionnaire', () async {
     final api = _EpdsApi();
     await expectLater(
-      EpdsRepository(api)
-          .evaluate(accessToken: 'valid-access-token', answers: [0, 1, 2]),
+      EpdsRepository(authenticatedApiFor(api)).evaluate(answers: [0, 1, 2]),
       throwsArgumentError,
     );
     expect(api.path, isNull);

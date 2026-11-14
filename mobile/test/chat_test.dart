@@ -106,6 +106,7 @@ void main() {
 
       api.pending = Completer<Map<String, dynamic>>();
       final secondRequest = controller.send('Lanjut');
+      await Future<void>.delayed(Duration.zero);
       expect(api.lastBody, {'message': 'Lanjut', 'session_id': 'session-1'});
       api.pending.complete({
         ...successfulResponse,
@@ -196,6 +197,7 @@ ProviderContainer _authenticatedContainer(BackendApi api) {
       roleRepositoryProvider.overrideWithValue(_MotherRoleRepository()),
       authRepositoryProvider.overrideWithValue(_ValidAuthRepository()),
       backendApiProvider.overrideWithValue(api),
+      backendTokenProvider.overrideWithValue('valid-access-token'),
     ],
   );
 }

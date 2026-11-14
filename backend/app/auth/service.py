@@ -30,6 +30,16 @@ class Account:
     user: dict
     token: str
     profile: dict
+    refresh_token: str = ""
+    expires_in: int | None = None
+
+
+@dataclass(frozen=True)
+class RefreshedSession:
+
+    access_token: str
+    refresh_token: str
+    expires_in: int | None = None
 
 
 class EmailAlreadyRegistered(Exception):
@@ -90,7 +100,27 @@ def login_user(email: str, password: str) -> Account:
     body = supabase.login(email, password)
     user = body.get("user") or {}
     profile = supabase.fetch_profile(user.get("id", ""))
-    return Account(user=user, token=body.get("access_token", ""), profile=profile or {})
+    return Account(
+        user=user,
+        token=body.get("access_token", ""),
+        profile=profile or {},
+        refresh_token=body.get("refresh_token", ""),
+        expires_in=body.get("expires_in"),
+    )
+
+
+def refresh_session(refresh_token: str) -> RefreshedSession:
+    """Trade a refresh token for a new, rotated Session pair."""
+    body = supabase.refresh_session(refresh_token)
+    access_token = body.get("access_token") or ""
+    new_refresh_token = body.get("refresh_token") or ""
+    if not access_token or not new_refresh_token:
+        raise supabase.SupabaseError(500, "refresh returned an incomplete session")
+    return RefreshedSession(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+        expires_in=body.get("expires_in"),
+    )
 
 
 def verify_email(email: str, token: str) -> Account:
@@ -99,7 +129,11 @@ def verify_email(email: str, token: str) -> Account:
     user = body.get("user") or body
     profile = {} if is_obfuscated_user(user) else supabase.fetch_profile(_id(user))
     return Account(
-        user=user, token=body.get("access_token") or "", profile=profile or {}
+        user=user,
+        token=body.get("access_token") or "",
+        profile=profile or {},
+        refresh_token=body.get("refresh_token") or "",
+        expires_in=body.get("expires_in"),
     )
 
 

@@ -294,6 +294,14 @@ def refresh_grant(refresh_token: str) -> httpx.Response:
     )
 
 
+def refresh_session(refresh_token: str) -> dict:
+    """Rotate a refresh token into a new Session pair."""
+    resp = refresh_grant(refresh_token)
+    if resp.status_code >= 400:
+        raise _error_from_response(resp)
+    return resp.json()
+
+
 def admin_list_users(page: int = 1, per_page: int = 100) -> tuple:
     resp = _request(
         _client().get,

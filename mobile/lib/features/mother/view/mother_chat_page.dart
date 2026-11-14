@@ -49,15 +49,7 @@ class _MotherChatPageState extends ConsumerState<MotherChatPage> {
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatControllerProvider);
-    final previewMode =
-        ref
-            .watch(authControllerProvider)
-            .asData
-            ?.value
-            .session
-            ?.accessToken
-            .startsWith('mock-') ??
-        false;
+    final previewMode = ref.watch(backendTokenProvider) == null;
     // Dibaca sebelum Scaffold: body Scaffold tidak lagi membawa viewInsets
     // bawah, jadi kunci keyboard harus dicek dari MediaQuery di atasnya.
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;

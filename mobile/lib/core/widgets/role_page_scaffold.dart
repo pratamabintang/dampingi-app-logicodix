@@ -19,9 +19,9 @@ class RolePageScaffold extends ConsumerWidget {
         actions: [
           TextButton(
             key: const Key('logout'),
-            onPressed: () {
-              ref.read(authControllerProvider.notifier).logout();
-              context.go('/roles');
+            onPressed: () async {
+              await ref.read(authControllerProvider.notifier).logout();
+              if (context.mounted) context.go('/roles');
             },
             child: const Text('Keluar'),
           ),

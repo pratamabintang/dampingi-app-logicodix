@@ -9,7 +9,6 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../auth/controller/auth_controller.dart';
-import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
 
 class MotherProfilePage extends ConsumerStatefulWidget {
@@ -148,9 +147,9 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
     });
   }
 
-  void _logout() {
-    ref.read(authControllerProvider.notifier).logout();
-    context.go('/roles');
+  Future<void> _logout() async {
+    await ref.read(authControllerProvider.notifier).logout();
+    if (mounted) context.go('/roles');
   }
 }
 

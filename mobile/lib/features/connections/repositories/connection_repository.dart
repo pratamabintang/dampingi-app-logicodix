@@ -1,20 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../services/authenticated_api.dart';
 import '../../../services/backend_api.dart';
-import '../../mother/repositories/mother_story_repository.dart';
+import '../../auth/controller/auth_controller.dart';
 
 final connectionRepositoryProvider = Provider<ConnectionRepository>(
-  (ref) => ConnectionRepository(ref.watch(backendApiProvider)),
+  (ref) => ConnectionRepository(ref.watch(authenticatedApiProvider)),
 );
 
 /// Orang yang terhubung dengan pemanggil sekarang. null = mode preview.
 final activeConnectionsProvider =
     FutureProvider.autoDispose<List<ConnectionPerson>?>((ref) async {
-      final token = ref.watch(backendTokenProvider);
-      if (token == null) return null;
-      return ref
-          .watch(connectionRepositoryProvider)
-          .listConnections(accessToken: token);
+      if (ref.watch(backendTokenProvider) == null) return null;
+      return ref.watch(connectionRepositoryProvider).listConnections();
     });
 
 /// Kode undangan milik pemanggil yang masih berlaku. null = mode preview.
@@ -24,11 +22,8 @@ final activeConnectionsProvider =
 final liveInviteCodesProvider = FutureProvider.autoDispose<List<InviteCode>?>((
   ref,
 ) async {
-  final token = ref.watch(backendTokenProvider);
-  if (token == null) return null;
-  return ref
-      .watch(connectionRepositoryProvider)
-      .listInviteCodes(accessToken: token);
+  if (ref.watch(backendTokenProvider) == null) return null;
+  return ref.watch(connectionRepositoryProvider).listInviteCodes();
 });
 
 /// Label Peran dalam bahasa Indonesia. Peran datang sebagai string dari
@@ -119,15 +114,10 @@ class InviteCode {
 class ConnectionRepository {
   ConnectionRepository(this._api);
 
-  final BackendApi _api;
+  final AuthenticatedApi _api;
 
-  Future<List<ConnectionPerson>> listConnections({
-    required String accessToken,
-  }) async {
-    final items = (await _api.getJson(
-      '/connections',
-      accessToken: accessToken,
-    ))['connections'];
+  Future<List<ConnectionPerson>> listConnections() async {
+    final items = (await _api.getJson('/connections'))['connections'];
     if (items is! List) {
       throw const FormatException('Connection list has an invalid shape.');
     }
@@ -138,12 +128,9 @@ class ConnectionRepository {
   }
 
   /// Kode undangan yang masih berlaku milik pemanggil. Hanya membaca.
-  Future<List<InviteCode>> listInviteCodes({
-    required String accessToken,
-  }) async {
+  Future<List<InviteCode>> listInviteCodes() async {
     final items = (await _api.getJson(
       '/connections/invite-codes',
-      accessToken: accessToken,
     ))['invite_codes'];
     if (items is! List) {
       throw const FormatException('Invite code list has an invalid shape.');
@@ -156,51 +143,34 @@ class ConnectionRepository {
 
   /// Menerbitkan kode undangan baru untuk Peran target yang dipilih.
   /// Hanya tindakan eksplisit boleh memanggil ini.
-  Future<InviteCode> issueInviteCode({
-    required String accessToken,
-    required String targetRole,
-  }) async {
+  Future<InviteCode> issueInviteCode({required String targetRole}) async {
     return InviteCode.fromJson(
       await _api.postJson(
         '/connections/invite-codes',
         body: {'target_role': targetRole},
-        accessToken: accessToken,
       ),
     );
   }
 
   /// Mencabut kode undangan milik pemanggil yang masih berlaku.
-  Future<void> revokeInviteCode({
-    required String accessToken,
-    required String id,
-  }) async {
-    await _api.deleteJson(
-      '/connections/invite-codes/$id',
-      accessToken: accessToken,
-    );
+  Future<void> revokeInviteCode({required String id}) async {
+    await _api.deleteJson('/connections/invite-codes/$id');
   }
 
   /// Mengakhiri Koneksi yang masih aktif. Kedua pihak berhak melakukannya.
-  Future<void> endConnection({
-    required String accessToken,
-    required String id,
-  }) async {
-    await _api.deleteJson('/connections/$id', accessToken: accessToken);
+  Future<void> endConnection({required String id}) async {
+    await _api.deleteJson('/connections/$id');
   }
 
   /// Menukar kode dari pendamping/tenaga kesehatan/ibu; langsung terhubung.
   ///
   /// Hanya merapikan spasi dan huruf besar. Panjang dan alfabet kode tetap
   /// dinilai backend, supaya pesannya sesuai kontrak.
-  Future<ConnectionPerson> redeem({
-    required String accessToken,
-    required String code,
-  }) async {
+  Future<ConnectionPerson> redeem({required String code}) async {
     return ConnectionPerson.fromJson(
       await _api.postJson(
         '/connections',
         body: {'code': code.trim().toUpperCase()},
-        accessToken: accessToken,
       ),
     );
   }

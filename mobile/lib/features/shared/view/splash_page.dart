@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/app_brand_header.dart';
+import '../../auth/controller/auth_controller.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -18,20 +19,29 @@ class SplashPage extends ConsumerStatefulWidget {
 }
 
 class _SplashPageState extends ConsumerState<SplashPage> {
-  Timer? _navigationTimer;
-
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _navigationTimer = Timer(const Duration(milliseconds: 2400), () {
-      if (mounted) context.go('/roles');
-    });
+    _openNext();
+  }
+
+  /// The 2.4 second show runs in parallel with Session restore; whatever
+  /// finishes last decides when the next screen opens.
+  Future<void> _openNext() async {
+    await Future.wait([
+      Future<void>.delayed(const Duration(milliseconds: 2400)),
+      ref
+          .read(authControllerProvider.future)
+          .then<void>((_) {}, onError: (_, _) {}),
+    ]);
+    if (!mounted) return;
+    final session = ref.read(authControllerProvider).asData?.value.session;
+    context.go(session?.user.role?.location ?? '/roles');
   }
 
   @override
   void dispose() {
-    _navigationTimer?.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }

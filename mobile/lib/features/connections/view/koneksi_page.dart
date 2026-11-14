@@ -13,9 +13,9 @@ import '../../../core/widgets/app_error.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../models/app_role.dart';
-import '../../mother/repositories/mother_story_repository.dart';
 import '../preview_invite_codes.dart';
 import '../repositories/connection_repository.dart';
+import '../../auth/controller/auth_controller.dart';
 
 const _monthAbbreviations = [
   'Jan',
@@ -343,12 +343,9 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
   }
 
   Future<void> _endConnection(ConnectionPerson person) async {
-    final token = ref.read(backendTokenProvider);
-    if (token == null) return;
+    if (ref.read(backendTokenProvider) == null) return;
     await _runWrite(
-      (accessToken) => ref
-          .read(connectionRepositoryProvider)
-          .endConnection(accessToken: accessToken, id: person.id),
+      () => ref.read(connectionRepositoryProvider).endConnection(id: person.id),
     );
   }
 
@@ -431,9 +428,9 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
     }
 
     await _runWrite(
-      (accessToken) => ref
+      () => ref
           .read(connectionRepositoryProvider)
-          .issueInviteCode(accessToken: accessToken, targetRole: targetRole),
+          .issueInviteCode(targetRole: targetRole),
     );
   }
 
@@ -454,9 +451,8 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
     }
 
     await _runWrite(
-      (accessToken) => ref
-          .read(connectionRepositoryProvider)
-          .revokeInviteCode(accessToken: accessToken, id: code.id),
+      () =>
+          ref.read(connectionRepositoryProvider).revokeInviteCode(id: code.id),
     );
   }
 
@@ -468,9 +464,7 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
     }
     final code = _codeController.text;
     await _runWrite(
-      (accessToken) => ref
-          .read(connectionRepositoryProvider)
-          .redeem(accessToken: accessToken, code: code),
+      () => ref.read(connectionRepositoryProvider).redeem(code: code),
       onSuccess: () {
         _codeController.clear();
         FocusScope.of(context).unfocus();
@@ -513,15 +507,14 @@ class _KoneksiPageState extends ConsumerState<KoneksiPage> {
   /// Satu jalur tulis: tandai sibuk, jalankan, lalu segarkan daftar. Kegagalan
   /// tampil sebagai pesan, bukan diam.
   Future<void> _runWrite(
-    Future<void> Function(String accessToken) write, {
+    Future<void> Function() write, {
     VoidCallback? onSuccess,
   }) async {
-    final token = ref.read(backendTokenProvider);
-    if (token == null) return;
+    if (ref.read(backendTokenProvider) == null) return;
 
     setState(() => _busy = true);
     try {
-      await write(token);
+      await write();
       await _refresh();
       if (mounted) onSuccess?.call();
     } catch (error) {

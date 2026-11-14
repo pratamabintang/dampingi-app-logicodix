@@ -114,7 +114,22 @@ class RegisterResponse(BaseModel):
 
 class LoginResponse(BaseModel):
     access_token: str
+    refresh_token: Optional[str] = None
+    expires_in: Optional[int] = None
     user: UserOut
+
+
+class RefreshRequest(BaseModel):
+
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: str = Field(min_length=1)
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    expires_in: Optional[int] = None
 
 
 class UpdateMeRequest(BaseModel):
