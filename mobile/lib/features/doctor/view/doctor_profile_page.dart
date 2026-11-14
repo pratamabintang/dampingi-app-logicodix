@@ -8,7 +8,6 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
 import '../../auth/controller/auth_controller.dart';
-import 'doctor_invitation_flow.dart';
 
 class DoctorProfilePage extends ConsumerStatefulWidget {
   const DoctorProfilePage({required this.bottomNavigation, super.key});
@@ -68,7 +67,7 @@ class _DoctorProfilePageState extends ConsumerState<DoctorProfilePage> {
                               'Fitur ubah profil belum tersedia.',
                             ),
                             onAddPatient: () =>
-                                showDoctorInvitationFlow(context, scale: scale),
+                                context.push('/doctor/connections'),
                           ),
                           SizedBox(height: scaled(36)),
                           SizedBox(
@@ -183,24 +182,6 @@ class _DoctorProfileInformationCard extends StatelessWidget {
               fontFamily: AppTheme.fontFamily,
               fontSize: scale(16),
               height: 24 / 16,
-            ),
-          ),
-          SizedBox(height: scale(16)),
-          SizedBox(
-            height: scale(24),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                'Kode pendampingan : AIS128',
-                key: const Key('doctor-profile-code'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.muted,
-                  fontFamily: AppTheme.fontFamily,
-                  fontSize: scale(16),
-                  height: 24 / 16,
-                ),
-              ),
             ),
           ),
           SizedBox(height: scale(16)),

@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_profile_avatar.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../mother/controller/chat_controller.dart';
 import '../../mother/models/chat_models.dart';
+import '../../mother/repositories/mother_story_repository.dart';
 import '../../mother/view/mother_chat_page.dart';
 
 class CompanionChatPage extends ConsumerStatefulWidget {
@@ -91,20 +93,25 @@ class _CompanionChatPageState extends ConsumerState<CompanionChatPage> {
   }
 }
 
-class CompanionNotificationsPage extends StatefulWidget {
+class CompanionNotificationsPage extends ConsumerStatefulWidget {
   const CompanionNotificationsPage({super.key});
 
   @override
-  State<CompanionNotificationsPage> createState() =>
+  ConsumerState<CompanionNotificationsPage> createState() =>
       _CompanionNotificationsPageState();
 }
 
+/// Notifikasi pendamping. Sama seperti sisi ibu: layarnya tetap ada karena
+/// desainnya masih berlanjut, tetapi saat aplikasi bicara dengan backend ia
+/// tidak mengarang kabar. Mock desain hanya muncul di mode preview.
 class _CompanionNotificationsPageState
-    extends State<CompanionNotificationsPage> {
+    extends ConsumerState<CompanionNotificationsPage> {
   final Set<String> _openedNotifications = {};
 
   @override
   Widget build(BuildContext context) {
+    final live = ref.watch(backendTokenProvider) != null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -170,32 +177,40 @@ class _CompanionNotificationsPageState
                       ),
                     ),
                     SizedBox(height: scaled(36)),
-                    _CompanionNotificationCard(
-                      id: 'journal',
-                      title: 'Ibu membagikan catatan baru',
-                      message: 'Catatan harian terbaru sudah tersedia',
-                      scale: scale,
-                      isUnread: !_openedNotifications.contains('journal'),
-                      onTap: () => _markNotificationOpened('journal'),
-                    ),
-                    SizedBox(height: scaled(10)),
-                    _CompanionNotificationCard(
-                      id: 'observation',
-                      title: 'Observasi harian telah diperbarui',
-                      message: 'Lihat hasil observasi terbaru dari Ibu',
-                      scale: scale,
-                      isUnread: !_openedNotifications.contains('observation'),
-                      onTap: () => _markNotificationOpened('observation'),
-                    ),
-                    SizedBox(height: scaled(10)),
-                    _CompanionNotificationCard(
-                      id: 'support',
-                      title: 'Tips dukungan baru tersedia',
-                      message: 'Temukan cara sederhana untuk membantu Ibu',
-                      scale: scale,
-                      isUnread: !_openedNotifications.contains('support'),
-                      onTap: () => _markNotificationOpened('support'),
-                    ),
+                    if (live)
+                      const AppEmpty(
+                        key: Key('companion-notifications-empty'),
+                        title: 'Belum ada notifikasi',
+                        message: 'Belum ada kabar baru untuk Anda.',
+                      )
+                    else ...[
+                      _CompanionNotificationCard(
+                        id: 'journal',
+                        title: 'Ibu membagikan catatan baru',
+                        message: 'Catatan harian terbaru sudah tersedia',
+                        scale: scale,
+                        isUnread: !_openedNotifications.contains('journal'),
+                        onTap: () => _markNotificationOpened('journal'),
+                      ),
+                      SizedBox(height: scaled(10)),
+                      _CompanionNotificationCard(
+                        id: 'observation',
+                        title: 'Observasi harian telah diperbarui',
+                        message: 'Lihat observasi terbaru tentang Ibu',
+                        scale: scale,
+                        isUnread: !_openedNotifications.contains('observation'),
+                        onTap: () => _markNotificationOpened('observation'),
+                      ),
+                      SizedBox(height: scaled(10)),
+                      _CompanionNotificationCard(
+                        id: 'support',
+                        title: 'Tips dukungan baru tersedia',
+                        message: 'Temukan cara sederhana untuk membantu Ibu',
+                        scale: scale,
+                        isUnread: !_openedNotifications.contains('support'),
+                        onTap: () => _markNotificationOpened('support'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -515,8 +530,9 @@ class CompanionProfilePage extends StatelessWidget {
     required this.email,
     required this.hasMother,
     required this.onEdit,
-    required this.onEnterCode,
+    required this.onOpenConnections,
     required this.onLogout,
+    this.motherName = '',
     super.key,
   });
 
@@ -524,8 +540,9 @@ class CompanionProfilePage extends StatelessWidget {
   final String userName;
   final String email;
   final bool hasMother;
+  final String motherName;
   final VoidCallback onEdit;
-  final VoidCallback onEnterCode;
+  final VoidCallback onOpenConnections;
   final VoidCallback onLogout;
 
   @override
@@ -587,17 +604,6 @@ class CompanionProfilePage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: scale * 24),
-              Text(
-                'Kode pendampingan : OPD324',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.muted,
-                  fontFamily: AppTheme.fontFamily,
-                  fontSize: scale * 16,
-                  height: 24 / 16,
-                ),
-              ),
-              SizedBox(height: scale * 20),
               _CompanionProfileButton(
                 key: const Key('companion-profile-edit'),
                 label: 'Ubah Profil',
@@ -607,9 +613,9 @@ class CompanionProfilePage extends StatelessWidget {
               SizedBox(height: scale * 10),
               _CompanionProfileButton(
                 key: const Key('companion-profile-enter-code'),
-                label: 'Masukan Kode Pendampingan',
+                label: 'Masukkan Kode Undangan',
                 scale: scale,
-                onPressed: onEnterCode,
+                onPressed: onOpenConnections,
                 secondary: true,
               ),
             ],
@@ -650,7 +656,7 @@ class CompanionProfilePage extends StatelessWidget {
                             width: scale * 56,
                             height: scale * 56,
                             fit: BoxFit.cover,
-                            semanticLabel: 'Foto Ny. Shopia Mudjahidah',
+                            semanticLabel: 'Foto $motherName',
                           ),
                         ),
                         SizedBox(width: scale * 16),
@@ -659,7 +665,7 @@ class CompanionProfilePage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Ny, Shopia Mudjahidah',
+                                motherName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -667,15 +673,6 @@ class CompanionProfilePage extends StatelessWidget {
                                   fontFamily: AppTheme.fontFamily,
                                   fontSize: scale * 16,
                                   fontWeight: FontWeight.w600,
-                                  height: 24 / 16,
-                                ),
-                              ),
-                              Text(
-                                'shopia***@gmail.com',
-                                style: TextStyle(
-                                  color: AppTheme.muted,
-                                  fontFamily: AppTheme.fontFamily,
-                                  fontSize: scale * 16,
                                   height: 24 / 16,
                                 ),
                               ),

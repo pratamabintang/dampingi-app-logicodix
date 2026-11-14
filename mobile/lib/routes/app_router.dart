@@ -8,6 +8,7 @@ import '../features/auth/view/password_reset_page.dart';
 import '../features/auth/view/register_page.dart';
 import '../features/companion/view/companion_page.dart';
 import '../features/companion/view/companion_extra_pages.dart';
+import '../features/connections/view/koneksi_page.dart';
 import '../features/doctor/view/doctor_page.dart';
 import '../features/mother/view/mother_page.dart';
 import '../features/mother/view/mother_chat_page.dart';
@@ -142,6 +143,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MotherNotificationsPage(),
       ),
       GoRoute(
+        path: '/mother/connections',
+        builder: (context, state) => const KoneksiPage(role: AppRole.mother),
+      ),
+      GoRoute(
         path: '/mother/calendar/story',
         builder: (context, state) {
           final story = state.extra;
@@ -163,10 +168,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CompanionProfileEditPage(),
       ),
       GoRoute(
+        path: '/companion/connections',
+        builder: (context, state) => const KoneksiPage(role: AppRole.companion),
+      ),
+      GoRoute(
         path: '/companion/notifications',
         builder: (context, state) => const CompanionNotificationsPage(),
       ),
       GoRoute(path: '/doctor', builder: (context, state) => const DoctorPage()),
+      GoRoute(
+        path: '/doctor/connections',
+        builder: (context, state) =>
+            const KoneksiPage(role: AppRole.professional),
+      ),
     ],
     errorBuilder: (context, state) =>
         const RouteErrorPage(message: 'Route not found'),

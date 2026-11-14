@@ -6,8 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_section_header.dart';
-import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../mother/repositories/mother_story_repository.dart';
+import '../repositories/observation_repository.dart';
 import '../../mother/view/mother_navigation.dart';
 import 'companion_extra_pages.dart';
 
@@ -20,16 +21,29 @@ class CompanionPage extends ConsumerStatefulWidget {
 
 class _CompanionPageState extends ConsumerState<CompanionPage> {
   _CompanionScreen _screen = _CompanionScreen.home;
-  bool _hasMother = false;
+  final bool _hasMother = false;
   bool _observationCompleted = false;
+  bool _submittingObservation = false;
+  bool _doneTodayLocally = false;
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).asData?.value.session?.user;
     final userName = user?.name?.trim();
     final greetingName = userName == null || userName.isEmpty
-        ? 'Jhon doe'
+        ? 'Pendamping'
         : userName;
+
+    // Login sungguhan: data dari backend. Preview: tetap contoh desain.
+    final live = ref.watch(backendTokenProvider) != null;
+    final mother = live
+        ? ref.watch(companionMotherProvider).asData?.value
+        : null;
+    final hasMother = live ? mother != null : _hasMother;
+    final observationDone = live
+        ? _doneTodayLocally ||
+              (ref.watch(todayObservationDoneProvider).asData?.value ?? false)
+        : _observationCompleted;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -59,6 +73,10 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             context,
                             greetingName,
                             scale,
+                            live: live,
+                            hasMother: hasMother,
+                            motherName: mother?.name,
+                            observationDone: observationDone,
                           ),
                           _CompanionScreen.observations =>
                             _CompanionObservationPage(
@@ -85,16 +103,12 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
                             scale: scale,
                             userName: greetingName,
                             email: user?.email ?? '',
-                            hasMother: _hasMother,
+                            hasMother: hasMother,
+                            motherName: mother?.name ?? '',
                             onEdit: () =>
                                 context.push('/companion/profile/edit'),
-                            onEnterCode: () {
-                              if (_hasMother) {
-                                _showNotice(context, 'Ibu sudah terhubung.');
-                              } else {
-                                _startMotherAssignment(scale);
-                              }
-                            },
+                            onOpenConnections: () =>
+                                context.push('/companion/connections'),
                             onLogout: _logout,
                           ),
                           _CompanionScreen.chat => CompanionChatPage(
@@ -157,7 +171,15 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
     );
   }
 
-  Widget _buildHome(BuildContext context, String greetingName, double scale) {
+  Widget _buildHome(
+    BuildContext context,
+    String greetingName,
+    double scale, {
+    required bool live,
+    required bool hasMother,
+    required String? motherName,
+    required bool observationDone,
+  }) {
     return ListView(
       key: const Key('companion-dashboard-scroll'),
       padding: EdgeInsets.fromLTRB(
@@ -186,18 +208,21 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
           ),
         ),
         SizedBox(height: scale * 36),
-        if (_hasMother)
-          const _MotherSummaryCard()
+        if (hasMother)
+          _MotherSummaryCard(name: motherName ?? '')
         else
-          _UnassignedMotherCard(onTap: () => _startMotherAssignment(scale)),
+          _UnassignedMotherCard(
+            onTap: () => context.push('/companion/connections'),
+          ),
         SizedBox(height: scale * 24),
         _ObservationCard(
-          completed: _observationCompleted,
+          completed: observationDone,
           onTap: () => _startObservationFlow(scale),
         ),
         SizedBox(height: scale * 24),
         _CompanionStoriesCard(
-          showNotes: _hasMother,
+          // Catatan di kartu ini masih contoh; disambungkan di UI-11.
+          showNotes: hasMother && !live,
           onSeeAll: () =>
               setState(() => _screen = _CompanionScreen.observations),
           onNoteTap: () =>
@@ -211,43 +236,11 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
     );
   }
 
-  Future<void> _startMotherAssignment(double scale) async {
-    var code = '';
-    while (true) {
-      if (!mounted) return;
-      final submittedCode = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) =>
-            _CompanionCodeDialog(scale: scale, initialCode: code),
-      );
-      if (!mounted || submittedCode == null) return;
-      code = submittedCode;
-
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => _CompanionConfirmDialog(
-          scale: scale,
-          onClose: () => Navigator.of(dialogContext).pop(),
-          onConfirm: () => Navigator.of(dialogContext).pop(true),
-          onBack: () => Navigator.of(dialogContext).pop(false),
-        ),
-      );
-      if (!mounted || confirmed == null) return;
-      if (!confirmed) continue;
-
-      setState(() => _hasMother = true);
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => _CompanionSuccessDialog(
-          scale: scale,
-          onDone: () => Navigator.of(dialogContext).pop(),
-        ),
-      );
+  Future<void> _startObservationFlow(double scale) async {
+    if (ref.read(backendTokenProvider) != null) {
+      await _submitLiveObservation(scale);
       return;
     }
-  }
-
-  Future<void> _startObservationFlow(double scale) async {
     var selectedAnswer = 0;
     var title = '';
     var note = '';
@@ -291,6 +284,79 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
     }
   }
 
+  Future<void> _submitLiveObservation(double scale) async {
+    if (_submittingObservation) return;
+    final token = ref.read(backendTokenProvider);
+    if (token == null) return;
+    final mother = ref.read(companionMotherProvider).asData?.value;
+    if (mother == null) {
+      _showMessage('Hubungkan dengan Ibu dulu lewat kode undangan.');
+      return;
+    }
+    final motherId = mother.userId;
+    if (motherId == null) {
+      _showMessage('Backend belum mengirim ID Ibu. Perbarui backend dulu.');
+      return;
+    }
+
+    // Dikunci sampai alur selesai, supaya ketukan kedua tidak membuka dialog lagi.
+    setState(() => _submittingObservation = true);
+    try {
+      final repository = ref.read(observationRepositoryProvider);
+
+      // Tanya backend langsung; status di layar bisa belum diperbarui.
+      final alreadyDone = await repository.hasCompletedFor(
+        accessToken: token,
+        connectionId: mother.id,
+        day: DateTime.now(),
+      );
+      if (!mounted) return;
+      if (alreadyDone) {
+        setState(() => _doneTodayLocally = true);
+        _showMessage('Observasi untuk hari ini sudah diisi.');
+        return;
+      }
+
+      final answer = await showDialog<int>(
+        context: context,
+        builder: (dialogContext) =>
+            _ObservationQuestionDialog(scale: scale, initialAnswer: 0),
+      );
+      if (!mounted || answer == null) return;
+
+      await repository.submit(
+        accessToken: token,
+        motherId: motherId,
+        selectedOption: answer,
+        day: DateTime.now(),
+      );
+      if (!mounted) return;
+      setState(() => _doneTodayLocally = true);
+
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => _ObservationSuccessDialog(
+          scale: scale,
+          onDone: () => Navigator.of(dialogContext).pop(),
+        ),
+      );
+    } catch (error) {
+      if (mounted) _showMessage(observationFailureMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() => _submittingObservation = false);
+        // Baru dimuat ulang setelah semua dialog selesai.
+        ref.invalidate(todayObservationDoneProvider);
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   void _logout() {
     ref.read(authControllerProvider.notifier).logout();
     context.go('/roles');
@@ -298,8 +364,6 @@ class _CompanionPageState extends ConsumerState<CompanionPage> {
 }
 
 enum _CompanionScreen { home, observations, noteDetail, support, profile, chat }
-
-const _previewMotherCode = 'K4DSTP';
 
 class _CompanionScale extends InheritedWidget {
   const _CompanionScale({required this.factor, required super.child});
@@ -361,7 +425,9 @@ class _CompanionHeader extends StatelessWidget {
 }
 
 class _MotherSummaryCard extends StatelessWidget {
-  const _MotherSummaryCard();
+  const _MotherSummaryCard({required this.name});
+
+  final String name;
 
   @override
   Widget build(BuildContext context) {
@@ -406,7 +472,10 @@ class _MotherSummaryCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ny. Shopia Mudj.',
+                        name,
+                        key: const Key('companion-mother-name'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppTheme.coralText,
                           fontFamily: AppTheme.fontFamily,
@@ -415,24 +484,13 @@ class _MotherSummaryCard extends StatelessWidget {
                           height: 24 / 16,
                         ),
                       ),
-                      Text.rich(
-                        TextSpan(
-                          style: TextStyle(
-                            color: AppTheme.muted,
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: scale(16),
-                            height: 24 / 16,
-                          ),
-                          children: const [
-                            TextSpan(text: 'Sedang '),
-                            TextSpan(
-                              text: 'sedih',
-                              style: TextStyle(
-                                color: AppTheme.coralText,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'Ringkasan mingguan belum tersedia',
+                        style: TextStyle(
+                          color: AppTheme.muted,
+                          fontFamily: AppTheme.fontFamily,
+                          fontSize: scale(14),
+                          height: 20 / 14,
                         ),
                       ),
                     ],
@@ -504,7 +562,7 @@ class _UnassignedMotherCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              child: const Text('Masukan kode pendampingan'),
+              child: const Text('Masukkan Kode Undangan'),
             ),
           ),
         ],
@@ -737,389 +795,7 @@ class _CompanionNoteRow extends StatelessWidget {
   }
 }
 
-class _CompanionCodeDialog extends StatefulWidget {
-  const _CompanionCodeDialog({required this.scale, required this.initialCode});
-
-  final double scale;
-  final String initialCode;
-
-  @override
-  State<_CompanionCodeDialog> createState() => _CompanionCodeDialogState();
-}
-
-class _CompanionCodeDialogState extends State<_CompanionCodeDialog> {
-  late final TextEditingController _controller;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialCode);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final code = _controller.text.trim().toUpperCase();
-    if (code != _previewMotherCode) {
-      setState(() {
-        _errorMessage = code.isEmpty
-            ? 'Masukan kode pendampingan Ibu.'
-            : 'Kode pendampingan tidak dikenali.';
-      });
-      return;
-    }
-    Navigator.of(context).pop(code);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = widget.scale;
-    return Dialog(
-      key: const Key('companion-mother-code-dialog'),
-      backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: scale * 24),
-      child: Container(
-        width: scale * 342,
-        padding: EdgeInsets.fromLTRB(
-          scale * 24,
-          scale * 16,
-          scale * 24,
-          scale * 24,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(scale * 32),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1A101828),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                key: const Key('companion-mother-code-close'),
-                tooltip: 'Tutup',
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(
-                  Icons.close,
-                  color: AppTheme.coral,
-                  size: scale * 24,
-                ),
-                constraints: BoxConstraints.tightFor(
-                  width: scale * 32,
-                  height: scale * 32,
-                ),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-            SizedBox(height: scale * 8),
-            Text(
-              'Masukan kode pendampingan Ibu',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTheme.coralText,
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale * 20,
-                fontWeight: FontWeight.w600,
-                height: 30 / 20,
-              ),
-            ),
-            SizedBox(height: scale * 24),
-            AppTextField(
-              key: const Key('companion-mother-code-field'),
-              controller: _controller,
-              label: 'Kode Pendampingan Ibu',
-              hintText: 'Masukan kode',
-              inputHeight: scale * 44,
-              textCapitalization: TextCapitalization.characters,
-              textInputAction: TextInputAction.done,
-              autocorrect: false,
-              onFieldSubmitted: (_) => _submit(),
-              labelStyle: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                color: AppTheme.body,
-                fontSize: scale * 14,
-                fontWeight: FontWeight.w500,
-                height: 20 / 14,
-              ),
-              textStyle: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale * 16,
-                color: AppTheme.ink,
-              ),
-              hintStyle: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale * 16,
-                color: AppTheme.muted,
-              ),
-            ),
-            if (_errorMessage case final message?) ...[
-              SizedBox(height: scale * 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  message,
-                  key: const Key('companion-mother-code-error'),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: scale * 12,
-                  ),
-                ),
-              ),
-            ],
-            SizedBox(height: scale * 24),
-            _CompanionDialogButton(
-              key: const Key('companion-mother-code-next'),
-              label: 'Lanjut',
-              scale: scale,
-              onPressed: _submit,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompanionConfirmDialog extends StatelessWidget {
-  const _CompanionConfirmDialog({
-    required this.scale,
-    required this.onClose,
-    required this.onConfirm,
-    required this.onBack,
-  });
-
-  final double scale;
-  final VoidCallback onClose;
-  final VoidCallback onConfirm;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      key: const Key('companion-mother-confirm-dialog'),
-      backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: scale * 24),
-      child: Container(
-        width: scale * 342,
-        padding: EdgeInsets.fromLTRB(
-          scale * 24,
-          scale * 16,
-          scale * 24,
-          scale * 24,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(scale * 32),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1A101828),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                key: const Key('companion-mother-confirm-close'),
-                tooltip: 'Tutup',
-                onPressed: onClose,
-                icon: Icon(
-                  Icons.close,
-                  color: AppTheme.coral,
-                  size: scale * 24,
-                ),
-                constraints: BoxConstraints.tightFor(
-                  width: scale * 32,
-                  height: scale * 32,
-                ),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-            SizedBox(height: scale * 20),
-            Text(
-              'Apakah anda ingin mendampingi pengguna ini?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTheme.coralText,
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale * 20,
-                fontWeight: FontWeight.w600,
-                height: 30 / 20,
-              ),
-            ),
-            SizedBox(height: scale * 24),
-            Container(
-              padding: EdgeInsets.all(scale * 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFAF9),
-                borderRadius: BorderRadius.circular(scale * 32),
-              ),
-              child: Row(
-                children: [
-                  ClipOval(
-                    child: Image.asset(
-                      'assets/images/mother_home/avatar-a.png',
-                      width: scale * 56,
-                      height: scale * 56,
-                      fit: BoxFit.cover,
-                      semanticLabel: 'Foto Ny. Shopia Mudj.',
-                    ),
-                  ),
-                  SizedBox(width: scale * 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ny. Shopia Mudj.',
-                          style: TextStyle(
-                            color: AppTheme.coralText,
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: scale * 16,
-                            fontWeight: FontWeight.w600,
-                            height: 24 / 16,
-                          ),
-                        ),
-                        Text(
-                          'shopiamu@gmail.com',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppTheme.muted,
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: scale * 16,
-                            height: 24 / 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: scale * 24),
-            _CompanionDialogButton(
-              key: const Key('companion-mother-confirm-yes'),
-              label: 'Ya',
-              scale: scale,
-              onPressed: onConfirm,
-            ),
-            SizedBox(height: scale * 10),
-            _CompanionDialogButton(
-              key: const Key('companion-mother-confirm-back'),
-              label: 'Kembali',
-              scale: scale,
-              onPressed: onBack,
-              secondary: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompanionSuccessDialog extends StatelessWidget {
-  const _CompanionSuccessDialog({required this.scale, required this.onDone});
-
-  final double scale;
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      key: const Key('companion-mother-success-dialog'),
-      backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: scale * 24),
-      child: Container(
-        width: scale * 342,
-        padding: EdgeInsets.fromLTRB(
-          scale * 24,
-          scale * 24,
-          scale * 24,
-          scale * 24,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(scale * 32),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1A101828),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                key: const Key('companion-mother-success-close'),
-                tooltip: 'Tutup',
-                onPressed: onDone,
-                icon: Icon(
-                  Icons.close,
-                  color: AppTheme.coral,
-                  size: scale * 24,
-                ),
-                constraints: BoxConstraints.tightFor(
-                  width: scale * 32,
-                  height: scale * 32,
-                ),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-            SizedBox(height: scale * 20),
-            Text(
-              'Pengguna berhasil anda dampingi!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTheme.coralText,
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale * 20,
-                fontWeight: FontWeight.w600,
-                height: 30 / 20,
-              ),
-            ),
-            SizedBox(height: scale * 24),
-            _CompanionDialogButton(
-              key: const Key('companion-mother-success-done'),
-              label: 'Selesai',
-              scale: scale,
-              onPressed: onDone,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-const _observationOptions = [
-  'Sangat bahagia lorem ipsum dolor sit amet',
-  'Sangat bahagia lorem ipsum dolor sit amet',
-  'Sangat bahagia lorem ipsum dolor sit amet',
-  'Sangat bahagia lorem ipsum dolor sit amet',
-];
+const _observationOptions = observationOptions;
 
 class _ObservationQuestionDialog extends StatefulWidget {
   const _ObservationQuestionDialog({
@@ -1188,7 +864,7 @@ class _ObservationQuestionDialogState
             ),
             SizedBox(height: scale * 12),
             Text(
-              '1. Bagaimana anda menggambarkan perasaan Ibu hari ini?',
+              '1. $observationPrompt',
               textAlign: TextAlign.left,
               style: TextStyle(
                 color: AppTheme.ink,

@@ -1,9 +1,5 @@
-import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,14 +8,9 @@ import '../../../core/widgets/app_brand_header.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_profile_avatar.dart';
 import '../../../core/widgets/app_submit_button.dart';
-import '../../../core/widgets/app_text_field.dart';
 import '../../auth/controller/auth_controller.dart';
-import '../../../services/backend_api.dart';
-import '../repositories/connection_repository.dart';
 import '../repositories/mother_story_repository.dart';
 import 'mother_navigation.dart';
-
-const _previewCompanionCode = 'ENZOKULIN';
 
 class MotherProfilePage extends ConsumerStatefulWidget {
   const MotherProfilePage({super.key});
@@ -41,32 +32,6 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
     final name = user?.name?.trim();
     final email = user?.email.trim();
     final live = ref.watch(backendTokenProvider) != null;
-    final codeAsync = live ? ref.watch(motherCompanionCodeProvider) : null;
-    final connectionsAsync = live ? ref.watch(motherConnectionsProvider) : null;
-
-    final code = codeAsync == null
-        ? 'K4DSTP'
-        : codeAsync.when(
-            data: (invite) => invite?.code ?? '-',
-            loading: () => '…',
-            error: (error, stackTrace) => 'gagal dimuat',
-          );
-    final companions = connectionsAsync == null
-        ? _companions
-        : [
-            for (final person
-                in connectionsAsync.asData?.value ?? const <ConnectionPerson>[])
-              _CompanionProfile(
-                id: person.id,
-                name: person.name,
-                email: person.roleLabel,
-                // Aturan berbagi tetap (hanya ringkasan mingguan): tidak ada toggle.
-                permissions: const [],
-              ),
-          ];
-    final permissions = connectionsAsync == null
-        ? _permissions
-        : {for (final companion in companions) companion.id: <String, bool>{}};
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -109,25 +74,23 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
                                   ? 'janedoe@gmail.com'
                                   : email,
                               scale: scaled,
-                              code: code,
                               onEditProfile: () =>
                                   context.push('/mother/profile/edit'),
-                              onAddCompanion: _showAddCompanionFlow,
+                              onOpenConnections: () =>
+                                  context.push('/mother/connections'),
                             ),
                             SizedBox(height: scaled(36)),
-                            _CompanionPermissionsCard(
-                              scale: scaled,
-                              title: live ? 'Orang yang terhubung' : 'Pilih data yang boleh dilihat orang yang terhubung',
-                              subtitle: live
-                                  ? 'Orang yang terhubung hanya dapat melihat '
-                                        'ringkasan mingguan Anda. Jurnal, mood '
-                                        'harian, dan hasil EPDS tetap pribadi.'
-                                  : null,
-                              companions: companions,
-                              permissions: permissions,
-                              onPermissionChanged: _setPermission,
-                            ),
-                            SizedBox(height: scaled(36)),
+                            if (!live) ...[
+                              _CompanionPermissionsCard(
+                                scale: scaled,
+                                title: 'Pratinjau: pilih data yang boleh dilihat orang yang terhubung',
+                                subtitle: null,
+                                companions: _companions,
+                                permissions: _permissions,
+                                onPermissionChanged: _setPermission,
+                              ),
+                              SizedBox(height: scaled(36)),
+                            ],
                             SizedBox(
                               height: scaled(48),
                               child: AppSubmitButton(
@@ -185,118 +148,6 @@ class _MotherProfilePageState extends ConsumerState<MotherProfilePage> {
     });
   }
 
-  Future<void> _showAddCompanionFlow() async {
-    await showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Tutup tambah pendamping',
-      barrierColor: Colors.transparent,
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
-        final scaleFactor = (screenWidth / 390).clamp(0.7, 1.15).toDouble();
-        double scale(double value) => value * scaleFactor;
-        final width = math.min(scale(342), screenWidth - scale(40));
-        return Material(
-          type: MaterialType.transparency,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.of(dialogContext).pop(),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
-                  child: const ColoredBox(color: Color(0x1A000000)),
-                ),
-              ),
-              Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(vertical: scale(24)),
-                  child: Transform.translate(
-                    offset: Offset(scale(4), scale(-0.5)),
-                    child: SizedBox(
-                      width: width,
-                      child: _MotherProfileCompanionDialog(
-                        scale: scale,
-                        isAlreadyConnected: _companions.any(
-                          (companion) => companion.id == _previewCompanion.id,
-                        ),
-                        onClose: () => Navigator.of(dialogContext).pop(),
-                        onCompanionConfirmed: _addPreviewCompanion,
-                        onShareCode: _copyCompanionCode,
-                        onRedeem: ref.read(backendTokenProvider) == null
-                            ? null
-                            : _redeemCode,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 180),
-      transitionBuilder: (context, animation, secondaryAnimation, child) =>
-          FadeTransition(opacity: animation, child: child),
-    );
-  }
-
-  void _addPreviewCompanion() {
-    if (_companions.any((companion) => companion.id == _previewCompanion.id)) {
-      return;
-    }
-    setState(() {
-      _companions.add(_previewCompanion);
-      _permissions[_previewCompanion.id] = {
-        'weekly-summary': false,
-        'epds': false,
-        'journal': false,
-      };
-    });
-  }
-
-  Future<void> _copyCompanionCode() async {
-    final code = ref.read(backendTokenProvider) == null
-        ? 'K4DSTP'
-        : ref.read(motherCompanionCodeProvider).asData?.value?.code;
-    if (code == null) return;
-    await Clipboard.setData(ClipboardData(text: code));
-  }
-
-  /// Mengembalikan pesan error, atau null kalau berhasil terhubung.
-  Future<String?> _redeemCode(String code) async {
-    final token = ref.read(backendTokenProvider);
-    if (token == null) return 'Sesi login tidak valid. Silakan masuk kembali.';
-    try {
-      await ref
-          .read(connectionRepositoryProvider)
-          .redeem(accessToken: token, code: code);
-      ref.invalidate(motherConnectionsProvider);
-      return null;
-    } on Exception catch (error) {
-      return switch (error) {
-        BackendApiException(statusCode: 404) =>
-          'Kode tidak valid atau sudah kedaluwarsa (kode berlaku 1 jam).',
-        BackendApiException(statusCode: 400) =>
-          'Format kode tidak dikenali. Periksa lagi kodenya.',
-        BackendApiException(statusCode: 403) =>
-          'Kode ini bukan untuk akun ibu.',
-        BackendApiException(
-          message: 'This mother already has a professional',
-        ) =>
-          'Anda sudah terhubung dengan tenaga kesehatan.',
-        BackendApiException(statusCode: 409) =>
-          'Pendamping ini sudah terhubung dengan ibu lain.',
-        BackendApiException(statusCode: 401) =>
-          'Sesi login telah berakhir. Silakan masuk kembali.',
-        BackendApiException(:final message) => message,
-        ApiNetworkException(:final message) => message,
-        ApiConfigurationException(:final message) => message,
-        _ => 'Respons server tidak dapat dibaca. Coba lagi.',
-      };
-    }
-  }
-
   void _logout() {
     ref.read(authControllerProvider.notifier).logout();
     context.go('/roles');
@@ -307,18 +158,16 @@ class _ProfileInformationCard extends StatelessWidget {
   const _ProfileInformationCard({
     required this.name,
     required this.email,
-    required this.code,
     required this.scale,
     required this.onEditProfile,
-    required this.onAddCompanion,
+    required this.onOpenConnections,
   });
 
   final String name;
   final String email;
-  final String code;
   final double Function(double) scale;
   final VoidCallback onEditProfile;
-  final VoidCallback onAddCompanion;
+  final VoidCallback onOpenConnections;
 
   @override
   Widget build(BuildContext context) {
@@ -364,22 +213,6 @@ class _ProfileInformationCard extends StatelessWidget {
                   height: 24 / 16,
                 ),
               ),
-              SizedBox(height: scale(16)),
-              SizedBox(
-                height: scale(24),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'Kode Pendampingan : $code',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppTheme.muted,
-                      fontSize: scale(16),
-                      height: 24 / 16,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
           SizedBox(height: scale(16)),
@@ -391,11 +224,10 @@ class _ProfileInformationCard extends StatelessWidget {
           ),
           SizedBox(height: scale(16)),
           _ProfileActionButton(
-            key: const Key('mother-profile-add-companion'),
-            label: 'Tambah Pendamping',
+            key: const Key('mother-profile-connections'),
+            label: 'Koneksi',
             scale: scale,
-            secondary: true,
-            onPressed: onAddCompanion,
+            onPressed: onOpenConnections,
           ),
         ],
       ),
@@ -408,14 +240,12 @@ class _ProfileActionButton extends StatelessWidget {
     required this.label,
     required this.scale,
     required this.onPressed,
-    this.secondary = false,
     super.key,
   });
 
   final String label;
   final double Function(double) scale;
   final VoidCallback onPressed;
-  final bool secondary;
 
   @override
   Widget build(BuildContext context) {
@@ -426,14 +256,14 @@ class _ProfileActionButton extends StatelessWidget {
         onPressed: onPressed,
         textStyle: TextStyle(
           fontFamily: AppTheme.fontFamily,
-          color: secondary ? AppTheme.coralText : Colors.white,
+          color: Colors.white,
           fontSize: scale(16),
           fontWeight: FontWeight.w600,
           height: 24 / 16,
         ),
         buttonStyle: FilledButton.styleFrom(
-          backgroundColor: secondary ? AppTheme.coralLight : AppTheme.coral,
-          foregroundColor: secondary ? AppTheme.coralText : Colors.white,
+          backgroundColor: AppTheme.coral,
+          foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(
             horizontal: scale(20),
             vertical: scale(12),
@@ -444,437 +274,6 @@ class _ProfileActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(scale(8)),
           ),
         ),
-      ),
-    );
-  }
-}
-
-enum _CompanionDialogStep { enterCode, confirm, success }
-
-class _MotherProfileCompanionDialog extends StatefulWidget {
-  const _MotherProfileCompanionDialog({
-    required this.scale,
-    required this.isAlreadyConnected,
-    required this.onClose,
-    required this.onCompanionConfirmed,
-    required this.onShareCode,
-    this.onRedeem,
-  });
-
-  /// Login sungguhan: tukar kode ke backend. null = mode preview.
-  final Future<String?> Function(String code)? onRedeem;
-  final double Function(double) scale;
-  final bool isAlreadyConnected;
-  final VoidCallback onClose;
-  final VoidCallback onCompanionConfirmed;
-  final Future<void> Function() onShareCode;
-
-  @override
-  State<_MotherProfileCompanionDialog> createState() =>
-      _MotherProfileCompanionDialogState();
-}
-
-class _MotherProfileCompanionDialogState
-    extends State<_MotherProfileCompanionDialog> {
-  final TextEditingController _codeController = TextEditingController();
-  _CompanionDialogStep _step = _CompanionDialogStep.enterCode;
-  String? _errorMessage;
-  String? _statusMessage;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _codeController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = widget.scale;
-    final content = switch (_step) {
-      _CompanionDialogStep.enterCode => _buildCodeForm(scale),
-      _CompanionDialogStep.confirm => _buildConfirmation(scale),
-      _CompanionDialogStep.success => _buildSuccess(scale),
-    };
-
-    return Container(
-      key: const Key('mother-profile-companion-dialog'),
-      padding: EdgeInsets.all(scale(20)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFFAFAFA)),
-        borderRadius: BorderRadius.circular(scale(32)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A0A0D12),
-            offset: Offset(0, 1),
-            blurRadius: 3,
-          ),
-          BoxShadow(
-            color: Color(0x0F0A0D12),
-            offset: Offset(0, 1),
-            blurRadius: 2,
-          ),
-        ],
-      ),
-      child: content,
-    );
-  }
-
-  Widget _buildCodeForm(double Function(double) scale) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DialogCloseButton(scale: scale, onPressed: widget.onClose),
-        SizedBox(height: scale(24)),
-        SizedBox(
-          height: scale(24),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'Tambahkan Pendamping Anda',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                color: AppTheme.coralText,
-                fontSize: scale(16),
-                fontWeight: FontWeight.w600,
-                height: 24 / 16,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: scale(24)),
-        AppTextField(
-          key: const Key('mother-profile-companion-code-field'),
-          controller: _codeController,
-          label: 'Kode Pendampingan (Pendamping/Ahli)',
-          hintText: 'Masukan kode',
-          inputHeight: scale(44),
-          fitLabelToWidth: true,
-          labelStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            color: AppTheme.body,
-            fontSize: scale(14),
-            fontWeight: FontWeight.w500,
-            height: 20 / 14,
-          ),
-          textStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            color: AppTheme.body,
-            fontSize: scale(16),
-            height: 24 / 16,
-          ),
-          hintStyle: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            color: AppTheme.secondary,
-            fontSize: scale(16),
-            height: 24 / 16,
-          ),
-          textInputAction: TextInputAction.done,
-          autocorrect: false,
-          textCapitalization: TextCapitalization.characters,
-          onFieldSubmitted: (_) => _continueWithCode(),
-        ),
-        if (_errorMessage != null) ...[
-          SizedBox(height: scale(6)),
-          Text(
-            _errorMessage!,
-            key: const Key('mother-profile-companion-code-error'),
-            style: TextStyle(
-              color: const Color(0xFFD92D20),
-              fontFamily: AppTheme.fontFamily,
-              fontSize: scale(12),
-              height: 16 / 12,
-            ),
-          ),
-        ],
-        SizedBox(height: scale(24)),
-        Column(
-          children: [
-            _ProfileActionButton(
-              key: const Key('mother-profile-companion-code-next'),
-              label: 'Lanjut',
-              scale: scale,
-              onPressed: _continueWithCode,
-            ),
-            SizedBox(height: scale(10)),
-            _ProfileActionButton(
-              key: const Key('mother-profile-companion-code-share'),
-              label: 'Bagikan Kode Pendampingan',
-              scale: scale,
-              secondary: true,
-              onPressed: _shareCode,
-            ),
-          ],
-        ),
-        if (_statusMessage != null) ...[
-          SizedBox(height: scale(8)),
-          Text(
-            _statusMessage!,
-            key: const Key('mother-profile-companion-code-copied'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              color: AppTheme.coralText,
-              fontSize: scale(12),
-              height: 16 / 12,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildConfirmation(double Function(double) scale) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DialogCloseButton(scale: scale, onPressed: widget.onClose),
-        SizedBox(height: scale(24)),
-        SizedBox(
-          height: scale(48),
-          child: Center(
-            child: Text(
-              'Apakah ini pengguna yang ingin mendampingi anda?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTheme.coralText,
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale(16),
-                fontWeight: FontWeight.w600,
-                height: 24 / 16,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: scale(24)),
-        _CompanionConfirmationTile(scale: scale),
-        SizedBox(height: scale(24)),
-        Column(
-          children: [
-            _ProfileActionButton(
-              key: const Key('mother-profile-companion-confirm'),
-              label: 'Ya',
-              scale: scale,
-              onPressed: () {
-                widget.onCompanionConfirmed();
-                setState(() {
-                  _step = _CompanionDialogStep.success;
-                  _errorMessage = null;
-                });
-              },
-            ),
-            SizedBox(height: scale(10)),
-            _ProfileActionButton(
-              key: const Key('mother-profile-companion-back'),
-              label: 'Kembali',
-              scale: scale,
-              secondary: true,
-              onPressed: () => setState(() {
-                _step = _CompanionDialogStep.enterCode;
-                _errorMessage = null;
-              }),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuccess(double Function(double) scale) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DialogCloseButton(scale: scale, onPressed: widget.onClose),
-        SizedBox(height: scale(24)),
-        SizedBox(
-          height: scale(48),
-          child: Center(
-            child: Text(
-              'Pengguna berhasil menjadi pendamping anda!',
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: TextStyle(
-                color: AppTheme.coralText,
-                fontFamily: AppTheme.fontFamily,
-                fontSize: scale(16),
-                fontWeight: FontWeight.w600,
-                height: 24 / 16,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: scale(24)),
-        _ProfileActionButton(
-          key: const Key('mother-profile-companion-success-done'),
-          label: 'Selesai',
-          scale: scale,
-          onPressed: widget.onClose,
-        ),
-      ],
-    );
-  }
-
-  Future<void> _continueWithCode() async {
-    if (_submitting) return;
-    final code = _codeController.text.trim().toUpperCase();
-    if (code.isEmpty) {
-      setState(() {
-        _errorMessage = 'Masukkan kode pendampingan.';
-        _statusMessage = null;
-      });
-      return;
-    }
-
-    final redeem = widget.onRedeem;
-    if (redeem != null) {
-      // Backend langsung menghubungkan saat kode ditukar, jadi langsung ke layar sukses.
-      setState(() {
-        _submitting = true;
-        _errorMessage = null;
-        _statusMessage = null;
-      });
-      final error = await redeem(code);
-      if (!mounted) return;
-      setState(() {
-        _submitting = false;
-        if (error == null) {
-          _step = _CompanionDialogStep.success;
-        } else {
-          _errorMessage = error;
-        }
-      });
-      return;
-    }
-
-    if (widget.isAlreadyConnected) {
-      setState(() {
-        _errorMessage = 'Pendamping ini sudah terhubung.';
-        _statusMessage = null;
-      });
-      return;
-    }
-    if (code != _previewCompanionCode) {
-      setState(() {
-        _errorMessage = 'Kode tidak dikenali dalam mode pratinjau.';
-        _statusMessage = null;
-      });
-      return;
-    }
-    setState(() {
-      _step = _CompanionDialogStep.confirm;
-      _errorMessage = null;
-      _statusMessage = null;
-    });
-  }
-
-  Future<void> _shareCode() async {
-    await widget.onShareCode();
-    if (!mounted) return;
-    setState(() {
-      _statusMessage = 'Kode pendampingan disalin.';
-    });
-  }
-}
-
-class _DialogCloseButton extends StatelessWidget {
-  const _DialogCloseButton({required this.scale, required this.onPressed});
-
-  final double Function(double) scale;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: SizedBox(
-        width: scale(24),
-        height: scale(24),
-        child: IconButton(
-          key: const Key('mother-profile-companion-close'),
-          onPressed: onPressed,
-          tooltip: 'Tutup',
-          padding: EdgeInsets.zero,
-          constraints: BoxConstraints.tightFor(
-            width: scale(24),
-            height: scale(24),
-          ),
-          icon: SvgPicture.asset(
-            'assets/images/mother_home/close.svg',
-            width: scale(24),
-            height: scale(24),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CompanionConfirmationTile extends StatelessWidget {
-  const _CompanionConfirmationTile({required this.scale});
-
-  final double Function(double) scale;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('mother-profile-companion-preview'),
-      height: scale(72),
-      padding: EdgeInsets.all(scale(8)),
-      decoration: BoxDecoration(
-        color: AppTheme.selectedSurface,
-        borderRadius: BorderRadius.circular(scale(24)),
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: scale(56),
-            height: scale(56),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/mother_profile/man-1.png',
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          SizedBox(width: scale(16)),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _previewCompanion.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppTheme.coralText,
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: scale(16),
-                    fontWeight: FontWeight.w600,
-                    height: 24 / 16,
-                  ),
-                ),
-                SizedBox(height: scale(4)),
-                Text(
-                  _previewCompanion.email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppTheme.muted,
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: scale(16),
-                    height: 24 / 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1121,7 +520,6 @@ class _PermissionRow extends StatelessWidget {
 String _companionName(String companionId) => switch (companionId) {
   'enzokulin' => 'Tn. Enzokulin',
   'indra' => 'dr. Indra Waspada',
-  'preview-enzokulin-samsidan' => _previewCompanion.name,
   _ => '',
 };
 
@@ -1166,14 +564,3 @@ const _defaultCompanions = <_CompanionProfile>[
     ],
   ),
 ];
-
-const _previewCompanion = _CompanionProfile(
-  id: 'preview-enzokulin-samsidan',
-  name: 'Tn. Enzokulin Samsidan',
-  email: 'samsidan@gmail.com',
-  permissions: [
-    _PrivacyPermission(id: 'weekly-summary', label: 'Ringkasan mingguan'),
-    _PrivacyPermission(id: 'epds', label: 'Hasil EPDS'),
-    _PrivacyPermission(id: 'journal', label: 'Jurnal pribadi'),
-  ],
-);
